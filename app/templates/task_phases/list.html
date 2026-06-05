@@ -36,11 +36,7 @@
   <h3>Current Phases</h3>
 
   {% if phases %}
-  <p class="muted table-help">
-    <strong>In use</strong> means one or more tasks currently use this phase. Move those tasks to another phase before deleting it.
-  </p>
-
-    <table>
+<table>
       <thead>
         <tr>
           <th>Order</th>
@@ -82,7 +78,13 @@
                   <button class="small" type="submit">Delete</button>
                 </form>
               {% else %}
-                <span class="muted nowrap">In use</span>
+                <span class="disabled-delete-wrap">
+                  <span class="button small disabled-delete" tabindex="0" aria-disabled="true">Delete</span>
+                  <span class="disabled-delete-help">
+                    This phase cannot be deleted because one or more tasks currently use it.
+                    Move those tasks to another phase first.
+                  </span>
+                </span>
               {% endif %}
               </div>
             </td>
