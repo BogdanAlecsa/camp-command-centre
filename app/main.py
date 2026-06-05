@@ -616,6 +616,113 @@ async def create_team(
     return RedirectResponse(url=f"/camps/{camp.id}/teams/{team.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/teams/{team_id}/edit", response_class=HTMLResponse)
+async def edit_team_form(
+    request: Request,
+    camp_id: int,
+    team_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    team = (
+        db.query(Team)
+        .filter(Team.id == team_id, Team.camp_id == camp.id)
+        .first()
+    )
+
+    if team is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Team not found.",
+            },
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "teams/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "team": team,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/teams/{team_id}/edit")
+async def update_team(
+    request: Request,
+    camp_id: int,
+    team_id: int,
+    name: str = Form(...),
+    team_type: str = Form(...),
+    description: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    team = (
+        db.query(Team)
+        .filter(Team.id == team_id, Team.camp_id == camp.id)
+        .first()
+    )
+
+    if team is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Team not found.",
+            },
+            status_code=404,
+        )
+
+    if not name.strip():
+        return templates.TemplateResponse(
+            "teams/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "team": team,
+                "error": "Team name is required.",
+            },
+            status_code=400,
+        )
+
+    team.name = name.strip()
+    team.team_type = team_type
+    team.description = description.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/teams/{team.id}", status_code=303)
+
+
 @app.get("/camps/{camp_id}/teams/{team_id}", response_class=HTMLResponse)
 async def team_detail(
     request: Request,

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Edit Team</h2>
+  <p class="muted">Update details for {{ team.name }}.</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/teams/{{ team.id }}/edit">
+    <label for="name">Team Name</label>
+    <input id="name" name="name" required value="{{ team.name }}">
+
+    <label for="team_type">Team Type</label>
+    <select id="team_type" name="team_type">
+      {% for option in [
+        "Patrol/Six",
+        "Leader Team",
+        "Helper Team",
+        "Tent Group",
+        "Activity Group",
+        "Duty Team",
+        "Transport Group",
+        "Custom"
+      ] %}
+        <option {% if team.team_type == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description">{{ team.description or '' }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Changes</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/teams/{{ team.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
