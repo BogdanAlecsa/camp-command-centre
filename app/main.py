@@ -335,6 +335,119 @@ async def create_person(
     return RedirectResponse(url=f"/camps/{camp.id}/people/{person.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/people/{person_id}/edit", response_class=HTMLResponse)
+async def edit_person_form(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Person not found.",
+            },
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "people/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "person": person,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/{person_id}/edit")
+async def update_person(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    person_type: str = Form(...),
+    email: str = Form(""),
+    phone: str = Form(""),
+    role_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Person not found.",
+            },
+            status_code=404,
+        )
+
+    if not first_name.strip() or not last_name.strip():
+        return templates.TemplateResponse(
+            "people/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "person": person,
+                "error": "First name and last name are required.",
+            },
+            status_code=400,
+        )
+
+    person.first_name = first_name.strip()
+    person.last_name = last_name.strip()
+    person.person_type = person_type
+    person.email = email.strip() or None
+    person.phone = phone.strip() or None
+    person.role_notes = role_notes.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people/{person.id}", status_code=303)
+
+
 @app.get("/camps/{camp_id}/people/{person_id}", response_class=HTMLResponse)
 async def person_detail(
     request: Request,
