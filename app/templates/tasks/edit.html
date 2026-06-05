@@ -20,7 +20,13 @@
     <input id="category" name="category" value="{{ task.category or '' }}">
 
     <label for="phase">Phase</label>
-    <input id="phase" name="phase" value="{{ task.phase or '' }}">
+    <select id="phase" name="phase">
+      <option value="" {% if not task.phase %}selected{% endif %}>No phase yet</option>
+      {% for phase in phases %}
+        <option value="{{ phase.name }}" {% if task.phase == phase.name %}selected{% endif %}>{{ phase.name }}</option>
+      {% endfor %}
+    </select>
+    <p class="muted"><a href="/camps/{{ camp.id }}/task-phases" target="_blank" rel="noopener noreferrer">Manage phases</a></p>
 
     <label for="priority">Priority</label>
     <select id="priority" name="priority">

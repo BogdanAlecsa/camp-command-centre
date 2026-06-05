@@ -4,5 +4,14 @@ from app.models.team import Team
 from app.models.team_membership import TeamMembership
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
+from app.models.task_phase import TaskPhase
 
-__all__ = ["Camp", "Person", "Team", "TeamMembership", "Task", "TaskAssignment"]
+__all__ = [
+    "Camp",
+    "Person",
+    "Team",
+    "TeamMembership",
+    "Task",
+    "TaskAssignment",
+    "TaskPhase",
+]
