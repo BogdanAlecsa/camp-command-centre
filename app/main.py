@@ -1220,7 +1220,15 @@ async def tasks_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/camps/{camp_id}/tasks", response_class=HTMLResponse)
-async def camp_task_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+async def camp_task_list(
+    request: Request,
+    camp_id: int,
+    view: str = "",
+    status: str = "",
+    priority: str = "",
+    phase: str = "",
+    db: Session = Depends(get_db),
+):
     camp = db.get(Camp, camp_id)
 
     if camp is None:
@@ -1230,7 +1238,7 @@ async def camp_task_list(request: Request, camp_id: int, db: Session = Depends(g
             status_code=404,
         )
 
-    tasks = (
+    all_tasks = (
         db.query(Task)
         .filter(Task.camp_id == camp.id)
         .order_by(Task.status, Task.priority, Task.due_date, Task.title)
@@ -1238,12 +1246,78 @@ async def camp_task_list(request: Request, camp_id: int, db: Session = Depends(g
     )
 
     assignment_counts = {}
-    for task in tasks:
+    for task in all_tasks:
         assignment_counts[task.id] = (
             db.query(TaskAssignment)
             .filter(TaskAssignment.task_id == task.id, TaskAssignment.camp_id == camp.id)
             .count()
         )
+
+    today = date.today()
+    complete_statuses = {"Complete", "Checked", "Cancelled", "Not Needed"}
+
+    unassigned_tasks = [
+        task for task in all_tasks
+        if assignment_counts.get(task.id, 0) == 0 or task.status == "Unassigned"
+    ]
+
+    blocked_tasks = [
+        task for task in all_tasks
+        if task.status == "Blocked"
+    ]
+
+    high_priority_tasks = [
+        task for task in all_tasks
+        if task.priority in {"High", "Urgent"} and task.status not in complete_statuses
+    ]
+
+    overdue_tasks = [
+        task for task in all_tasks
+        if task.due_date and task.due_date < today and task.status not in complete_statuses
+    ]
+
+    due_soon_tasks = [
+        task for task in all_tasks
+        if task.due_date
+        and today <= task.due_date
+        and (task.due_date - today).days <= 7
+        and task.status not in complete_statuses
+    ]
+
+    tasks = list(all_tasks)
+    active_label = "All tasks"
+
+    if view == "unassigned":
+        tasks = unassigned_tasks
+        active_label = "Unassigned tasks"
+    elif view == "blocked":
+        tasks = blocked_tasks
+        active_label = "Blocked tasks"
+    elif view == "high-priority":
+        tasks = high_priority_tasks
+        active_label = "High / urgent tasks"
+    elif view == "overdue":
+        tasks = overdue_tasks
+        active_label = "Overdue tasks"
+    elif view == "due-soon":
+        tasks = due_soon_tasks
+        active_label = "Due soon"
+
+    if status:
+        tasks = [task for task in tasks if task.status == status]
+        active_label = f"Status: {status}"
+
+    if priority:
+        tasks = [task for task in tasks if task.priority == priority]
+        active_label = f"Priority: {priority}"
+
+    if phase:
+        tasks = [task for task in tasks if (task.phase or "") == phase]
+        active_label = f"Phase: {phase}"
+
+    statuses = sorted({task.status for task in all_tasks if task.status})
+    priorities = ["Urgent", "High", "Normal", "Low"]
+    phases = sorted({task.phase for task in all_tasks if task.phase})
 
     return templates.TemplateResponse(
         "tasks/list.html",
@@ -1251,7 +1325,24 @@ async def camp_task_list(request: Request, camp_id: int, db: Session = Depends(g
             "request": request,
             "camp": camp,
             "tasks": tasks,
+            "all_tasks": all_tasks,
             "assignment_counts": assignment_counts,
+            "active_view": view,
+            "active_status": status,
+            "active_priority": priority,
+            "active_phase": phase,
+            "active_label": active_label,
+            "statuses": statuses,
+            "priorities": priorities,
+            "phases": phases,
+            "summary": {
+                "total": len(all_tasks),
+                "unassigned": len(unassigned_tasks),
+                "blocked": len(blocked_tasks),
+                "high_priority": len(high_priority_tasks),
+                "overdue": len(overdue_tasks),
+                "due_soon": len(due_soon_tasks),
+            },
         },
     )
 

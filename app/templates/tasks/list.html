@@ -2,15 +2,108 @@
 
 {% block content %}
 <section class="card">
-  <h2>Tasks — {{ camp.name }}</h2>
-  <p class="muted">Create tasks, track status and assign work to people or teams.</p>
+  <h2>Task Command Centre — {{ camp.name }}</h2>
+  <p class="muted">Track camp jobs, responsibilities, priority, deadlines and blocked work.</p>
 
   <a class="button" href="/camps/{{ camp.id }}/tasks/new">Add Task</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
 </section>
 
+<div class="grid">
+  <section class="card">
+    <h3>Total Tasks</h3>
+    <p><strong>{{ summary.total }}</strong></p>
+    <p><a href="/camps/{{ camp.id }}/tasks">Show all</a></p>
+  </section>
+
+  <section class="card">
+    <h3>Unassigned</h3>
+    <p><strong>{{ summary.unassigned }}</strong></p>
+    {% if summary.unassigned %}
+      <p class="warning">Needs owner</p>
+    {% else %}
+      <p class="good">All assigned</p>
+    {% endif %}
+    <p><a href="/camps/{{ camp.id }}/tasks?view=unassigned">Show unassigned</a></p>
+  </section>
+
+  <section class="card">
+    <h3>Blocked</h3>
+    <p><strong>{{ summary.blocked }}</strong></p>
+    {% if summary.blocked %}
+      <p class="warning">Needs attention</p>
+    {% else %}
+      <p class="good">None blocked</p>
+    {% endif %}
+    <p><a href="/camps/{{ camp.id }}/tasks?view=blocked">Show blocked</a></p>
+  </section>
+
+  <section class="card">
+    <h3>High / Urgent</h3>
+    <p><strong>{{ summary.high_priority }}</strong></p>
+    <p><a href="/camps/{{ camp.id }}/tasks?view=high-priority">Show priority tasks</a></p>
+  </section>
+
+  <section class="card">
+    <h3>Overdue</h3>
+    <p><strong>{{ summary.overdue }}</strong></p>
+    {% if summary.overdue %}
+      <p class="warning">Past due date</p>
+    {% else %}
+      <p class="good">None overdue</p>
+    {% endif %}
+    <p><a href="/camps/{{ camp.id }}/tasks?view=overdue">Show overdue</a></p>
+  </section>
+
+  <section class="card">
+    <h3>Due Soon</h3>
+    <p><strong>{{ summary.due_soon }}</strong></p>
+    <p class="muted">Due in the next 7 days</p>
+    <p><a href="/camps/{{ camp.id }}/tasks?view=due-soon">Show due soon</a></p>
+  </section>
+</div>
+
 <section class="card">
-  <h3>Task List</h3>
+  <h3>Filters</h3>
+
+  <p>
+    <strong>Quick views:</strong>
+    <a href="/camps/{{ camp.id }}/tasks">All</a> ·
+    <a href="/camps/{{ camp.id }}/tasks?view=unassigned">Unassigned</a> ·
+    <a href="/camps/{{ camp.id }}/tasks?view=blocked">Blocked</a> ·
+    <a href="/camps/{{ camp.id }}/tasks?view=high-priority">High / Urgent</a> ·
+    <a href="/camps/{{ camp.id }}/tasks?view=overdue">Overdue</a> ·
+    <a href="/camps/{{ camp.id }}/tasks?view=due-soon">Due Soon</a>
+  </p>
+
+  {% if statuses %}
+    <p>
+      <strong>Status:</strong>
+      {% for item in statuses %}
+        <a href="/camps/{{ camp.id }}/tasks?status={{ item }}">{{ item }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}
+    </p>
+  {% endif %}
+
+  <p>
+    <strong>Priority:</strong>
+    {% for item in priorities %}
+      <a href="/camps/{{ camp.id }}/tasks?priority={{ item }}">{{ item }}</a>{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+
+  {% if phases %}
+    <p>
+      <strong>Phase:</strong>
+      {% for item in phases %}
+        <a href="/camps/{{ camp.id }}/tasks?phase={{ item }}">{{ item }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}
+    </p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>{{ active_label }}</h3>
 
   {% if tasks %}
     <table>
@@ -28,7 +121,12 @@
       <tbody>
         {% for task in tasks %}
           <tr>
-            <td><strong>{{ task.title }}</strong></td>
+            <td>
+              <strong>{{ task.title }}</strong>
+              {% if assignment_counts.get(task.id, 0) == 0 %}
+                <div class="warning">Unassigned</div>
+              {% endif %}
+            </td>
             <td><span class="badge">{{ task.status }}</span></td>
             <td>{{ task.priority }}</td>
             <td>{{ task.phase or "" }}</td>
@@ -40,8 +138,7 @@
       </tbody>
     </table>
   {% else %}
-    <p>No tasks have been added to this camp yet.</p>
-    <p><a href="/camps/{{ camp.id }}/tasks/new">Create the first task</a></p>
+    <p>No tasks match this view.</p>
   {% endif %}
 </section>
 {% endblock %}
