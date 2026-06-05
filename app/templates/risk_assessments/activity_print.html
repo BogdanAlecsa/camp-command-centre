@@ -190,6 +190,20 @@
       line-height: 1.15;
     }
 
+    .th-help {
+      display: block;
+      margin-top: .12rem;
+      color: #475467;
+      font-weight: normal;
+      font-size: 7.1pt;
+      line-height: 1.15;
+    }
+
+    td div + div {
+      margin-top: .18rem;
+    }
+
+
     tr {
       break-inside: avoid;
       page-break-inside: avoid;
@@ -275,6 +289,22 @@
 
     <div class="meta-grid">
       <div class="meta-item">
+        <span class="meta-label">Name of activity, event, and location</span>
+        {{ activity.name }}{% if activity.default_location %}, {{ activity.default_location }}{% endif %}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Date of risk assessment</span>
+        {{ risk_assessment.created_at.date() if risk_assessment.created_at else "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Name of person doing this risk assessment</span>
+        {{ risk_assessment.prepared_by or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Date of next review</span>
+        {{ risk_assessment.review_date or "Not set" }}
+      </div>
+      <div class="meta-item">
         <span class="meta-label">Activity Lead</span>
         {% if lead %}{{ lead.first_name }} {{ lead.last_name }}{% else %}Not set{% endif %}
       </div>
@@ -287,16 +317,8 @@
         {% if activity.default_duration_minutes %}{{ activity.default_duration_minutes }} minutes{% else %}Not set{% endif %}
       </div>
       <div class="meta-item">
-        <span class="meta-label">Default Location</span>
-        {{ activity.default_location or "Not set" }}
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Prepared By</span>
-        {{ risk_assessment.prepared_by or "Not set" }}
-      </div>
-      <div class="meta-item">
-        <span class="meta-label">Review Date</span>
-        {{ risk_assessment.review_date or "Not set" }}
+        <span class="meta-label">Camp / Event</span>
+        {{ camp.name }}
       </div>
     </div>
 
@@ -385,31 +407,57 @@
   <section class="table-section">
     <h2>Risk Assessment Table</h2>
     <p class="muted">
-      Use this table to record hazards, who is at risk, control measures already in place,
-      further actions required, responsibility and review/done status.
+      Use this table to record what could go wrong, who is at risk, what controls or actions are needed,
+      and what needs to be reviewed or revised.
     </p>
 
     {% if controls %}
       <table>
         <thead>
           <tr>
-            <th style="width: 16%;">Hazards identified</th>
-            <th style="width: 18%;">Who is at risk?</th>
-            <th style="width: 28%;">Control measures already in place</th>
-            <th style="width: 22%;">Additional controls / actions required</th>
-            <th style="width: 9%;">Person responsible</th>
-            <th style="width: 7%;">Done / review</th>
+            <th style="width: 27%;">
+              What could go wrong?
+              <span class="th-help">Hazard identified and risks from it</span>
+            </th>
+            <th style="width: 16%;">
+              Who is at risk?
+              <span class="th-help">Young people, adults, visitors, volunteers</span>
+            </th>
+            <th style="width: 42%;">
+              What are you going to do about it?
+              <span class="th-help">Existing controls, extra controls, communication and inclusion needs</span>
+            </th>
+            <th style="width: 15%;">
+              Review &amp; revise
+              <span class="th-help">Changes, review comments and actions completed</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {% for control in controls %}
             <tr>
-              <td><strong>{{ control.hazard }}</strong></td>
-              <td>{{ control.who_might_be_harmed or "" }}</td>
-              <td>{{ control.controls_in_place or "" }}</td>
-              <td>{{ control.further_controls_needed or "" }}</td>
-              <td>{{ control.responsible_person or "" }}</td>
-              <td>{{ control.review_notes or "" }}</td>
+              <td>
+                <strong>{{ control.hazard }}</strong>
+              </td>
+              <td>
+                {{ control.who_might_be_harmed or "" }}
+              </td>
+              <td>
+                {% if control.controls_in_place %}
+                  <div><strong>Controls already in place:</strong> {{ control.controls_in_place }}</div>
+                {% endif %}
+
+                {% if control.further_controls_needed %}
+                  <div><strong>Additional controls / actions required:</strong> {{ control.further_controls_needed }}</div>
+                {% endif %}
+
+                {% if control.responsible_person %}
+                  <div><strong>Person responsible:</strong> {{ control.responsible_person }}</div>
+                {% endif %}
+              </td>
+              <td>
+                {{ control.review_notes or "" }}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
@@ -418,6 +466,12 @@
       <div class="empty">No risk control rows have been recorded.</div>
     {% endif %}
   </section>
+
+  <div class="footer-note">
+    <strong>Contingency activities:</strong>
+    Keep suitable contingency activities in reserve in case the planned activity needs to change or stop part way through.
+    Contingency activities should also be risk assessed and key information shared with those involved.
+  </div>
 
   <p class="footer-note">
     Generated from Camp Command Centre. This printable output is a working activity risk assessment record and does not replace the required local review, approval or activity-specific checks.
