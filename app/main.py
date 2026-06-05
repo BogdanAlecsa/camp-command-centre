@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
-from app.models import Camp
+from app.models import Camp, Person
 
 app = FastAPI(title="Camp Command Centre")
 
@@ -20,16 +20,24 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
 
 
+def get_latest_camp(db: Session):
+    return db.query(Camp).order_by(Camp.start_date.desc()).first()
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, db: Session = Depends(get_db)):
-    current_camp = db.query(Camp).order_by(Camp.start_date.desc()).first()
+    current_camp = get_latest_camp(db)
+
+    people_count = 0
+    if current_camp:
+        people_count = db.query(Person).filter(Person.camp_id == current_camp.id).count()
 
     return templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
             "camp": current_camp,
-            "people_count": 0,
+            "people_count": people_count,
             "task_count": 0,
             "programme_sessions": 0,
             "readiness": 0,
@@ -101,8 +109,6 @@ async def create_camp(
     db.refresh(camp)
 
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
-
-
 
 
 @app.get("/camps/{camp_id}/edit", response_class=HTMLResponse)
@@ -184,7 +190,78 @@ async def update_camp(
 
 @app.get("/camps/{camp_id}", response_class=HTMLResponse)
 async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_db)):
-    camp = db.query(Camp).filter(Camp.id == camp_id).first()
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    people_count = db.query(Person).filter(Person.camp_id == camp.id).count()
+
+    return templates.TemplateResponse(
+        "camps/detail.html",
+        {
+            "request": request,
+            "camp": camp,
+            "people_count": people_count,
+            "team_count": 0,
+            "task_count": 0,
+            "programme_sessions": 0,
+            "readiness": 0,
+        },
+    )
+
+
+@app.get("/people", response_class=HTMLResponse)
+async def people_page(request: Request, db: Session = Depends(get_db)):
+    camp = get_latest_camp(db)
+
+    if camp is None:
+        return templates.TemplateResponse("people.html", {"request": request})
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people", status_code=303)
+
+
+@app.get("/camps/{camp_id}/people", response_class=HTMLResponse)
+async def camp_people_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id)
+        .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "people/list.html",
+        {
+            "request": request,
+            "camp": camp,
+            "people": people,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/people/new", response_class=HTMLResponse)
+async def new_person_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
 
     if camp is None:
         return templates.TemplateResponse(
@@ -197,22 +274,110 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
         )
 
     return templates.TemplateResponse(
-        "camps/detail.html",
+        "people/new.html",
         {
             "request": request,
             "camp": camp,
-            "people_count": 0,
-            "team_count": 0,
-            "task_count": 0,
-            "programme_sessions": 0,
-            "readiness": 0,
+            "error": None,
         },
     )
 
 
-@app.get("/people", response_class=HTMLResponse)
-async def people_page(request: Request):
-    return templates.TemplateResponse("people.html", {"request": request})
+@app.post("/camps/{camp_id}/people/new")
+async def create_person(
+    request: Request,
+    camp_id: int,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    person_type: str = Form(...),
+    email: str = Form(""),
+    phone: str = Form(""),
+    role_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    if not first_name.strip() or not last_name.strip():
+        return templates.TemplateResponse(
+            "people/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "error": "First name and last name are required.",
+            },
+            status_code=400,
+        )
+
+    person = Person(
+        camp_id=camp.id,
+        first_name=first_name.strip(),
+        last_name=last_name.strip(),
+        person_type=person_type,
+        email=email.strip() or None,
+        phone=phone.strip() or None,
+        role_notes=role_notes.strip() or None,
+    )
+
+    db.add(person)
+    db.commit()
+    db.refresh(person)
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people/{person.id}", status_code=303)
+
+
+@app.get("/camps/{camp_id}/people/{person_id}", response_class=HTMLResponse)
+async def person_detail(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Person not found.",
+            },
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "people/detail.html",
+        {
+            "request": request,
+            "camp": camp,
+            "person": person,
+        },
+    )
 
 
 @app.get("/programme", response_class=HTMLResponse)

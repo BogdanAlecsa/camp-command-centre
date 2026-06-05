@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Add Person</h2>
+  <p class="muted">Add a person to {{ camp.name }}.</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/people/new">
+    <label for="first_name">First Name</label>
+    <input id="first_name" name="first_name" required>
+
+    <label for="last_name">Last Name</label>
+    <input id="last_name" name="last_name" required>
+
+    <label for="person_type">Person Type</label>
+    <select id="person_type" name="person_type">
+      <option>Young Person</option>
+      <option>Parent/Guardian</option>
+      <option>Leader</option>
+      <option>Helper</option>
+      <option>Young Leader</option>
+      <option>Visitor</option>
+    </select>
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email">
+
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone">
+
+    <label for="role_notes">Notes</label>
+    <textarea id="role_notes" name="role_notes" placeholder="Role, parent link, useful context, etc."></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Add Person</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/people">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>People — {{ camp.name }}</h2>
+  <p class="muted">Manage young people, leaders, helpers, parents/guardians and visitors for this camp.</p>
+
+  <a class="button" href="/camps/{{ camp.id }}/people/new">Add Person</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>People List</h3>
+
+  {% if people %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in people %}
+          <tr>
+            <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
+            <td>{{ person.person_type }}</td>
+            <td>{{ person.email or "" }}</td>
+            <td>{{ person.phone or "" }}</td>
+            <td><a href="/camps/{{ camp.id }}/people/{{ person.id }}">Open</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No people have been added to this camp yet.</p>
+    <p><a href="/camps/{{ camp.id }}/people/new">Add the first person</a></p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ person.first_name }} {{ person.last_name }}</h2>
+  <p>Status: <span class="badge">{{ person.person_type }}</span></p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/people">Back to People</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Contact Details</h3>
+    <p><strong>Email:</strong> {{ person.email or "Not set" }}</p>
+    <p><strong>Phone:</strong> {{ person.phone or "Not set" }}</p>
+  </section>
+
+  <section class="card">
+    <h3>Camp Context</h3>
+    <p><strong>Camp:</strong> {{ camp.name }}</p>
+    <p><strong>Type:</strong> {{ person.person_type }}</p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Notes</h3>
+  <p>{{ person.role_notes or "No notes yet." }}</p>
+</section>
+{% endblock %}
