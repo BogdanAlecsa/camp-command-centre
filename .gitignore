@@ -1,0 +1,4 @@
+
+# Local app data
+data/*.sqlite
+data/*.db
