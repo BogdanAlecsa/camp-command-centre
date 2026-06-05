@@ -1584,6 +1584,195 @@ async def create_task_assignment(
     return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/tasks/{task_id}/assignments/{assignment_id}/edit", response_class=HTMLResponse)
+async def edit_task_assignment_form(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    assignment_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    assignment = (
+        db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.id == assignment_id,
+            TaskAssignment.task_id == task.id,
+            TaskAssignment.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if assignment is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task assignment not found."},
+            status_code=404,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id)
+        .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    teams = (
+        db.query(Team)
+        .filter(Team.camp_id == camp.id)
+        .order_by(Team.team_type, Team.name)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "tasks/edit_assignment.html",
+        {
+            "request": request,
+            "camp": camp,
+            "task": task,
+            "assignment": assignment,
+            "people": people,
+            "teams": teams,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/tasks/{task_id}/assignments/{assignment_id}/edit")
+async def update_task_assignment(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    assignment_id: int,
+    assignee: str = Form(...),
+    status_override: str = Form(""),
+    assignment_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    assignment = (
+        db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.id == assignment_id,
+            TaskAssignment.task_id == task.id,
+            TaskAssignment.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if assignment is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task assignment not found."},
+            status_code=404,
+        )
+
+    kind, raw_id = assignee.split(":", 1)
+    target_id = int(raw_id)
+
+    assignment.assigned_person_id = None
+    assignment.assigned_team_id = None
+
+    if kind == "person":
+        person = (
+            db.query(Person)
+            .filter(Person.id == target_id, Person.camp_id == camp.id)
+            .first()
+        )
+
+        if person is None:
+            return templates.TemplateResponse(
+                "not_found.html",
+                {"request": request, "message": "Person not found."},
+                status_code=404,
+            )
+
+        assignment.assigned_person_id = person.id
+
+    elif kind == "team":
+        team = (
+            db.query(Team)
+            .filter(Team.id == target_id, Team.camp_id == camp.id)
+            .first()
+        )
+
+        if team is None:
+            return templates.TemplateResponse(
+                "not_found.html",
+                {"request": request, "message": "Team not found."},
+                status_code=404,
+            )
+
+        assignment.assigned_team_id = team.id
+
+    else:
+        return templates.TemplateResponse(
+            "tasks/edit_assignment.html",
+            {
+                "request": request,
+                "camp": camp,
+                "task": task,
+                "assignment": assignment,
+                "people": db.query(Person).filter(Person.camp_id == camp.id).all(),
+                "teams": db.query(Team).filter(Team.camp_id == camp.id).all(),
+                "error": "Choose a valid person or team.",
+            },
+            status_code=400,
+        )
+
+    assignment.status_override = status_override.strip() or None
+    assignment.assignment_notes = assignment_notes.strip() or None
+
+    update_task_status_from_assignments(db, task)
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
+
+
 @app.post("/camps/{camp_id}/tasks/{task_id}/assignments/{assignment_id}/remove")
 async def remove_task_assignment(
     camp_id: int,

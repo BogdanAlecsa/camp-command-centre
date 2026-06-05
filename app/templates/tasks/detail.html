@@ -35,9 +35,9 @@
         <tr>
           <th>Assigned To</th>
           <th>Type</th>
-          <th>Status Override</th>
+          <th>Assignment Status</th>
           <th>Notes</th>
-          <th></th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -48,8 +48,9 @@
             <td>{{ row.assignment.status_override or "" }}</td>
             <td>{{ row.assignment.assignment_notes or "" }}</td>
             <td>
-              <form method="post" action="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/{{ row.assignment.id }}/remove">
-                <button type="submit">Remove</button>
+              <a class="button secondary small" href="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/{{ row.assignment.id }}/edit">Edit</a>
+              <form class="inline-form" method="post" action="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/{{ row.assignment.id }}/remove">
+                <button class="small" type="submit">Remove</button>
               </form>
             </td>
           </tr>

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Edit Task Assignment</h2>
+  <p class="muted">Update who is responsible for "{{ task.title }}".</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/{{ assignment.id }}/edit">
+    <label for="assignee">Assigned To</label>
+    <select id="assignee" name="assignee">
+      {% if people %}
+        <optgroup label="People">
+          {% for person in people %}
+            <option
+              value="person:{{ person.id }}"
+              {% if assignment.assigned_person_id == person.id %}selected{% endif %}
+            >
+              {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
+            </option>
+          {% endfor %}
+        </optgroup>
+      {% endif %}
+
+      {% if teams %}
+        <optgroup label="Teams">
+          {% for team in teams %}
+            <option
+              value="team:{{ team.id }}"
+              {% if assignment.assigned_team_id == team.id %}selected{% endif %}
+            >
+              {{ team.name }} — {{ team.team_type }}
+            </option>
+          {% endfor %}
+        </optgroup>
+      {% endif %}
+    </select>
+
+    <label for="status_override">Assignment Status</label>
+    <select id="status_override" name="status_override">
+      <option value="" {% if not assignment.status_override %}selected{% endif %}>No separate assignment status</option>
+      {% for option in [
+        "Assigned",
+        "Accepted",
+        "In Progress",
+        "Ready for Check",
+        "Complete",
+        "Blocked"
+      ] %}
+        <option {% if assignment.status_override == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="assignment_notes">Assignment Notes</label>
+    <textarea id="assignment_notes" name="assignment_notes">{{ assignment.assignment_notes or '' }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Changes</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
