@@ -49,6 +49,68 @@ def update_task_status_from_assignments(db: Session, task: Task):
         task.status = "Assigned"
 
 
+def task_assignment_duplicate_exists(
+    db: Session,
+    task: Task,
+    assigned_person_id: int | None = None,
+    assigned_team_id: int | None = None,
+    exclude_assignment_id: int | None = None,
+):
+    query = db.query(TaskAssignment).filter(
+        TaskAssignment.camp_id == task.camp_id,
+        TaskAssignment.task_id == task.id,
+    )
+
+    if assigned_person_id is not None:
+        query = query.filter(TaskAssignment.assigned_person_id == assigned_person_id)
+
+    if assigned_team_id is not None:
+        query = query.filter(TaskAssignment.assigned_team_id == assigned_team_id)
+
+    if exclude_assignment_id is not None:
+        query = query.filter(TaskAssignment.id != exclude_assignment_id)
+
+    return query.first() is not None
+
+
+def get_available_task_assignees(db: Session, camp: Camp, task: Task):
+    existing_person_ids = [
+        row.assigned_person_id
+        for row in db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.task_id == task.id,
+            TaskAssignment.assigned_person_id.isnot(None),
+        )
+        .all()
+    ]
+
+    existing_team_ids = [
+        row.assigned_team_id
+        for row in db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.task_id == task.id,
+            TaskAssignment.assigned_team_id.isnot(None),
+        )
+        .all()
+    ]
+
+    people_query = db.query(Person).filter(Person.camp_id == camp.id)
+    teams_query = db.query(Team).filter(Team.camp_id == camp.id)
+
+    if existing_person_ids:
+        people_query = people_query.filter(Person.id.notin_(existing_person_ids))
+
+    if existing_team_ids:
+        teams_query = teams_query.filter(Team.id.notin_(existing_team_ids))
+
+    people = people_query.order_by(Person.person_type, Person.last_name, Person.first_name).all()
+    teams = teams_query.order_by(Team.team_type, Team.name).all()
+
+    return people, teams
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, db: Session = Depends(get_db)):
     current_camp = get_latest_camp(db)
@@ -1474,19 +1536,7 @@ async def new_task_assignment_form(
             status_code=404,
         )
 
-    people = (
-        db.query(Person)
-        .filter(Person.camp_id == camp.id)
-        .order_by(Person.person_type, Person.last_name, Person.first_name)
-        .all()
-    )
-
-    teams = (
-        db.query(Team)
-        .filter(Team.camp_id == camp.id)
-        .order_by(Team.team_type, Team.name)
-        .all()
-    )
+    people, teams = get_available_task_assignees(db, camp, task)
 
     return templates.TemplateResponse(
         "tasks/add_assignment.html",
@@ -1551,6 +1601,7 @@ async def create_task_assignment(
                 {"request": request, "message": "Person not found."},
                 status_code=404,
             )
+
         assigned_person_id = person.id
 
     elif kind == "team":
@@ -1565,7 +1616,43 @@ async def create_task_assignment(
                 {"request": request, "message": "Team not found."},
                 status_code=404,
             )
+
         assigned_team_id = team.id
+
+    else:
+        people, teams = get_available_task_assignees(db, camp, task)
+        return templates.TemplateResponse(
+            "tasks/add_assignment.html",
+            {
+                "request": request,
+                "camp": camp,
+                "task": task,
+                "people": people,
+                "teams": teams,
+                "error": "Choose a valid person or team.",
+            },
+            status_code=400,
+        )
+
+    if task_assignment_duplicate_exists(
+        db,
+        task,
+        assigned_person_id=assigned_person_id,
+        assigned_team_id=assigned_team_id,
+    ):
+        people, teams = get_available_task_assignees(db, camp, task)
+        return templates.TemplateResponse(
+            "tasks/add_assignment.html",
+            {
+                "request": request,
+                "camp": camp,
+                "task": task,
+                "people": people,
+                "teams": teams,
+                "error": "This task is already assigned to that person or team.",
+            },
+            status_code=400,
+        )
 
     assignment = TaskAssignment(
         camp_id=camp.id,
@@ -1582,8 +1669,6 @@ async def create_task_assignment(
     db.commit()
 
     return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
-
-
 
 
 @app.get("/camps/{camp_id}/tasks/{task_id}/assignments/{assignment_id}/edit", response_class=HTMLResponse)
@@ -1714,8 +1799,8 @@ async def update_task_assignment(
     kind, raw_id = assignee.split(":", 1)
     target_id = int(raw_id)
 
-    assignment.assigned_person_id = None
-    assignment.assigned_team_id = None
+    new_assigned_person_id = None
+    new_assigned_team_id = None
 
     if kind == "person":
         person = (
@@ -1731,7 +1816,7 @@ async def update_task_assignment(
                 status_code=404,
             )
 
-        assignment.assigned_person_id = person.id
+        new_assigned_person_id = person.id
 
     elif kind == "team":
         team = (
@@ -1747,9 +1832,11 @@ async def update_task_assignment(
                 status_code=404,
             )
 
-        assignment.assigned_team_id = team.id
+        new_assigned_team_id = team.id
 
     else:
+        people = db.query(Person).filter(Person.camp_id == camp.id).all()
+        teams = db.query(Team).filter(Team.camp_id == camp.id).all()
         return templates.TemplateResponse(
             "tasks/edit_assignment.html",
             {
@@ -1757,13 +1844,39 @@ async def update_task_assignment(
                 "camp": camp,
                 "task": task,
                 "assignment": assignment,
-                "people": db.query(Person).filter(Person.camp_id == camp.id).all(),
-                "teams": db.query(Team).filter(Team.camp_id == camp.id).all(),
+                "people": people,
+                "teams": teams,
                 "error": "Choose a valid person or team.",
             },
             status_code=400,
         )
 
+    if task_assignment_duplicate_exists(
+        db,
+        task,
+        assigned_person_id=new_assigned_person_id,
+        assigned_team_id=new_assigned_team_id,
+        exclude_assignment_id=assignment.id,
+    ):
+        people = db.query(Person).filter(Person.camp_id == camp.id).order_by(Person.person_type, Person.last_name, Person.first_name).all()
+        teams = db.query(Team).filter(Team.camp_id == camp.id).order_by(Team.team_type, Team.name).all()
+
+        return templates.TemplateResponse(
+            "tasks/edit_assignment.html",
+            {
+                "request": request,
+                "camp": camp,
+                "task": task,
+                "assignment": assignment,
+                "people": people,
+                "teams": teams,
+                "error": "This task is already assigned to that person or team.",
+            },
+            status_code=400,
+        )
+
+    assignment.assigned_person_id = new_assigned_person_id
+    assignment.assigned_team_id = new_assigned_team_id
     assignment.status_override = status_override.strip() or None
     assignment.assignment_notes = assignment_notes.strip() or None
 
