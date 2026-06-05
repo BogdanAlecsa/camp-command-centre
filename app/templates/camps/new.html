@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Create Camp</h2>
+  <p class="muted">Start with the core camp facts. Everything else will hang from this camp record.</p>
+
+  <form method="post" action="/camps/new">
+    <label for="name">Camp Name</label>
+    <input id="name" name="name" required placeholder="Spring Cub Camp 2027">
+
+    <label for="camp_type">Camp Type</label>
+    <select id="camp_type" name="camp_type">
+      <option>Campsite Camp</option>
+      <option>Indoor Sleepover</option>
+      <option>Greenfield Camp</option>
+      <option>Lightweight Camp</option>
+      <option>Expedition</option>
+      <option>Family Camp</option>
+      <option>Group Camp</option>
+      <option>Other</option>
+    </select>
+
+    <label for="start_date">Start Date</label>
+    <input id="start_date" name="start_date" type="date" required>
+
+    <label for="end_date">End Date</label>
+    <input id="end_date" name="end_date" type="date" required>
+
+    <label for="venue_name">Venue</label>
+    <input id="venue_name" name="venue_name" placeholder="Green Wood Campsite">
+
+    <label for="camp_leader">Camp Leader</label>
+    <input id="camp_leader" name="camp_leader" placeholder="Name">
+
+    <label for="permit_holder">Permit Holder</label>
+    <input id="permit_holder" name="permit_holder" placeholder="Name">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" placeholder="Internal planning notes"></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Create Camp</button>
+      <a class="button secondary" href="/camps">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

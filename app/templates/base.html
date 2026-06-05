@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Camp Command Centre</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
     :root {
       --bg: #f5f7fa;
@@ -12,42 +13,78 @@
       --muted: #667085;
       --brand: #243447;
       --accent: #1f7a8c;
+      --accent-dark: #145c69;
       --warn: #b54708;
       --border: #d0d5dd;
+      --good: #027a48;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       color: var(--text);
       background: var(--bg);
     }
+
     header {
       background: var(--brand);
       color: white;
       padding: 1rem 1.5rem;
     }
-    header h1 { margin: 0; font-size: 1.4rem; }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    nav {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: .75rem 1.5rem;
+    }
+
+    nav a {
+      color: var(--brand);
+      text-decoration: none;
+      margin-right: 1rem;
+      font-weight: bold;
+    }
+
     main {
       max-width: 1180px;
       margin: 0 auto;
       padding: 1.5rem;
     }
-    .muted { color: var(--muted); }
+
+    .muted {
+      color: var(--muted);
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem;
       margin: 1rem 0;
     }
+
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 1rem;
       box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+      margin-bottom: 1rem;
     }
-    .card h3 { margin-top: 0; }
+
+    .card h2,
+    .card h3 {
+      margin-top: 0;
+    }
+
     .badge {
       display: inline-block;
       padding: .25rem .6rem;
@@ -56,23 +93,103 @@
       color: #075985;
       font-size: .85rem;
     }
-    .warning { color: var(--warn); font-weight: bold; }
-    .button {
+
+    .warning {
+      color: var(--warn);
+      font-weight: bold;
+    }
+
+    .good {
+      color: var(--good);
+      font-weight: bold;
+    }
+
+    .button,
+    button {
       display: inline-block;
-      padding: .55rem .8rem;
+      padding: .6rem .85rem;
       border-radius: 8px;
       background: var(--accent);
       color: white;
       text-decoration: none;
+      border: none;
+      cursor: pointer;
       margin-right: .5rem;
+      font-size: .95rem;
     }
-    ol { padding-left: 1.3rem; }
+
+    .button:hover,
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    .button.secondary {
+      background: #475467;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th,
+    td {
+      padding: .75rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      background: #f2f4f7;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: .8rem;
+      margin-bottom: .25rem;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: .65rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    textarea {
+      min-height: 100px;
+    }
+
+    .form-actions {
+      margin-top: 1rem;
+    }
+
+    ol {
+      padding-left: 1.3rem;
+    }
   </style>
 </head>
+
 <body>
   <header>
     <h1>Camp Command Centre</h1>
   </header>
+
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/camps">Camps</a>
+    <a href="/people">People</a>
+    <a href="/programme">Programme</a>
+    <a href="/tasks">Tasks</a>
+    <a href="/readiness">Readiness</a>
+    <a href="/outputs">Outputs</a>
+  </nav>
+
   <main>
     {% block content %}{% endblock %}
   </main>

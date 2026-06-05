@@ -1,9 +1,7 @@
-
 # Python cache files
 __pycache__/
 *.py[cod]
 *$py.class
-
 # Local app data
 data/*.sqlite
 data/*.db

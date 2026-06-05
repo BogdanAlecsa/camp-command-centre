@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ camp.name }}</h2>
+  <p class="muted">
+    {{ camp.start_date }} to {{ camp.end_date }}
+    {% if camp.venue_name %} · {{ camp.venue_name }}{% endif %}
+  </p>
+  <p>Status: <span class="badge">{{ camp.status }}</span></p>
+
+  <a class="button" href="/">Dashboard</a>
+  <a class="button secondary" href="/camps">All Camps</a>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Camp Details</h3>
+    <p><strong>Type:</strong> {{ camp.camp_type }}</p>
+    <p><strong>Leader:</strong> {{ camp.camp_leader or "Not set" }}</p>
+    <p><strong>Permit Holder:</strong> {{ camp.permit_holder or "Not set" }}</p>
+  </section>
+
+  <section class="card">
+    <h3>People</h3>
+    <p><strong>{{ people_count }}</strong> people</p>
+    <p class="muted">People module coming next.</p>
+  </section>
+
+  <section class="card">
+    <h3>Teams</h3>
+    <p><strong>{{ team_count }}</strong> teams</p>
+    <p class="muted">Team module coming next.</p>
+  </section>
+
+  <section class="card">
+    <h3>Readiness</h3>
+    <p><strong>{{ readiness }}%</strong> ready</p>
+    <p class="warning">Needs attention</p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Planning Workflow</h3>
+  <p class="good">✓ Camp Basics</p>
+  <p class="warning">⚠ Add People</p>
+  <p class="muted">○ Collect Information</p>
+  <p class="muted">○ Create Teams</p>
+  <p class="muted">○ Build Programme</p>
+  <p class="muted">○ Assign Tasks</p>
+  <p class="muted">○ Generate Packs</p>
+</section>
+
+<section class="card">
+  <h3>Notes</h3>
+  <p>{{ camp.notes or "No notes yet." }}</p>
+</section>
+{% endblock %}
