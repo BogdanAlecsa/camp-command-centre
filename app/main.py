@@ -31,6 +31,24 @@ def parse_optional_date(value: str):
     return date.fromisoformat(value)
 
 
+AUTO_ASSIGNMENT_SOURCE_STATUSES = {"Draft", "Planned", "Unassigned"}
+
+
+def update_task_status_from_assignments(db: Session, task: Task):
+    assignment_count = (
+        db.query(TaskAssignment)
+        .filter(TaskAssignment.task_id == task.id, TaskAssignment.camp_id == task.camp_id)
+        .count()
+    )
+
+    if assignment_count == 0:
+        task.status = "Unassigned"
+        return
+
+    if task.status in AUTO_ASSIGNMENT_SOURCE_STATUSES:
+        task.status = "Assigned"
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, db: Session = Depends(get_db)):
     current_camp = get_latest_camp(db)
@@ -1375,6 +1393,8 @@ async def create_task_assignment(
     )
 
     db.add(assignment)
+    db.flush()
+    update_task_status_from_assignments(db, task)
     db.commit()
 
     return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
@@ -1387,6 +1407,12 @@ async def remove_task_assignment(
     assignment_id: int,
     db: Session = Depends(get_db),
 ):
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp_id)
+        .first()
+    )
+
     assignment = (
         db.query(TaskAssignment)
         .filter(
@@ -1399,6 +1425,11 @@ async def remove_task_assignment(
 
     if assignment is not None:
         db.delete(assignment)
+        db.flush()
+
+        if task is not None:
+            update_task_status_from_assignments(db, task)
+
         db.commit()
 
     return RedirectResponse(url=f"/camps/{camp_id}/tasks/{task_id}", status_code=303)
