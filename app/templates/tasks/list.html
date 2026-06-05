@@ -144,6 +144,14 @@
 <section class="card">
   <h3>{{ active_label }}</h3>
 
+  {% if printable_url %}
+    <p>
+      <a class="button small" href="{{ printable_url }}" target="_blank" rel="noopener noreferrer">
+        {{ printable_label or "Print this sheet" }}
+      </a>
+    </p>
+  {% endif %}
+
   {% if tasks %}
     <table class="task-table">
       <thead>

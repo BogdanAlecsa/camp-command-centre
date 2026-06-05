@@ -20,24 +20,37 @@
           <th>Type</th>
           <th>Email</th>
           <th>Phone</th>
+          <th>Tasks</th>
+          <th>Printable</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for person in people %}
+          {% set task_count = person_task_counts.get(person.id, 0) %}
           <tr>
             <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
             <td>{{ person.person_type }}</td>
             <td>{{ person.email or "" }}</td>
             <td>{{ person.phone or "" }}</td>
-            <td><a href="/camps/{{ camp.id }}/people/{{ person.id }}">Open</a></td>
+            <td>
+              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?assignee=person:{{ person.id }}" target="_blank" rel="noopener noreferrer">
+                {{ task_count }} task{% if task_count != 1 %}s{% endif %}
+              </a>
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
+                Print sheet
+              </a>
+            </td>
+            <td><a class="button small secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Open</a></td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
     <p>No people have been added to this camp yet.</p>
-    <p><a href="/camps/{{ camp.id }}/people/new">Add the first person</a></p>
+    <p><a class="button" href="/camps/{{ camp.id }}/people/new">Add the first person</a></p>
   {% endif %}
 </section>
 {% endblock %}

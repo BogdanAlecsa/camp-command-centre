@@ -602,12 +602,18 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
         .all()
     )
 
+    person_task_counts = {
+        person.id: count_tasks_for_person(db, camp, person)
+        for person in people
+    }
+
     return templates.TemplateResponse(
         "people/list.html",
         {
             "request": request,
             "camp": camp,
             "people": people,
+            "person_task_counts": person_task_counts,
         },
     )
 
@@ -927,6 +933,11 @@ async def camp_team_list(request: Request, camp_id: int, db: Session = Depends(g
             .count()
         )
 
+    team_task_counts = {
+        team.id: count_tasks_for_team(db, camp, team)
+        for team in teams
+    }
+
     return templates.TemplateResponse(
         "teams/list.html",
         {
@@ -934,6 +945,7 @@ async def camp_team_list(request: Request, camp_id: int, db: Session = Depends(g
             "camp": camp,
             "teams": teams,
             "team_member_counts": team_member_counts,
+            "team_task_counts": team_task_counts,
         },
     )
 
@@ -2182,6 +2194,63 @@ async def camp_task_list(
 
     active_label = " · ".join(active_parts) if active_parts else "All tasks"
 
+    printable_url = None
+    printable_label = None
+
+    has_extra_filters = bool(status or priority)
+
+    if view == "unassigned" and not has_extra_filters and not assignee and not phase and not category:
+        printable_url = f"/camps/{camp.id}/task-sheets/unassigned"
+        printable_label = "Print unassigned task sheet"
+
+    elif assignee and not has_extra_filters and not view and not phase and not category:
+        try:
+            kind, raw_id = assignee.split(":", 1)
+            target_id = int(raw_id)
+        except ValueError:
+            kind = ""
+            target_id = 0
+
+        if kind == "person":
+            person = (
+                db.query(Person)
+                .filter(Person.id == target_id, Person.camp_id == camp.id)
+                .first()
+            )
+            if person:
+                printable_url = f"/camps/{camp.id}/task-sheets/person/{person.id}"
+                printable_label = "Print person task sheet"
+
+        elif kind == "team":
+            team = (
+                db.query(Team)
+                .filter(Team.id == target_id, Team.camp_id == camp.id)
+                .first()
+            )
+            if team:
+                printable_url = f"/camps/{camp.id}/task-sheets/team/{team.id}"
+                printable_label = "Print team task sheet"
+
+    elif phase and not has_extra_filters and not view and not assignee and not category:
+        phase_record = (
+            db.query(TaskPhase)
+            .filter(TaskPhase.camp_id == camp.id, TaskPhase.name == phase)
+            .first()
+        )
+        if phase_record:
+            printable_url = f"/camps/{camp.id}/task-sheets/phase/{phase_record.id}"
+            printable_label = "Print phase task sheet"
+
+    elif category and not has_extra_filters and not view and not assignee and not phase:
+        category_record = (
+            db.query(TaskCategory)
+            .filter(TaskCategory.camp_id == camp.id, TaskCategory.name == category)
+            .first()
+        )
+        if category_record:
+            printable_url = f"/camps/{camp.id}/task-sheets/category/{category_record.id}"
+            printable_label = "Print category task sheet"
+
     return templates.TemplateResponse(
         "tasks/list.html",
         {
@@ -2196,6 +2265,8 @@ async def camp_task_list(
             "active_category": category,
             "active_assignee": assignee,
             "active_label": active_label,
+            "printable_url": printable_url,
+            "printable_label": printable_label,
             "statuses": statuses,
             "priorities": priorities,
             "phases": phases,
@@ -2944,6 +3015,71 @@ def order_tasks_for_print(query):
     )
 
 
+
+def count_tasks_for_person(db: Session, camp: Camp, person: Person):
+    direct_task_ids = {
+        row.task_id
+        for row in db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.assigned_person_id == person.id,
+        )
+        .all()
+    }
+
+    team_ids = {
+        row.team_id
+        for row in db.query(TeamMembership)
+        .filter(
+            TeamMembership.camp_id == camp.id,
+            TeamMembership.person_id == person.id,
+        )
+        .all()
+    }
+
+    team_task_ids = set()
+
+    if team_ids:
+        team_task_ids = {
+            row.task_id
+            for row in db.query(TaskAssignment)
+            .filter(
+                TaskAssignment.camp_id == camp.id,
+                TaskAssignment.assigned_team_id.in_(team_ids),
+            )
+            .all()
+        }
+
+    return len(direct_task_ids | team_task_ids)
+
+
+def count_tasks_for_team(db: Session, camp: Camp, team: Team):
+    return (
+        db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.assigned_team_id == team.id,
+        )
+        .count()
+    )
+
+
+def count_tasks_for_phase(db: Session, camp: Camp, phase: TaskPhase):
+    return (
+        db.query(Task)
+        .filter(Task.camp_id == camp.id, Task.phase == phase.name)
+        .count()
+    )
+
+
+def count_tasks_for_category(db: Session, camp: Camp, category: TaskCategory):
+    return (
+        db.query(Task)
+        .filter(Task.camp_id == camp.id, Task.category == category.name)
+        .count()
+    )
+
+
 @app.get("/camps/{camp_id}/task-sheets", response_class=HTMLResponse)
 async def task_sheet_hub(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)
@@ -2970,6 +3106,7 @@ async def task_sheet_hub(request: Request, camp_id: int, db: Session = Depends(g
     )
 
     phases = get_active_task_phases(db, camp)
+    categories = get_active_task_categories(db, camp)
 
     all_tasks = db.query(Task).filter(Task.camp_id == camp.id).all()
     assignment_counts = {}
@@ -3042,6 +3179,11 @@ async def task_sheet_hub(request: Request, camp_id: int, db: Session = Depends(g
             .count()
         )
 
+    category_task_counts = {
+        category.id: count_tasks_for_category(db, camp, category)
+        for category in categories
+    }
+
     return templates.TemplateResponse(
         "task_sheets/hub.html",
         {
@@ -3050,10 +3192,12 @@ async def task_sheet_hub(request: Request, camp_id: int, db: Session = Depends(g
             "people": people,
             "teams": teams,
             "phases": phases,
+            "categories": categories,
             "unassigned_count": unassigned_count,
             "person_task_counts": person_task_counts,
             "team_task_counts": team_task_counts,
             "phase_task_counts": phase_task_counts,
+            "category_task_counts": category_task_counts,
         },
     )
 
@@ -3315,6 +3459,56 @@ async def phase_task_sheet(
             "rows": rows,
             "back_url": f"/camps/{camp.id}/task-sheets",
             "empty_message": "No tasks found for this phase.",
+        },
+    )
+
+
+
+@app.get("/camps/{camp_id}/task-sheets/category/{category_id}", response_class=HTMLResponse)
+async def category_task_sheet(
+    request: Request,
+    camp_id: int,
+    category_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    category = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.id == category_id, TaskCategory.camp_id == camp.id)
+        .first()
+    )
+
+    if category is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task category not found."},
+            status_code=404,
+        )
+
+    tasks = order_tasks_for_print(
+        db.query(Task).filter(Task.camp_id == camp.id, Task.category == category.name)
+    ).all()
+
+    rows = build_task_print_rows(db, camp, tasks, f"Category: {category.name}")
+
+    return templates.TemplateResponse(
+        "task_sheets/print.html",
+        {
+            "request": request,
+            "camp": camp,
+            "title": f"Category Task Sheet — {category.name}",
+            "subtitle": category.description or "Tasks grouped by work area.",
+            "rows": rows,
+            "back_url": f"/camps/{camp.id}/task-sheets",
+            "empty_message": "No tasks found for this category.",
         },
     )
 

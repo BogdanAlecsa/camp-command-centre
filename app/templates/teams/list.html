@@ -19,25 +19,38 @@
           <th>Name</th>
           <th>Type</th>
           <th>Members</th>
+          <th>Tasks</th>
+          <th>Printable</th>
           <th>Description</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for team in teams %}
+          {% set task_count = team_task_counts.get(team.id, 0) %}
           <tr>
             <td><strong>{{ team.name }}</strong></td>
             <td>{{ team.team_type }}</td>
             <td>{{ team_member_counts.get(team.id, 0) }}</td>
+            <td>
+              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?assignee=team:{{ team.id }}" target="_blank" rel="noopener noreferrer">
+                {{ task_count }} task{% if task_count != 1 %}s{% endif %}
+              </a>
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/team/{{ team.id }}" target="_blank" rel="noopener noreferrer">
+                Print sheet
+              </a>
+            </td>
             <td>{{ team.description or "" }}</td>
-            <td><a href="/camps/{{ camp.id }}/teams/{{ team.id }}">Open</a></td>
+            <td><a class="button small secondary" href="/camps/{{ camp.id }}/teams/{{ team.id }}">Open</a></td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
     <p>No teams have been created for this camp yet.</p>
-    <p><a href="/camps/{{ camp.id }}/teams/new">Create the first team</a></p>
+    <p><a class="button" href="/camps/{{ camp.id }}/teams/new">Create the first team</a></p>
   {% endif %}
 </section>
 {% endblock %}

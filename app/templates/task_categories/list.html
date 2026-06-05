@@ -43,6 +43,7 @@
           <th>Category</th>
           <th>Active</th>
           <th>Tasks</th>
+          <th>Printable</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -58,7 +59,16 @@
               {% endif %}
             </td>
             <td>{% if category.is_active %}Yes{% else %}No{% endif %}</td>
-            <td>{{ task_count }}</td>
+            <td>
+              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?category={{ category.name | urlencode }}" target="_blank" rel="noopener noreferrer">
+                {{ task_count }} task{% if task_count != 1 %}s{% endif %}
+              </a>
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/category/{{ category.id }}" target="_blank" rel="noopener noreferrer">
+                Print sheet
+              </a>
+            </td>
             <td>
               <a class="button secondary small" href="/camps/{{ camp.id }}/task-categories/{{ category.id }}/edit">Edit</a>
 
