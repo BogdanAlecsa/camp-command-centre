@@ -1304,7 +1304,7 @@ async def camp_task_list(
 
     if view == "unassigned":
         tasks = unassigned_tasks
-        active_parts.append("Unassigned")
+        active_parts.append("Needs owner")
     elif view == "blocked":
         tasks = blocked_tasks
         active_parts.append("Blocked")
@@ -1407,7 +1407,20 @@ async def camp_task_list(
         tasks = [task for task in tasks if (task.phase or "") == phase]
         active_parts.append(f"Phase: {phase}")
 
-    statuses = sorted({task.status for task in all_tasks if task.status})
+    statuses = [
+        "Draft",
+        "Planned",
+        "Unassigned",
+        "Assigned",
+        "Accepted",
+        "In Progress",
+        "Ready for Check",
+        "Complete",
+        "Checked",
+        "Blocked",
+        "Cancelled",
+        "Not Needed",
+    ]
     priorities = ["Urgent", "High", "Normal", "Low"]
     phases = sorted({task.phase for task in all_tasks if task.phase})
 

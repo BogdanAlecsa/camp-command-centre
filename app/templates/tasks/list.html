@@ -52,21 +52,20 @@
 
   <form class="task-filter-form" method="get" action="/camps/{{ camp.id }}/tasks">
     <div>
-      <label for="view">View</label>
+      <label for="view">Focus</label>
       <select id="view" name="view">
-        <option value="" {% if not active_view %}selected{% endif %}>All</option>
-        <option value="unassigned" {% if active_view == "unassigned" %}selected{% endif %}>Unassigned</option>
-        <option value="blocked" {% if active_view == "blocked" %}selected{% endif %}>Blocked</option>
-        <option value="high-priority" {% if active_view == "high-priority" %}selected{% endif %}>High / Urgent</option>
+        <option value="" {% if not active_view %}selected{% endif %}>All tasks</option>
+        <option value="unassigned" {% if active_view == "unassigned" %}selected{% endif %}>Needs owner</option>
+        <option value="high-priority" {% if active_view == "high-priority" %}selected{% endif %}>High / urgent priority</option>
         <option value="overdue" {% if active_view == "overdue" %}selected{% endif %}>Overdue</option>
-        <option value="due-soon" {% if active_view == "due-soon" %}selected{% endif %}>Due Soon</option>
+        <option value="due-soon" {% if active_view == "due-soon" %}selected{% endif %}>Due soon</option>
       </select>
     </div>
 
     <div>
-      <label for="status">Status</label>
+      <label for="status">Task status</label>
       <select id="status" name="status">
-        <option value="">Any</option>
+        <option value="">Any status</option>
         {% for item in statuses %}
           <option value="{{ item }}" {% if active_status == item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
@@ -76,7 +75,7 @@
     <div>
       <label for="priority">Priority</label>
       <select id="priority" name="priority">
-        <option value="">Any</option>
+        <option value="">Any priority</option>
         {% for item in priorities %}
           <option value="{{ item }}" {% if active_priority == item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
@@ -86,7 +85,7 @@
     <div>
       <label for="phase">Phase</label>
       <select id="phase" name="phase">
-        <option value="">Any</option>
+        <option value="">Any phase</option>
         {% for item in phases %}
           <option value="{{ item }}" {% if active_phase == item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
@@ -96,7 +95,7 @@
     <div>
       <label for="assignee">Person / Team</label>
       <select id="assignee" name="assignee">
-        <option value="">Any</option>
+        <option value="">Any person or team</option>
 
         {% if people %}
           <optgroup label="People">
