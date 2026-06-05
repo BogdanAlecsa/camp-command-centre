@@ -136,3 +136,28 @@ async def camp_detail(request: Request, camp_id: int):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/people", response_class=HTMLResponse)
+async def people_page(request: Request):
+    return templates.TemplateResponse("people.html", {"request": request})
+
+
+@app.get("/programme", response_class=HTMLResponse)
+async def programme_page(request: Request):
+    return templates.TemplateResponse("programme.html", {"request": request})
+
+
+@app.get("/tasks", response_class=HTMLResponse)
+async def tasks_page(request: Request):
+    return templates.TemplateResponse("tasks.html", {"request": request})
+
+
+@app.get("/readiness", response_class=HTMLResponse)
+async def readiness_page(request: Request):
+    return templates.TemplateResponse("readiness.html", {"request": request})
+
+
+@app.get("/outputs", response_class=HTMLResponse)
+async def outputs_page(request: Request):
+    return templates.TemplateResponse("outputs.html", {"request": request})

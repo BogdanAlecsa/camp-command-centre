@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>People</h2>
+  <p class="muted">Manage young people, leaders, helpers, parents/guardians and emergency contacts.</p>
+  <a class="button" href="#">Add Person</a>
+  <a class="button secondary" href="#">Import People</a>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Young People</h3>
+    <p><strong>0</strong> added</p>
+  </section>
+  <section class="card">
+    <h3>Adults</h3>
+    <p><strong>0</strong> added</p>
+  </section>
+  <section class="card">
+    <h3>Missing Information</h3>
+    <p class="muted">No checks running yet.</p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Coming Next</h3>
+  <p>This page will become the People List, Add Person form, contact linking and import wizard.</p>
+</section>
+{% endblock %}

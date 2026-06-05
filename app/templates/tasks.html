@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Tasks</h2>
+  <p class="muted">Create tasks, assign responsibilities and generate work packs.</p>
+  <a class="button" href="#">Add Task</a>
+  <a class="button secondary" href="#">Generate Work Packs</a>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Total Tasks</h3>
+    <p><strong>0</strong></p>
+  </section>
+  <section class="card">
+    <h3>Unassigned</h3>
+    <p><strong>0</strong></p>
+  </section>
+  <section class="card">
+    <h3>Blocked</h3>
+    <p><strong>0</strong></p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Coming Next</h3>
+  <p>This page will become the task command centre, with filters, assignments, checklists and work packs.</p>
+</section>
+{% endblock %}
