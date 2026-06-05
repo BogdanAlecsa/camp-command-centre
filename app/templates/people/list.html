@@ -34,13 +34,13 @@
             <td>{{ person.email or "" }}</td>
             <td>{{ person.phone or "" }}</td>
             <td>
-              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?assignee=person:{{ person.id }}" target="_blank" rel="noopener noreferrer">
+              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?assignee=person:{{ person.id }}" target="_blank" rel="noopener noreferrer">
                 {{ task_count }} task{% if task_count != 1 %}s{% endif %}
               </a>
             </td>
             <td>
               <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
-                Print sheet
+                Print
               </a>
             </td>
             <td><a class="button small secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Open</a></td>

@@ -36,6 +36,10 @@
   <h3>Current Phases</h3>
 
   {% if phases %}
+  <p class="muted table-help">
+    <strong>In use</strong> means one or more tasks currently use this phase. Move those tasks to another phase before deleting it.
+  </p>
+
     <table>
       <thead>
         <tr>
@@ -60,16 +64,17 @@
             </td>
             <td>{% if phase.is_active %}Yes{% else %}No{% endif %}</td>
             <td>
-              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?phase={{ phase.name | urlencode }}" target="_blank" rel="noopener noreferrer">
+              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?phase={{ phase.name | urlencode }}" target="_blank" rel="noopener noreferrer">
                 {{ task_count }} task{% if task_count != 1 %}s{% endif %}
               </a>
             </td>
             <td>
               <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/phase/{{ phase.id }}" target="_blank" rel="noopener noreferrer">
-                Print sheet
+                Print
               </a>
             </td>
             <td>
+              <div class="table-actions">
               <a class="button secondary small" href="/camps/{{ camp.id }}/task-phases/{{ phase.id }}/edit">Edit</a>
 
               {% if task_count == 0 %}
@@ -77,8 +82,9 @@
                   <button class="small" type="submit">Delete</button>
                 </form>
               {% else %}
-                <span class="muted">Move tasks before deleting</span>
+                <span class="muted nowrap">In use</span>
               {% endif %}
+              </div>
             </td>
           </tr>
         {% endfor %}

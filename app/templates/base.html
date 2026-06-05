@@ -324,6 +324,49 @@
       margin-bottom: .55rem;
     }
 
+
+
+    /* Better alignment for compact table buttons */
+    .button.small,
+    button.small,
+    .task-count-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      line-height: 1;
+      min-height: 1.85rem;
+      padding: .42rem .62rem;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: .35rem;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    .table-actions .button,
+    .table-actions button {
+      margin-right: 0;
+    }
+
+    .task-count-button {
+      min-width: 4.4rem;
+      text-align: center;
+    }
+
+    .nowrap {
+      white-space: nowrap;
+    }
+
+    .table-help {
+      margin: -.25rem 0 .75rem;
+      font-size: .92rem;
+    }
+
+
     @media (max-width: 700px) {
       .compact-assignee-form {
         grid-template-columns: 1fr;

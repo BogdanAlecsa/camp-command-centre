@@ -39,7 +39,7 @@
         <td><span class="badge">{{ unassigned_count }}</span></td>
         <td>
           <a class="button small" href="/camps/{{ camp.id }}/task-sheets/unassigned" target="_blank" rel="noopener noreferrer">
-            Open sheet
+            Open
           </a>
         </td>
       </tr>
@@ -68,8 +68,8 @@
             <td>{{ person.person_type }}</td>
             <td><span class="badge">{{ task_count }}</span></td>
             <td>
-              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
-                Open sheet
+              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
+                Open
               </a>
             </td>
           </tr>
@@ -102,8 +102,8 @@
             <td>{{ team.team_type }}</td>
             <td><span class="badge">{{ task_count }}</span></td>
             <td>
-              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/team/{{ team.id }}" target="_blank" rel="noopener noreferrer">
-                Open sheet
+              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/team/{{ team.id }}" target="_blank" rel="noopener noreferrer">
+                Open
               </a>
             </td>
           </tr>
@@ -136,8 +136,8 @@
             <td>{{ phase.description or "" }}</td>
             <td><span class="badge">{{ task_count }}</span></td>
             <td>
-              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/phase/{{ phase.id }}" target="_blank" rel="noopener noreferrer">
-                Open sheet
+              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/phase/{{ phase.id }}" target="_blank" rel="noopener noreferrer">
+                Open
               </a>
             </td>
           </tr>
@@ -170,8 +170,8 @@
             <td>{{ category.description or "" }}</td>
             <td><span class="badge">{{ task_count }}</span></td>
             <td>
-              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/category/{{ category.id }}" target="_blank" rel="noopener noreferrer">
-                Open sheet
+              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/category/{{ category.id }}" target="_blank" rel="noopener noreferrer">
+                Open
               </a>
             </td>
           </tr>
