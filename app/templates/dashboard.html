@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ camp_name }}</h2>
+  <p class="muted">Status: <span class="badge">{{ camp_status }}</span></p>
+  <a class="button" href="#">Create Camp</a>
+  <a class="button" href="#">Open Programme</a>
+  <a class="button" href="#">Review Readiness</a>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>People</h3>
+    <p><strong>{{ people_count }}</strong> people</p>
+    <p class="muted">Young people, leaders, helpers and contacts.</p>
+  </section>
+
+  <section class="card">
+    <h3>Programme</h3>
+    <p><strong>{{ programme_sessions }}</strong> sessions</p>
+    <p class="warning">2 sessions need review</p>
+  </section>
+
+  <section class="card">
+    <h3>Tasks</h3>
+    <p><strong>{{ task_count }}</strong> tasks</p>
+    <p class="warning">5 unassigned</p>
+  </section>
+
+  <section class="card">
+    <h3>Readiness</h3>
+    <p><strong>{{ readiness }}%</strong> ready</p>
+    <p class="warning">Needs attention</p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Next Actions</h3>
+  <ol>
+    <li>Review missing form responses.</li>
+    <li>Assign leaders to programme sessions.</li>
+    <li>Assign remaining camp tasks.</li>
+    <li>Generate the first parent pack draft.</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h3>Workflow</h3>
+  <p>✓ Camp Basics</p>
+  <p>⚠ People and Forms</p>
+  <p>⚠ Programme</p>
+  <p>⚠ Tasks</p>
+  <p>○ Outputs</p>
+</section>
+{% endblock %}
