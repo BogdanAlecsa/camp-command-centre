@@ -5,6 +5,7 @@ from app.models.team_membership import TeamMembership
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.task_phase import TaskPhase
+from app.models.task_category import TaskCategory
 
 __all__ = [
     "Camp",
@@ -14,4 +15,5 @@ __all__ = [
     "Task",
     "TaskAssignment",
     "TaskPhase",
+    "TaskCategory",
 ]
