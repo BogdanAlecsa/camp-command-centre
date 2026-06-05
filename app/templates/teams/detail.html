@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ team.name }}</h2>
+  <p>Status: <span class="badge">{{ team.team_type }}</span></p>
+  <p class="muted">{{ team.description or "No description yet." }}</p>
+
+  <a class="button" href="/camps/{{ camp.id }}/teams/{{ team.id }}/members/new">Add Member</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/teams">Back to Teams</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Members</h3>
+
+  {% if memberships %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Person Type</th>
+          <th>Role in Team</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for membership, person in memberships %}
+          <tr>
+            <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
+            <td>{{ person.person_type }}</td>
+            <td>{{ membership.role_in_team or "" }}</td>
+            <td>{{ membership.notes or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/teams/{{ team.id }}/members/{{ membership.id }}/remove">
+                <button type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No members have been added to this team yet.</p>
+    <p><a href="/camps/{{ camp.id }}/teams/{{ team.id }}/members/new">Add the first member</a></p>
+  {% endif %}
+</section>
+{% endblock %}

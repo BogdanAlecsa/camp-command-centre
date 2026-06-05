@@ -11,6 +11,7 @@
 
   <a class="button" href="/camps/{{ camp.id }}/edit">Edit Camp</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/teams">Teams</a>
   <a class="button secondary" href="/">Dashboard</a>
   <a class="button secondary" href="/camps">All Camps</a>
 </section>
@@ -32,7 +33,7 @@
   <section class="card">
     <h3>Teams</h3>
     <p><strong>{{ team_count }}</strong> teams</p>
-    <p class="muted">Team module coming next.</p>
+    <p><a href="/camps/{{ camp.id }}/teams">Open teams list</a></p>
   </section>
 
   <section class="card">

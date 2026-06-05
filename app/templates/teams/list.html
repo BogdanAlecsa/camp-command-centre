@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Teams — {{ camp.name }}</h2>
+  <p class="muted">Create patrols, leader teams, duty teams, activity groups, tent groups and other camp groupings.</p>
+
+  <a class="button" href="/camps/{{ camp.id }}/teams/new">Add Team</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Team List</h3>
+
+  {% if teams %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Members</th>
+          <th>Description</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for team in teams %}
+          <tr>
+            <td><strong>{{ team.name }}</strong></td>
+            <td>{{ team.team_type }}</td>
+            <td>{{ team_member_counts.get(team.id, 0) }}</td>
+            <td>{{ team.description or "" }}</td>
+            <td><a href="/camps/{{ camp.id }}/teams/{{ team.id }}">Open</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No teams have been created for this camp yet.</p>
+    <p><a href="/camps/{{ camp.id }}/teams/new">Create the first team</a></p>
+  {% endif %}
+</section>
+{% endblock %}

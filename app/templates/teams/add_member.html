@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Add Member to {{ team.name }}</h2>
+  <p class="muted">Choose a person from {{ camp.name }} and add them to this team.</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  {% if available_people %}
+    <form method="post" action="/camps/{{ camp.id }}/teams/{{ team.id }}/members/new">
+      <label for="person_id">Person</label>
+      <select id="person_id" name="person_id">
+        {% for person in available_people %}
+          <option value="{{ person.id }}">
+            {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <label for="role_in_team">Role in Team</label>
+      <input id="role_in_team" name="role_in_team" placeholder="Team leader, member, driver, helper...">
+
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes"></textarea>
+
+      <div class="form-actions">
+        <button type="submit">Add Member</button>
+        <a class="button secondary" href="/camps/{{ camp.id }}/teams/{{ team.id }}">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <p>There are no available people to add. Either everyone is already in this team, or no people have been added to the camp yet.</p>
+    <a class="button" href="/camps/{{ camp.id }}/people/new">Add Person</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/teams/{{ team.id }}">Back to Team</a>
+  {% endif %}
+</section>
+{% endblock %}
