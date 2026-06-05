@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ risk_assessment.title }} — Printable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #111827;
+      background: #ffffff;
+      font-size: 10.5pt;
+      line-height: 1.35;
+    }
+
+    .screen-actions {
+      margin: 0 0 1rem;
+      padding: .75rem;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .button {
+      display: inline-block;
+      padding: .55rem .8rem;
+      border-radius: 8px;
+      background: #1f7a8c;
+      color: white;
+      text-decoration: none;
+      border: 0;
+      cursor: pointer;
+      margin-right: .5rem;
+      font-size: .95rem;
+    }
+
+    .button.secondary {
+      background: #475467;
+    }
+
+    header {
+      border-bottom: 2px solid #111827;
+      padding-bottom: .5rem;
+      margin-bottom: .75rem;
+    }
+
+    h1 {
+      margin: 0 0 .25rem;
+      font-size: 18pt;
+    }
+
+    h2 {
+      margin: .9rem 0 .35rem;
+      font-size: 13pt;
+      border-bottom: 1px solid #d0d5dd;
+      padding-bottom: .2rem;
+    }
+
+    h3 {
+      margin: .65rem 0 .25rem;
+      font-size: 11pt;
+    }
+
+    p {
+      margin: .2rem 0 .45rem;
+    }
+
+    .muted {
+      color: #475467;
+    }
+
+    .status {
+      display: inline-block;
+      padding: .15rem .45rem;
+      border: 1px solid #98a2b3;
+      border-radius: 999px;
+      background: #f2f4f7;
+      font-weight: bold;
+      font-size: 9.5pt;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .35rem .75rem;
+      margin: .65rem 0;
+    }
+
+    .meta-item {
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      padding: .35rem .45rem;
+      min-height: 1.75rem;
+    }
+
+    .meta-label {
+      display: block;
+      color: #475467;
+      font-size: 8.5pt;
+      font-weight: bold;
+      margin-bottom: .1rem;
+    }
+
+    .note-box {
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      padding: .45rem;
+      margin-bottom: .45rem;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: .35rem;
+      font-size: 8.8pt;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    th,
+    td {
+      border: 1px solid #98a2b3;
+      padding: .28rem .32rem;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f4f7;
+      font-weight: bold;
+    }
+
+    tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .footer-note {
+      margin-top: .75rem;
+      padding-top: .45rem;
+      border-top: 1px solid #d0d5dd;
+      color: #475467;
+      font-size: 8.5pt;
+    }
+
+    .empty {
+      border: 1px dashed #98a2b3;
+      padding: .65rem;
+      color: #475467;
+    }
+
+    @media print {
+      .screen-actions {
+        display: none;
+      }
+
+      body {
+        font-size: 10pt;
+      }
+
+      h1 {
+        font-size: 17pt;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen-actions">
+    <button class="button" onclick="window.print()">Print</button>
+    <a class="button secondary" href="/camps/{{ camp.id }}/risk-assessments/camp">Back to editable RA</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/risk-assessments">Back to RA hub</a>
+  </div>
+
+  <header>
+    <h1>{{ risk_assessment.title }}</h1>
+    <p class="muted">
+      {{ camp.name }} · {{ camp.start_date }} to {{ camp.end_date }}
+      {% if camp.venue_name %} · {{ camp.venue_name }}{% endif %}
+    </p>
+    <p>Status: <span class="status">{{ risk_assessment.status }}</span></p>
+  </header>
+
+  <section>
+    <h2>Camp Details</h2>
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <span class="meta-label">Camp Type</span>
+        {{ camp.camp_type or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Venue</span>
+        {{ camp.venue_name or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Camp Leader</span>
+        {{ camp.camp_leader or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Permit Holder</span>
+        {{ camp.permit_holder or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Prepared By</span>
+        {{ risk_assessment.prepared_by or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Review Date</span>
+        {{ risk_assessment.review_date or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Submitted Date</span>
+        {{ risk_assessment.submitted_date or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Approved Date</span>
+        {{ risk_assessment.approved_date or "Not set" }}
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Assessment Notes</h2>
+
+    <div class="note-box">
+      <h3>Site / Venue Notes</h3>
+      <p>{{ risk_assessment.site_notes or "No site / venue notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Overnight / Camping Notes</h3>
+      <p>{{ risk_assessment.overnight_notes or "No overnight / camping notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Supervision Notes</h3>
+      <p>{{ risk_assessment.supervision_notes or "No supervision notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Emergency Arrangements</h3>
+      <p>{{ risk_assessment.emergency_notes or "No emergency arrangements recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Communication Notes</h3>
+      <p>{{ risk_assessment.communication_notes or "No communication notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Approval / Review Notes</h3>
+      <p>{{ risk_assessment.approval_notes or "No approval / review notes recorded." }}</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Risk Control Table</h2>
+
+    {% if controls %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 18%;">Hazard</th>
+            <th style="width: 20%;">Who might be harmed and how?</th>
+            <th style="width: 25%;">Controls already in place</th>
+            <th style="width: 20%;">Further controls needed</th>
+            <th style="width: 10%;">Responsible</th>
+            <th style="width: 7%;">Review</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for control in controls %}
+            <tr>
+              <td><strong>{{ control.hazard }}</strong></td>
+              <td>{{ control.who_might_be_harmed or "" }}</td>
+              <td>{{ control.controls_in_place or "" }}</td>
+              <td>{{ control.further_controls_needed or "" }}</td>
+              <td>{{ control.responsible_person or "" }}</td>
+              <td>{{ control.review_notes or "" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No risk control rows have been recorded.</div>
+    {% endif %}
+  </section>
+
+  <p class="footer-note">
+    Generated from Camp Command Centre. This printable output is a working risk assessment record and does not replace the required local review, approval or submission process.
+  </p>
+</body>
+</html>

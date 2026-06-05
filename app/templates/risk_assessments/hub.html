@@ -30,7 +30,10 @@
         <td>{{ camp_risk.prepared_by or "Not set" }}</td>
         <td>{{ camp_risk.review_date or "Not set" }}</td>
         <td>
-          <a class="button small secondary" href="/camps/{{ camp.id }}/risk-assessments/camp">Open</a>
+          <div class="table-actions">
+            <a class="button small secondary" href="/camps/{{ camp.id }}/risk-assessments/camp">Open</a>
+            <a class="button small secondary" href="/camps/{{ camp.id }}/risk-assessments/camp/print" target="_blank" rel="noopener noreferrer">Print</a>
+          </div>
         </td>
       </tr>
     </tbody>
@@ -74,7 +77,10 @@
               {% endif %}
             </td>
             <td>
-              <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open</a>
+              <div class="table-actions">
+                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open</a>
+                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment/print" target="_blank" rel="noopener noreferrer">Print</a>
+              </div>
             </td>
           </tr>
         {% endfor %}

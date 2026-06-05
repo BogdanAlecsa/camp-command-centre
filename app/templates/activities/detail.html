@@ -7,6 +7,7 @@
 
   <a class="button" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">Edit Activity</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open / Create RA</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment/print" target="_blank" rel="noopener noreferrer">Print RA</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/activities">Back to Activities</a>
 
   <form class="inline-form" method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/delete" onsubmit="return confirm('Delete this activity?');">

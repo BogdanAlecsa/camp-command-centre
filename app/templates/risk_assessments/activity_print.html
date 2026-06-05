@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ activity.name }} Risk Assessment — Printable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #111827;
+      background: #ffffff;
+      font-size: 10.5pt;
+      line-height: 1.35;
+    }
+
+    .screen-actions {
+      margin: 0 0 1rem;
+      padding: .75rem;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+
+    .button {
+      display: inline-block;
+      padding: .55rem .8rem;
+      border-radius: 8px;
+      background: #1f7a8c;
+      color: white;
+      text-decoration: none;
+      border: 0;
+      cursor: pointer;
+      margin-right: .5rem;
+      font-size: .95rem;
+    }
+
+    .button.secondary {
+      background: #475467;
+    }
+
+    header {
+      border-bottom: 2px solid #111827;
+      padding-bottom: .5rem;
+      margin-bottom: .75rem;
+    }
+
+    h1 {
+      margin: 0 0 .25rem;
+      font-size: 18pt;
+    }
+
+    h2 {
+      margin: .9rem 0 .35rem;
+      font-size: 13pt;
+      border-bottom: 1px solid #d0d5dd;
+      padding-bottom: .2rem;
+    }
+
+    h3 {
+      margin: .65rem 0 .25rem;
+      font-size: 11pt;
+    }
+
+    p {
+      margin: .2rem 0 .45rem;
+    }
+
+    .muted {
+      color: #475467;
+    }
+
+    .status {
+      display: inline-block;
+      padding: .15rem .45rem;
+      border: 1px solid #98a2b3;
+      border-radius: 999px;
+      background: #f2f4f7;
+      font-weight: bold;
+      font-size: 9.5pt;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .35rem .75rem;
+      margin: .65rem 0;
+    }
+
+    .meta-item {
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      padding: .35rem .45rem;
+      min-height: 1.75rem;
+    }
+
+    .meta-label {
+      display: block;
+      color: #475467;
+      font-size: 8.5pt;
+      font-weight: bold;
+      margin-bottom: .1rem;
+    }
+
+    .note-box {
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      padding: .45rem;
+      margin-bottom: .45rem;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: .35rem;
+      font-size: 8.8pt;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    th,
+    td {
+      border: 1px solid #98a2b3;
+      padding: .28rem .32rem;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f4f7;
+      font-weight: bold;
+    }
+
+    tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .check-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .35rem;
+      margin: .4rem 0;
+    }
+
+    .check {
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      padding: .35rem .45rem;
+    }
+
+    .check strong {
+      display: block;
+      font-size: 8.5pt;
+      color: #475467;
+    }
+
+    .footer-note {
+      margin-top: .75rem;
+      padding-top: .45rem;
+      border-top: 1px solid #d0d5dd;
+      color: #475467;
+      font-size: 8.5pt;
+    }
+
+    .empty {
+      border: 1px dashed #98a2b3;
+      padding: .65rem;
+      color: #475467;
+    }
+
+    @media print {
+      .screen-actions {
+        display: none;
+      }
+
+      body {
+        font-size: 10pt;
+      }
+
+      h1 {
+        font-size: 17pt;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen-actions">
+    <button class="button" onclick="window.print()">Print</button>
+    <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Back to editable RA</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/risk-assessments">Back to RA hub</a>
+  </div>
+
+  <header>
+    <h1>Activity Risk Assessment — {{ activity.name }}</h1>
+    <p class="muted">
+      {{ camp.name }} · {{ camp.start_date }} to {{ camp.end_date }}
+      {% if camp.venue_name %} · {{ camp.venue_name }}{% endif %}
+    </p>
+    <p>
+      Status: <span class="status">{{ risk_assessment.status }}</span>
+      · Source: <strong>{{ risk_assessment.source_type }}</strong>
+    </p>
+  </header>
+
+  <section>
+    <h2>Activity Details</h2>
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <span class="meta-label">Activity Lead</span>
+        {% if lead %}{{ lead.first_name }} {{ lead.last_name }}{% else %}Not set{% endif %}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Leader in Charge</span>
+        {{ risk_assessment.leader_in_charge or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Default Duration</span>
+        {% if activity.default_duration_minutes %}{{ activity.default_duration_minutes }} minutes{% else %}Not set{% endif %}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Default Location</span>
+        {{ activity.default_location or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Prepared By</span>
+        {{ risk_assessment.prepared_by or "Not set" }}
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Review Date</span>
+        {{ risk_assessment.review_date or "Not set" }}
+      </div>
+    </div>
+
+    <div class="note-box">
+      <h3>Description</h3>
+      <p>{{ activity.description or "No activity description recorded." }}</p>
+    </div>
+  </section>
+
+  {% if risk_assessment.source_type == "External provider" %}
+    <section>
+      <h2>External Provider Evidence</h2>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Provider Name</span>
+          {{ risk_assessment.provider_name or "Not set" }}
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Provider Contact / Reference</span>
+          {{ risk_assessment.provider_contact or "Not set" }}
+        </div>
+      </div>
+
+      <div class="check-row">
+        <div class="check">
+          <strong>Provider RA Received</strong>
+          {% if risk_assessment.provider_risk_assessment_received %}Yes{% else %}No{% endif %}
+        </div>
+        <div class="check">
+          <strong>Insurance Checked</strong>
+          {% if risk_assessment.provider_insurance_checked %}Yes{% else %}No{% endif %}
+        </div>
+        <div class="check">
+          <strong>Qualification / Accreditation Checked</strong>
+          {% if risk_assessment.provider_qualification_checked %}Yes{% else %}No{% endif %}
+        </div>
+      </div>
+
+      <div class="note-box">
+        <h3>Provider Evidence / Storage Reference</h3>
+        <p>{{ risk_assessment.provider_reference or "No provider evidence reference recorded." }}</p>
+      </div>
+
+      <div class="note-box">
+        <h3>Scout-led Parts Still Requiring Our Assessment</h3>
+        <p>{{ risk_assessment.scout_led_parts_notes or "No Scout-led parts notes recorded." }}</p>
+      </div>
+    </section>
+  {% endif %}
+
+  <section>
+    <h2>Activity Planning Notes</h2>
+
+    <div class="note-box">
+      <h3>Supporting Adults</h3>
+      <p>{{ activity.supporting_adults_notes or "No supporting adult notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Equipment Notes</h3>
+      <p>{{ activity.equipment_notes or "No equipment notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Activity Risk / Safety Notes</h3>
+      <p>{{ activity.risk_notes or "No activity safety notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Wet Weather Alternative</h3>
+      <p>{{ activity.wet_weather_alternative or "No wet weather alternative recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Badge / Requirement Notes</h3>
+      <p>{{ activity.badge_notes or "No badge or requirement notes recorded." }}</p>
+    </div>
+
+    <div class="note-box">
+      <h3>Overall RA Notes</h3>
+      <p>{{ risk_assessment.overall_notes or "No overall RA notes recorded." }}</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Risk Control Table</h2>
+
+    {% if controls %}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 18%;">Hazard</th>
+            <th style="width: 20%;">Who might be harmed and how?</th>
+            <th style="width: 25%;">Controls already in place</th>
+            <th style="width: 20%;">Further controls needed</th>
+            <th style="width: 10%;">Responsible</th>
+            <th style="width: 7%;">Review</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for control in controls %}
+            <tr>
+              <td><strong>{{ control.hazard }}</strong></td>
+              <td>{{ control.who_might_be_harmed or "" }}</td>
+              <td>{{ control.controls_in_place or "" }}</td>
+              <td>{{ control.further_controls_needed or "" }}</td>
+              <td>{{ control.responsible_person or "" }}</td>
+              <td>{{ control.review_notes or "" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No risk control rows have been recorded.</div>
+    {% endif %}
+  </section>
+
+  <p class="footer-note">
+    Generated from Camp Command Centre. This printable output is a working activity risk assessment record and does not replace the required local review, approval or activity-specific checks.
+  </p>
+</body>
+</html>

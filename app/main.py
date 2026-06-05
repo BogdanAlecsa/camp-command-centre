@@ -83,6 +83,23 @@ def ensure_optional_schema_columns():
                     sqlalchemy_text(f"ALTER TABLE {table_name} ADD COLUMN description TEXT")
                 )
 
+        optional_columns = [
+            ("activity", "badge_notes", "TEXT"),
+        ]
+
+        for table_name, column_name, column_type in optional_columns:
+            columns = [
+                row[1]
+                for row in connection.execute(
+                    sqlalchemy_text(f"PRAGMA table_info({table_name})")
+                )
+            ]
+
+            if columns and column_name not in columns:
+                connection.execute(
+                    sqlalchemy_text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                )
+
 
 
 DEFAULT_TASK_CATEGORIES = [
@@ -626,6 +643,7 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
     people_count = db.query(Person).filter(Person.camp_id == camp.id).count()
     team_count = db.query(Team).filter(Team.camp_id == camp.id).count()
     task_count = db.query(Task).filter(Task.camp_id == camp.id).count()
+    activity_count = db.query(Activity).filter(Activity.camp_id == camp.id).count()
 
     return templates.TemplateResponse(
         "camps/detail.html",
@@ -635,6 +653,7 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
             "people_count": people_count,
             "team_count": team_count,
             "task_count": task_count,
+            "activity_count": activity_count,
             "programme_sessions": 0,
             "readiness": 0,
         },
@@ -4407,4 +4426,100 @@ async def delete_activity_risk_control(
         db.commit()
 
     return RedirectResponse(url=f"/camps/{camp.id}/activities/{activity.id}/risk-assessment", status_code=303)
+
+
+
+@app.get("/camps/{camp_id}/risk-assessments/camp/print", response_class=HTMLResponse)
+async def print_camp_risk_assessment(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_camp_risk_assessment(db, camp)
+
+    controls = (
+        db.query(CampRiskControl)
+        .filter(CampRiskControl.risk_assessment_id == risk_assessment.id)
+        .order_by(CampRiskControl.sort_order, CampRiskControl.id)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "risk_assessments/camp_print.html",
+        {
+            "request": request,
+            "camp": camp,
+            "risk_assessment": risk_assessment,
+            "controls": controls,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/activities/{activity_id}/risk-assessment/print", response_class=HTMLResponse)
+async def print_activity_risk_assessment(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_activity_risk_assessment(db, camp, activity)
+
+    controls = (
+        db.query(ActivityRiskControl)
+        .filter(ActivityRiskControl.risk_assessment_id == risk_assessment.id)
+        .order_by(ActivityRiskControl.sort_order, ActivityRiskControl.id)
+        .all()
+    )
+
+    lead = None
+
+    if activity.activity_lead_id:
+        lead = (
+            db.query(Person)
+            .filter(Person.id == activity.activity_lead_id, Person.camp_id == camp.id)
+            .first()
+        )
+
+    return templates.TemplateResponse(
+        "risk_assessments/activity_print.html",
+        {
+            "request": request,
+            "camp": camp,
+            "activity": activity,
+            "lead": lead,
+            "risk_assessment": risk_assessment,
+            "controls": controls,
+        },
+    )
 
