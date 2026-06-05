@@ -28,9 +28,13 @@
   </section>
 
   <section class="card">
-    <h3>Programme</h3>
-    <p><strong>{{ programme_sessions }}</strong> sessions</p>
-    <p class="warning">2 sessions need review</p>
+    <h3>Activities</h3>
+    <p><strong>{{ activity_count }}</strong> activities</p>
+    {% if camp %}
+      <p><a href="/camps/{{ camp.id }}/activities">Open activity list</a></p>
+    {% else %}
+      <p class="muted">Create a camp first.</p>
+    {% endif %}
   </section>
 
   <section class="card">

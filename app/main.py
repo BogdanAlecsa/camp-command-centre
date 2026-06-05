@@ -8,7 +8,7 @@ from sqlalchemy import text as sqlalchemy_text
 from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory
+from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
 
 app = FastAPI(title="Camp Command Centre")
 
@@ -39,6 +39,23 @@ def parse_optional_date(value: str):
     if not value:
         return None
     return date.fromisoformat(value)
+
+
+
+def get_people_for_activity_leads(db: Session, camp: Camp):
+    return (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id)
+        .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+
+def person_display_name(person: Person | None):
+    if person is None:
+        return "Not set"
+
+    return f"{person.first_name} {person.last_name}"
 
 
 
@@ -273,6 +290,55 @@ def apply_default_task_category_descriptions(db: Session, camp: Camp):
     if changed:
         db.commit()
 
+
+RISK_STATUSES = ["Not Started", "Draft", "Ready for Review", "Submitted", "Approved", "Needs Update"]
+ACTIVITY_RISK_SOURCE_TYPES = ["Created in app", "External provider", "Existing/generic assessment"]
+
+
+def ensure_camp_risk_assessment(db: Session, camp: Camp):
+    risk_assessment = (
+        db.query(CampRiskAssessment)
+        .filter(CampRiskAssessment.camp_id == camp.id)
+        .first()
+    )
+
+    if risk_assessment is None:
+        risk_assessment = CampRiskAssessment(
+            camp_id=camp.id,
+            title=f"{camp.name} Risk Assessment",
+            status="Not Started",
+        )
+        db.add(risk_assessment)
+        db.commit()
+        db.refresh(risk_assessment)
+
+    return risk_assessment
+
+
+def ensure_activity_risk_assessment(db: Session, camp: Camp, activity: Activity):
+    risk_assessment = (
+        db.query(ActivityRiskAssessment)
+        .filter(
+            ActivityRiskAssessment.camp_id == camp.id,
+            ActivityRiskAssessment.activity_id == activity.id,
+        )
+        .first()
+    )
+
+    if risk_assessment is None:
+        risk_assessment = ActivityRiskAssessment(
+            camp_id=camp.id,
+            activity_id=activity.id,
+            source_type="Created in app",
+            status="Not Started",
+        )
+        db.add(risk_assessment)
+        db.commit()
+        db.refresh(risk_assessment)
+
+    return risk_assessment
+
+
 TASK_STATUSES = ["To Do", "In Progress", "Blocked", "Done"]
 
 OLD_TASK_STATUS_MAP = {
@@ -374,9 +440,12 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 
     people_count = 0
     task_count = 0
+    activity_count = 0
+
     if current_camp:
         people_count = db.query(Person).filter(Person.camp_id == current_camp.id).count()
         task_count = db.query(Task).filter(Task.camp_id == current_camp.id).count()
+        activity_count = db.query(Activity).filter(Activity.camp_id == current_camp.id).count()
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -385,6 +454,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "camp": current_camp,
             "people_count": people_count,
             "task_count": task_count,
+            "activity_count": activity_count,
             "programme_sessions": 0,
             "readiness": 0,
         },
@@ -3511,4 +3581,830 @@ async def category_task_sheet(
             "empty_message": "No tasks found for this category.",
         },
     )
+
+
+
+@app.get("/programme", response_class=HTMLResponse)
+async def programme_page(request: Request, db: Session = Depends(get_db)):
+    camp = get_latest_camp(db)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "No camp found. Create a camp first."},
+            status_code=404,
+        )
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities", status_code=303)
+
+
+@app.get("/camps/{camp_id}/activities", response_class=HTMLResponse)
+async def camp_activity_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activities = (
+        db.query(Activity)
+        .filter(Activity.camp_id == camp.id)
+        .order_by(Activity.name)
+        .all()
+    )
+
+    people = get_people_for_activity_leads(db, camp)
+    lead_names = {person.id: person_display_name(person) for person in people}
+
+    risk_statuses = {}
+
+    for activity in activities:
+        risk_assessment = (
+            db.query(ActivityRiskAssessment)
+            .filter(
+                ActivityRiskAssessment.camp_id == camp.id,
+                ActivityRiskAssessment.activity_id == activity.id,
+            )
+            .first()
+        )
+
+        risk_statuses[activity.id] = risk_assessment.status if risk_assessment else "Not Started"
+
+    return templates.TemplateResponse(
+        "activities/list.html",
+        {
+            "request": request,
+            "camp": camp,
+            "activities": activities,
+            "lead_names": lead_names,
+            "risk_statuses": risk_statuses,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/activities/new", response_class=HTMLResponse)
+async def new_activity_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    people = get_people_for_activity_leads(db, camp)
+
+    return templates.TemplateResponse(
+        "activities/new.html",
+        {
+            "request": request,
+            "camp": camp,
+            "people": people,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/activities/new")
+async def create_activity(
+    request: Request,
+    camp_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    default_duration_minutes: int = Form(60),
+    default_location: str = Form(""),
+    activity_lead_id: int = Form(0),
+    supporting_adults_notes: str = Form(""),
+    equipment_notes: str = Form(""),
+    risk_notes: str = Form(""),
+    wet_weather_alternative: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    people = get_people_for_activity_leads(db, camp)
+
+    if not name.strip():
+        return templates.TemplateResponse(
+            "activities/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "people": people,
+                "error": "Activity name is required.",
+            },
+            status_code=400,
+        )
+
+    lead_id = activity_lead_id or None
+
+    if lead_id is not None:
+        lead = (
+            db.query(Person)
+            .filter(Person.id == lead_id, Person.camp_id == camp.id)
+            .first()
+        )
+
+        if lead is None:
+            return templates.TemplateResponse(
+                "activities/new.html",
+                {
+                    "request": request,
+                    "camp": camp,
+                    "people": people,
+                    "error": "Selected activity lead does not belong to this camp.",
+                },
+                status_code=400,
+            )
+
+    activity = Activity(
+        camp_id=camp.id,
+        name=name.strip(),
+        description=description.strip() or None,
+        default_duration_minutes=default_duration_minutes,
+        default_location=default_location.strip() or None,
+        activity_lead_id=lead_id,
+        supporting_adults_notes=supporting_adults_notes.strip() or None,
+        equipment_notes=equipment_notes.strip() or None,
+        risk_notes=risk_notes.strip() or None,
+        wet_weather_alternative=wet_weather_alternative.strip() or None,
+    )
+
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities/{activity.id}", status_code=303)
+
+
+@app.get("/camps/{camp_id}/activities/{activity_id}/edit", response_class=HTMLResponse)
+async def edit_activity_form(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    people = get_people_for_activity_leads(db, camp)
+
+    return templates.TemplateResponse(
+        "activities/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "activity": activity,
+            "people": people,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/activities/{activity_id}/edit")
+async def update_activity(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    default_duration_minutes: int = Form(60),
+    default_location: str = Form(""),
+    activity_lead_id: int = Form(0),
+    supporting_adults_notes: str = Form(""),
+    equipment_notes: str = Form(""),
+    risk_notes: str = Form(""),
+    wet_weather_alternative: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    people = get_people_for_activity_leads(db, camp)
+
+    if not name.strip():
+        return templates.TemplateResponse(
+            "activities/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "activity": activity,
+                "people": people,
+                "error": "Activity name is required.",
+            },
+            status_code=400,
+        )
+
+    lead_id = activity_lead_id or None
+
+    if lead_id is not None:
+        lead = (
+            db.query(Person)
+            .filter(Person.id == lead_id, Person.camp_id == camp.id)
+            .first()
+        )
+
+        if lead is None:
+            return templates.TemplateResponse(
+                "activities/edit.html",
+                {
+                    "request": request,
+                    "camp": camp,
+                    "activity": activity,
+                    "people": people,
+                    "error": "Selected activity lead does not belong to this camp.",
+                },
+                status_code=400,
+            )
+
+    activity.name = name.strip()
+    activity.description = description.strip() or None
+    activity.default_duration_minutes = default_duration_minutes
+    activity.default_location = default_location.strip() or None
+    activity.activity_lead_id = lead_id
+    activity.supporting_adults_notes = supporting_adults_notes.strip() or None
+    activity.equipment_notes = equipment_notes.strip() or None
+    activity.risk_notes = risk_notes.strip() or None
+    activity.wet_weather_alternative = wet_weather_alternative.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities/{activity.id}", status_code=303)
+
+
+@app.post("/camps/{camp_id}/activities/{activity_id}/delete")
+async def delete_activity(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    db.delete(activity)
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities", status_code=303)
+
+
+@app.get("/camps/{camp_id}/activities/{activity_id}", response_class=HTMLResponse)
+async def activity_detail(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    lead = None
+
+    if activity.activity_lead_id:
+        lead = (
+            db.query(Person)
+            .filter(Person.id == activity.activity_lead_id, Person.camp_id == camp.id)
+            .first()
+        )
+
+    risk_assessment = (
+        db.query(ActivityRiskAssessment)
+        .filter(
+            ActivityRiskAssessment.camp_id == camp.id,
+            ActivityRiskAssessment.activity_id == activity.id,
+        )
+        .first()
+    )
+
+    risk_status = risk_assessment.status if risk_assessment else "Not Started"
+
+    return templates.TemplateResponse(
+        "activities/detail.html",
+        {
+            "request": request,
+            "camp": camp,
+            "activity": activity,
+            "lead": lead,
+            "risk_status": risk_status,
+        },
+    )
+
+
+
+@app.get("/camps/{camp_id}/risk-assessments", response_class=HTMLResponse)
+async def risk_assessment_hub(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    camp_risk = ensure_camp_risk_assessment(db, camp)
+
+    activities = (
+        db.query(Activity)
+        .filter(Activity.camp_id == camp.id)
+        .order_by(Activity.name)
+        .all()
+    )
+
+    activity_risks = {}
+
+    for activity in activities:
+        activity_risks[activity.id] = ensure_activity_risk_assessment(db, camp, activity)
+
+    return templates.TemplateResponse(
+        "risk_assessments/hub.html",
+        {
+            "request": request,
+            "camp": camp,
+            "camp_risk": camp_risk,
+            "activities": activities,
+            "activity_risks": activity_risks,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/risk-assessments/camp", response_class=HTMLResponse)
+async def camp_risk_assessment_detail(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_camp_risk_assessment(db, camp)
+
+    controls = (
+        db.query(CampRiskControl)
+        .filter(CampRiskControl.risk_assessment_id == risk_assessment.id)
+        .order_by(CampRiskControl.sort_order, CampRiskControl.id)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "risk_assessments/camp.html",
+        {
+            "request": request,
+            "camp": camp,
+            "risk_assessment": risk_assessment,
+            "controls": controls,
+            "statuses": RISK_STATUSES,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/risk-assessments/camp")
+async def update_camp_risk_assessment(
+    request: Request,
+    camp_id: int,
+    title: str = Form(...),
+    status: str = Form("Not Started"),
+    prepared_by: str = Form(""),
+    review_date: str = Form(""),
+    submitted_date: str = Form(""),
+    approved_date: str = Form(""),
+    approval_notes: str = Form(""),
+    site_notes: str = Form(""),
+    overnight_notes: str = Form(""),
+    supervision_notes: str = Form(""),
+    emergency_notes: str = Form(""),
+    communication_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_camp_risk_assessment(db, camp)
+
+    risk_assessment.title = title.strip() or f"{camp.name} Risk Assessment"
+    risk_assessment.status = status
+    risk_assessment.prepared_by = prepared_by.strip() or None
+    risk_assessment.review_date = parse_optional_date(review_date)
+    risk_assessment.submitted_date = parse_optional_date(submitted_date)
+    risk_assessment.approved_date = parse_optional_date(approved_date)
+    risk_assessment.approval_notes = approval_notes.strip() or None
+    risk_assessment.site_notes = site_notes.strip() or None
+    risk_assessment.overnight_notes = overnight_notes.strip() or None
+    risk_assessment.supervision_notes = supervision_notes.strip() or None
+    risk_assessment.emergency_notes = emergency_notes.strip() or None
+    risk_assessment.communication_notes = communication_notes.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/risk-assessments/camp", status_code=303)
+
+
+@app.post("/camps/{camp_id}/risk-assessments/camp/controls/new")
+async def add_camp_risk_control(
+    request: Request,
+    camp_id: int,
+    hazard: str = Form(...),
+    who_might_be_harmed: str = Form(""),
+    controls_in_place: str = Form(""),
+    further_controls_needed: str = Form(""),
+    responsible_person: str = Form(""),
+    review_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_camp_risk_assessment(db, camp)
+
+    if hazard.strip():
+        next_order = (
+            db.query(CampRiskControl)
+            .filter(CampRiskControl.risk_assessment_id == risk_assessment.id)
+            .count()
+            + 1
+        )
+
+        db.add(
+            CampRiskControl(
+                risk_assessment_id=risk_assessment.id,
+                sort_order=next_order,
+                hazard=hazard.strip(),
+                who_might_be_harmed=who_might_be_harmed.strip() or None,
+                controls_in_place=controls_in_place.strip() or None,
+                further_controls_needed=further_controls_needed.strip() or None,
+                responsible_person=responsible_person.strip() or None,
+                review_notes=review_notes.strip() or None,
+            )
+        )
+
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/risk-assessments/camp", status_code=303)
+
+
+@app.post("/camps/{camp_id}/risk-assessments/camp/controls/{control_id}/delete")
+async def delete_camp_risk_control(
+    request: Request,
+    camp_id: int,
+    control_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_camp_risk_assessment(db, camp)
+
+    control = (
+        db.query(CampRiskControl)
+        .filter(
+            CampRiskControl.id == control_id,
+            CampRiskControl.risk_assessment_id == risk_assessment.id,
+        )
+        .first()
+    )
+
+    if control:
+        db.delete(control)
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/risk-assessments/camp", status_code=303)
+
+
+@app.get("/camps/{camp_id}/activities/{activity_id}/risk-assessment", response_class=HTMLResponse)
+async def activity_risk_assessment_detail(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_activity_risk_assessment(db, camp, activity)
+
+    controls = (
+        db.query(ActivityRiskControl)
+        .filter(ActivityRiskControl.risk_assessment_id == risk_assessment.id)
+        .order_by(ActivityRiskControl.sort_order, ActivityRiskControl.id)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "risk_assessments/activity.html",
+        {
+            "request": request,
+            "camp": camp,
+            "activity": activity,
+            "risk_assessment": risk_assessment,
+            "controls": controls,
+            "statuses": RISK_STATUSES,
+            "source_types": ACTIVITY_RISK_SOURCE_TYPES,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/activities/{activity_id}/risk-assessment")
+async def update_activity_risk_assessment(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    source_type: str = Form("Created in app"),
+    status: str = Form("Not Started"),
+    leader_in_charge: str = Form(""),
+    prepared_by: str = Form(""),
+    review_date: str = Form(""),
+    provider_name: str = Form(""),
+    provider_contact: str = Form(""),
+    provider_reference: str = Form(""),
+    provider_risk_assessment_received: str = Form("off"),
+    provider_insurance_checked: str = Form("off"),
+    provider_qualification_checked: str = Form("off"),
+    scout_led_parts_notes: str = Form(""),
+    overall_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_activity_risk_assessment(db, camp, activity)
+
+    risk_assessment.source_type = source_type
+    risk_assessment.status = status
+    risk_assessment.leader_in_charge = leader_in_charge.strip() or None
+    risk_assessment.prepared_by = prepared_by.strip() or None
+    risk_assessment.review_date = parse_optional_date(review_date)
+    risk_assessment.provider_name = provider_name.strip() or None
+    risk_assessment.provider_contact = provider_contact.strip() or None
+    risk_assessment.provider_reference = provider_reference.strip() or None
+    risk_assessment.provider_risk_assessment_received = provider_risk_assessment_received == "on"
+    risk_assessment.provider_insurance_checked = provider_insurance_checked == "on"
+    risk_assessment.provider_qualification_checked = provider_qualification_checked == "on"
+    risk_assessment.scout_led_parts_notes = scout_led_parts_notes.strip() or None
+    risk_assessment.overall_notes = overall_notes.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities/{activity.id}/risk-assessment", status_code=303)
+
+
+@app.post("/camps/{camp_id}/activities/{activity_id}/risk-assessment/controls/new")
+async def add_activity_risk_control(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    hazard: str = Form(...),
+    who_might_be_harmed: str = Form(""),
+    controls_in_place: str = Form(""),
+    further_controls_needed: str = Form(""),
+    responsible_person: str = Form(""),
+    review_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_activity_risk_assessment(db, camp, activity)
+
+    if hazard.strip():
+        next_order = (
+            db.query(ActivityRiskControl)
+            .filter(ActivityRiskControl.risk_assessment_id == risk_assessment.id)
+            .count()
+            + 1
+        )
+
+        db.add(
+            ActivityRiskControl(
+                risk_assessment_id=risk_assessment.id,
+                sort_order=next_order,
+                hazard=hazard.strip(),
+                who_might_be_harmed=who_might_be_harmed.strip() or None,
+                controls_in_place=controls_in_place.strip() or None,
+                further_controls_needed=further_controls_needed.strip() or None,
+                responsible_person=responsible_person.strip() or None,
+                review_notes=review_notes.strip() or None,
+            )
+        )
+
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities/{activity.id}/risk-assessment", status_code=303)
+
+
+@app.post("/camps/{camp_id}/activities/{activity_id}/risk-assessment/controls/{control_id}/delete")
+async def delete_activity_risk_control(
+    request: Request,
+    camp_id: int,
+    activity_id: int,
+    control_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    activity = (
+        db.query(Activity)
+        .filter(Activity.id == activity_id, Activity.camp_id == camp.id)
+        .first()
+    )
+
+    if activity is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Activity not found."},
+            status_code=404,
+        )
+
+    risk_assessment = ensure_activity_risk_assessment(db, camp, activity)
+
+    control = (
+        db.query(ActivityRiskControl)
+        .filter(
+            ActivityRiskControl.id == control_id,
+            ActivityRiskControl.risk_assessment_id == risk_assessment.id,
+        )
+        .first()
+    )
+
+    if control:
+        db.delete(control)
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/activities/{activity.id}/risk-assessment", status_code=303)
 

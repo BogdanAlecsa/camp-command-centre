@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Edit Activity — {{ activity.name }}</h2>
+  <p class="muted">{{ camp.name }}</p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}">Back to Activity</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities">Back to Activities</a>
+</section>
+
+<section class="card">
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">
+    <label for="name">Activity Name</label>
+    <input id="name" name="name" required value="{{ activity.name }}">
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description">{{ activity.description or "" }}</textarea>
+
+    <label for="default_duration_minutes">Default Duration (minutes)</label>
+    <input id="default_duration_minutes" name="default_duration_minutes" type="number" min="1" value="{{ activity.default_duration_minutes or 60 }}" required>
+
+    <label for="default_location">Default Location</label>
+    <input id="default_location" name="default_location" value="{{ activity.default_location or "" }}">
+
+    <label for="activity_lead_id">Activity Lead</label>
+    <select id="activity_lead_id" name="activity_lead_id">
+      <option value="0">Not set</option>
+      {% for person in people %}
+        <option value="{{ person.id }}" {% if activity.activity_lead_id == person.id %}selected{% endif %}>
+          {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <label for="supporting_adults_notes">Supporting Adults</label>
+    <textarea id="supporting_adults_notes" name="supporting_adults_notes">{{ activity.supporting_adults_notes or "" }}</textarea>
+
+    <label for="equipment_notes">Equipment Notes</label>
+    <textarea id="equipment_notes" name="equipment_notes">{{ activity.equipment_notes or "" }}</textarea>
+
+    <label for="risk_notes">Risk / Safety Notes</label>
+    <textarea id="risk_notes" name="risk_notes">{{ activity.risk_notes or "" }}</textarea>
+
+    <label for="wet_weather_alternative">Wet Weather Alternative</label>
+    <textarea id="wet_weather_alternative" name="wet_weather_alternative">{{ activity.wet_weather_alternative or "" }}</textarea>
+
+    <label for="badge_notes">Badge / Requirement Notes</label>
+    <textarea id="badge_notes" name="badge_notes">{{ activity.badge_notes or "" }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Activity</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

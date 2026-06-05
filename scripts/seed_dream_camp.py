@@ -18,6 +18,11 @@ from app.models import (
     TaskAssignment,
     TaskPhase,
     TaskCategory,
+    Activity,
+    CampRiskAssessment,
+    CampRiskControl,
+    ActivityRiskAssessment,
+    ActivityRiskControl,
 )
 
 
@@ -82,6 +87,107 @@ TEAMS = [
 ]
 
 
+
+ACTIVITIES = [
+    (
+        "Arrival, Register and Site Setup",
+        "Welcome young people, complete arrival register, allocate patrol areas and support initial tent pitching.",
+        90,
+        "Main camping field",
+        "Alice Morgan",
+        "All available leaders support arrival, luggage movement and tent setup.",
+        "Register, patrol lists, tent allocation sheet, mallets, spare pegs, first aid point sign.",
+        "Keep vehicles and young people separated. Confirm boundaries before free movement around site.",
+        "Use activity shelter for registration and delay tent pitching until weather improves.",
+        "Supports Outdoor Challenge and teamwork/logistics discussions.",
+    ),
+    (
+        "Opening Campfire",
+        "Opening campfire with songs, patrol introductions and weekend briefing.",
+        60,
+        "Campfire circle",
+        "Ben Taylor",
+        "One adult supervises seating area while another manages fire area.",
+        "Fire bucket, water, song cards, torch, camp blanket, fire lighting kit.",
+        "Fire area controlled by adults. Clear safety boundary. Water available.",
+        "Indoor/group shelter campfire-style songs and skits without real fire.",
+        "Supports creative participation, confidence and community elements.",
+    ),
+    (
+        "Pioneering Skills Bases",
+        "Rotating bases covering knots, lashings and a small team construction challenge.",
+        120,
+        "Activity field",
+        "Emma Shaw",
+        "Three adult-supported bases plus Young Leader support for demonstrations.",
+        "Ropes, spars, gloves, example knots, base instruction cards.",
+        "Check lifting, splinters, trip hazards and safe dismantling. Keep structures low for this sample activity.",
+        "Knot relay and table-top mini-pioneering challenge under shelter.",
+        "Supports Outdoor Challenge, Skills Challenge and pioneering-related badge work.",
+    ),
+    (
+        "Woodland Navigation Trail",
+        "Patrol navigation challenge using simple map symbols, bearings and checkpoint cards.",
+        90,
+        "Woodland trail",
+        "Felix Brown",
+        "Adults positioned at agreed checkpoints and boundaries.",
+        "Maps, checkpoint cards, pencils, clipboards, radios or phones for adults.",
+        "Boundary briefing required. Adults know route and sweep procedure. Weather and daylight checked.",
+        "Map-symbol treasure hunt inside the activity shelter.",
+        "Supports Navigator staged activity badge and Outdoor Challenge elements.",
+    ),
+    (
+        "Wide Game: Lost Expedition",
+        "Evening patrol wide game using clues, teamwork and controlled site boundaries.",
+        75,
+        "Main field and marked woodland edge",
+        "Ben Taylor",
+        "Adults supervise boundaries and clue stations.",
+        "Clue envelopes, high-vis markers, torches, whistle, boundary map.",
+        "Only run inside agreed area. Clear stop signal. Extra care in poor light.",
+        "Indoor mystery challenge with clue stations around the hall/shelter.",
+        "Supports Teamwork Challenge and problem-solving elements.",
+    ),
+    (
+        "Backwoods Cooking Taster",
+        "Simple outdoor cooking activity using safe preparation and supervised cooking area.",
+        90,
+        "Cooking area",
+        "Cara Jenkins",
+        "Catering team supports hygiene and setup.",
+        "Handwash station, food ingredients, utensils, chopping boards, foil, stove/fire setup as appropriate.",
+        "Food hygiene, allergies, burns and sharp tools need explicit supervision.",
+        "Shelter-based cooking using stoves if site rules and supervision allow.",
+        "Supports Outdoor Challenge and cooking/skills-related badge work.",
+    ),
+    (
+        "Scouts Own / Reflection",
+        "Short reflective session about teamwork, kindness, challenge and what was learned at camp.",
+        30,
+        "Quiet area near flagpole",
+        "Alice Morgan",
+        "One adult leads, others support group discussion.",
+        "Prompt cards or short reading, camp blanket if used.",
+        "Choose a quiet safe area away from vehicle movement and cooking areas.",
+        "Run inside the activity shelter.",
+        "Supports reflection, values and teamwork discussions.",
+    ),
+    (
+        "Pack Down and Site Sweep Challenge",
+        "Patrol-led pack down, lost property check and final site sweep.",
+        90,
+        "Whole site",
+        "Dylan Reed",
+        "Adults check tents, stores and site areas before departure.",
+        "Bin bags, lost property box, tent bags, equipment checklist.",
+        "Manual handling, pegs, wet canvas and vehicle movement need supervision.",
+        "Use shelter to sort kit and delay packing wet tents if needed.",
+        "Supports responsibility, teamwork and camp skills.",
+    ),
+]
+
+
 TASKS = [
     # title, phase, category, priority, status, due, description, notes, assignee kind, assignee name
     ("Confirm campsite booking and arrival window", "Early Planning", "Venue", "High", "Done", date(2026, 7, 1), "Confirm booking, arrival time, access arrangements and site contact details.", "", "person", "Alice Morgan"),
@@ -136,6 +242,21 @@ def ensure_schema():
                     text(f"ALTER TABLE {table_name} ADD COLUMN description TEXT")
                 )
 
+        optional_columns = [
+            ("activity", "badge_notes", "TEXT"),
+        ]
+
+        for table_name, column_name, column_type in optional_columns:
+            columns = [
+                row[1]
+                for row in connection.execute(text(f"PRAGMA table_info({table_name})"))
+            ]
+
+            if columns and column_name not in columns:
+                connection.execute(
+                    text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                )
+
 
 def delete_existing_sample(db):
     existing = db.query(Camp).filter(Camp.name == SAMPLE_CAMP_NAME).first()
@@ -145,6 +266,33 @@ def delete_existing_sample(db):
 
     camp_id = existing.id
 
+    activity_risk_ids = [
+        row.id
+        for row in db.query(ActivityRiskAssessment)
+        .filter(ActivityRiskAssessment.camp_id == camp_id)
+        .all()
+    ]
+
+    if activity_risk_ids:
+        db.query(ActivityRiskControl).filter(
+            ActivityRiskControl.risk_assessment_id.in_(activity_risk_ids)
+        ).delete(synchronize_session=False)
+
+    camp_risk_ids = [
+        row.id
+        for row in db.query(CampRiskAssessment)
+        .filter(CampRiskAssessment.camp_id == camp_id)
+        .all()
+    ]
+
+    if camp_risk_ids:
+        db.query(CampRiskControl).filter(
+            CampRiskControl.risk_assessment_id.in_(camp_risk_ids)
+        ).delete(synchronize_session=False)
+
+    db.query(ActivityRiskAssessment).filter(ActivityRiskAssessment.camp_id == camp_id).delete()
+    db.query(CampRiskAssessment).filter(CampRiskAssessment.camp_id == camp_id).delete()
+
     db.query(TaskAssignment).filter(TaskAssignment.camp_id == camp_id).delete()
     db.query(Task).filter(Task.camp_id == camp_id).delete()
     db.query(TeamMembership).filter(TeamMembership.camp_id == camp_id).delete()
@@ -152,6 +300,7 @@ def delete_existing_sample(db):
     db.query(Person).filter(Person.camp_id == camp_id).delete()
     db.query(TaskPhase).filter(TaskPhase.camp_id == camp_id).delete()
     db.query(TaskCategory).filter(TaskCategory.camp_id == camp_id).delete()
+    db.query(Activity).filter(Activity.camp_id == camp_id).delete()
     db.query(Camp).filter(Camp.id == camp_id).delete()
 
     db.commit()
@@ -260,6 +409,43 @@ def main():
 
         db.commit()
 
+
+        activities_by_name = {}
+
+        for (
+            name,
+            description,
+            default_duration_minutes,
+            default_location,
+            lead_name,
+            supporting_adults_notes,
+            equipment_notes,
+            risk_notes,
+            wet_weather_alternative,
+            badge_notes,
+        ) in ACTIVITIES:
+            lead = people_by_name.get(lead_name)
+
+            activity = Activity(
+                camp_id=camp.id,
+                name=name,
+                description=description,
+                default_duration_minutes=default_duration_minutes,
+                default_location=default_location,
+                activity_lead_id=lead.id if lead else None,
+                supporting_adults_notes=supporting_adults_notes,
+                equipment_notes=equipment_notes,
+                risk_notes=risk_notes,
+                wet_weather_alternative=wet_weather_alternative,
+                badge_notes=badge_notes,
+            )
+
+            db.add(activity)
+            db.flush()
+            activities_by_name[name] = activity
+
+        db.commit()
+
         for (
             title,
             phase,
@@ -307,6 +493,134 @@ def main():
                         assignment_notes=None,
                     )
                 )
+
+
+        camp_risk = CampRiskAssessment(
+            camp_id=camp.id,
+            title=f"{camp.name} Risk Assessment",
+            status="Draft",
+            prepared_by="Alice Morgan",
+            review_date=date(2026, 8, 1),
+            site_notes="Sample campsite risk notes covering boundaries, vehicle movement, camping areas and site rules.",
+            overnight_notes="Sample overnight notes covering tent groups, leader availability, night-time arrangements and welfare checks.",
+            supervision_notes="Sample supervision notes. Replace with real ratios, roles and local arrangements.",
+            emergency_notes="Sample emergency notes covering first aid point, emergency contact list, site address and nearest access point.",
+            communication_notes="Sample communication notes covering leader briefing, parent contact process and emergency escalation.",
+        )
+        db.add(camp_risk)
+        db.flush()
+
+        for order, hazard, who, controls, further, responsible in [
+            (
+                1,
+                "Vehicle movement on arrival and departure",
+                "Young people, adults and visitors could be struck or separated from the group.",
+                "Arrival area supervised. Young people directed away from vehicle movement. Unloading controlled by adults.",
+                "Confirm site-specific parking and unloading procedure before camp.",
+                "Camp Leadership Team",
+            ),
+            (
+                2,
+                "Night-time movement around site",
+                "Young people could trip, become disorientated or enter restricted areas.",
+                "Boundaries explained. Torches required. Leaders available overnight. Clear toilet route agreed.",
+                "Review lighting and route after arrival.",
+                "Alice Morgan",
+            ),
+            (
+                3,
+                "Cooking and hot water",
+                "Burns, scalds or food hygiene issues.",
+                "Cooking area controlled. Handwashing available. Adults supervise stoves and hot water.",
+                "Check dietary summary and site cooking rules before final menu.",
+                "Catering Team",
+            ),
+        ]:
+            db.add(
+                CampRiskControl(
+                    risk_assessment_id=camp_risk.id,
+                    sort_order=order,
+                    hazard=hazard,
+                    who_might_be_harmed=who,
+                    controls_in_place=controls,
+                    further_controls_needed=further,
+                    responsible_person=responsible,
+                )
+            )
+
+        db.commit()
+
+        activity_risk_seed = {
+            "Opening Campfire": [
+                ("Fire and hot embers", "Young people and adults could be burned.", "Fire area supervised by adults. Clear boundary. Water available.", "Check site fire rules and weather conditions.", "Ben Taylor"),
+                ("Smoke irritation", "Participants may be affected by smoke.", "Position seating with wind direction considered. Move participants if needed.", "Use no-fire alternative if conditions are poor.", "Ben Taylor"),
+            ],
+            "Pioneering Skills Bases": [
+                ("Falling spars or unstable structures", "Young people could be struck or trapped.", "Low-level sample structures only. Adult supervision at each base.", "Check all equipment before use.", "Emma Shaw"),
+                ("Rope burns, splinters and trips", "Hands and feet could be injured.", "Gloves available. Clear work areas. Demonstrate safe handling.", "Replace damaged spars or ropes.", "Emma Shaw"),
+            ],
+            "Wide Game: Lost Expedition": [
+                ("Running in low light", "Young people may trip or collide.", "Boundaries set. Stop signal explained. Adults supervise key points.", "Review terrain and daylight before running.", "Programme Team"),
+                ("Young person leaves agreed area", "Young person could become separated from group.", "Clear boundaries, patrol grouping and adult sweep procedure.", "Add visible boundary markers.", "Programme Team"),
+            ],
+            "Backwoods Cooking Taster": [
+                ("Burns from stoves or hot food", "Young people and adults could be burned.", "Cooking area supervised. Clear hot-zone. Adults control lighting and fuel.", "Confirm site cooking rules.", "Cara Jenkins"),
+                ("Food allergy or hygiene issue", "Participants with allergies could be harmed.", "Dietary information checked. Handwashing station used. Ingredients controlled.", "Final check against real medical/dietary forms.", "Catering Team"),
+            ],
+        }
+
+        for activity_name, rows in activity_risk_seed.items():
+            activity = activities_by_name.get(activity_name)
+            if not activity:
+                continue
+
+            risk = ActivityRiskAssessment(
+                camp_id=camp.id,
+                activity_id=activity.id,
+                source_type="Created in app",
+                status="Draft",
+                leader_in_charge="Sample activity lead",
+                prepared_by="Alice Morgan",
+                review_date=date(2026, 8, 1),
+                overall_notes="Sample activity risk assessment. Replace with real controls and review before use.",
+            )
+            db.add(risk)
+            db.flush()
+
+            for order, (hazard, who, controls, further, responsible) in enumerate(rows, start=1):
+                db.add(
+                    ActivityRiskControl(
+                        risk_assessment_id=risk.id,
+                        sort_order=order,
+                        hazard=hazard,
+                        who_might_be_harmed=who,
+                        controls_in_place=controls,
+                        further_controls_needed=further,
+                        responsible_person=responsible,
+                    )
+                )
+
+        # External provider example for testing third-party checks.
+        provider_activity = activities_by_name.get("Woodland Navigation Trail")
+        if provider_activity:
+            risk = ActivityRiskAssessment(
+                camp_id=camp.id,
+                activity_id=provider_activity.id,
+                source_type="External provider",
+                status="Ready for Review",
+                leader_in_charge="Felix Brown",
+                prepared_by="Alice Morgan",
+                review_date=date(2026, 8, 1),
+                provider_name="Willowbrook Outdoor Learning Team",
+                provider_contact="booking@example.com / ref NAV-2026-SAMPLE",
+                provider_risk_assessment_received=True,
+                provider_insurance_checked=True,
+                provider_qualification_checked=True,
+                provider_reference="Sample reference: provider RA and insurance saved in Group Drive. Replace with real evidence location.",
+                scout_led_parts_notes="Group remains responsible for travel to/from the activity area, handover, headcounts and welfare before/after the provider-led session.",
+                overall_notes="Sample external provider record.",
+            )
+            db.add(risk)
 
         db.commit()
 
