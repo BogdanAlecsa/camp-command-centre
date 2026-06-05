@@ -1307,12 +1307,21 @@ async def task_phase_list(request: Request, camp_id: int, db: Session = Depends(
         .all()
     )
 
+    phase_task_counts = {}
+    for phase in phases:
+        phase_task_counts[phase.id] = (
+            db.query(Task)
+            .filter(Task.camp_id == camp.id, Task.phase == phase.name)
+            .count()
+        )
+
     return templates.TemplateResponse(
         "task_phases/list.html",
         {
             "request": request,
             "camp": camp,
             "phases": phases,
+            "phase_task_counts": phase_task_counts,
             "error": None,
         },
     )
@@ -1372,6 +1381,77 @@ async def create_task_phase(
             )
         )
         db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/task-phases", status_code=303)
+
+
+
+
+@app.post("/camps/{camp_id}/task-phases/{phase_id}/delete")
+async def delete_task_phase(
+    request: Request,
+    camp_id: int,
+    phase_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    phase = (
+        db.query(TaskPhase)
+        .filter(TaskPhase.id == phase_id, TaskPhase.camp_id == camp.id)
+        .first()
+    )
+
+    if phase is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task phase not found."},
+            status_code=404,
+        )
+
+    task_count = (
+        db.query(Task)
+        .filter(Task.camp_id == camp.id, Task.phase == phase.name)
+        .count()
+    )
+
+    if task_count > 0:
+        phases = (
+            db.query(TaskPhase)
+            .filter(TaskPhase.camp_id == camp.id)
+            .order_by(TaskPhase.sort_order, TaskPhase.name)
+            .all()
+        )
+
+        phase_task_counts = {}
+        for item in phases:
+            phase_task_counts[item.id] = (
+                db.query(Task)
+                .filter(Task.camp_id == camp.id, Task.phase == item.name)
+                .count()
+            )
+
+        return templates.TemplateResponse(
+            "task_phases/list.html",
+            {
+                "request": request,
+                "camp": camp,
+                "phases": phases,
+                "phase_task_counts": phase_task_counts,
+                "error": f"Cannot delete '{phase.name}' because {task_count} task(s) still use it. Move those tasks to another phase first.",
+            },
+            status_code=400,
+        )
+
+    db.delete(phase)
+    db.commit()
 
     return RedirectResponse(url=f"/camps/{camp.id}/task-phases", status_code=303)
 
