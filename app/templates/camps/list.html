@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Camps</h2>
+  <p class="muted">Create, open and manage camps.</p>
+  <a class="button" href="/camps/new">Create Camp</a>
+</section>
+
+<section class="card">
+  <h3>Camp List</h3>
+
+  {% if camps %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Dates</th>
+          <th>Type</th>
+          <th>Venue</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for camp in camps %}
+          <tr>
+            <td><strong>{{ camp.name }}</strong></td>
+            <td>{{ camp.start_date }} to {{ camp.end_date }}</td>
+            <td>{{ camp.camp_type }}</td>
+            <td>{{ camp.venue_name }}</td>
+            <td><span class="badge">{{ camp.status }}</span></td>
+            <td><a href="/camps/{{ camp.id }}">Open</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No camps yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

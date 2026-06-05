@@ -2,11 +2,22 @@
 
 {% block content %}
 <section class="card">
-  <h2>{{ camp_name }}</h2>
-  <p class="muted">Status: <span class="badge">{{ camp_status }}</span></p>
-  <a class="button" href="#">Create Camp</a>
-  <a class="button" href="#">Open Programme</a>
-  <a class="button" href="#">Review Readiness</a>
+  {% if camp %}
+    <h2>{{ camp.name }}</h2>
+    <p class="muted">
+      {{ camp.start_date }} to {{ camp.end_date }}
+      {% if camp.venue_name %} · {{ camp.venue_name }}{% endif %}
+    </p>
+    <p>Status: <span class="badge">{{ camp.status }}</span></p>
+
+    <a class="button" href="/camps/{{ camp.id }}">Open Camp</a>
+    <a class="button secondary" href="/camps">All Camps</a>
+    <a class="button secondary" href="/camps/new">Create Camp</a>
+  {% else %}
+    <h2>No camp selected</h2>
+    <p>Create your first camp to get started.</p>
+    <a class="button" href="/camps/new">Create Camp</a>
+  {% endif %}
 </section>
 
 <div class="grid">
@@ -47,10 +58,10 @@
 
 <section class="card">
   <h3>Workflow</h3>
-  <p>✓ Camp Basics</p>
-  <p>⚠ People and Forms</p>
-  <p>⚠ Programme</p>
-  <p>⚠ Tasks</p>
-  <p>○ Outputs</p>
+  <p class="good">✓ Camp Basics</p>
+  <p class="warning">⚠ People and Forms</p>
+  <p class="warning">⚠ Programme</p>
+  <p class="warning">⚠ Tasks</p>
+  <p class="muted">○ Outputs</p>
 </section>
 {% endblock %}
