@@ -7,7 +7,7 @@
 
   <style>
     @page {
-      size: A4 portrait;
+      size: A4 landscape;
       margin: 12mm;
     }
 
@@ -20,7 +20,7 @@
       font-family: Arial, sans-serif;
       color: #111827;
       background: #ffffff;
-      font-size: 10.5pt;
+      font-size: 9.2pt;
       line-height: 1.35;
     }
 
@@ -51,29 +51,71 @@
 
     header {
       border-bottom: 2px solid #111827;
-      padding-bottom: .5rem;
-      margin-bottom: .75rem;
+      padding-bottom: .35rem;
+      margin-bottom: .25rem;
     }
 
     h1 {
       margin: 0 0 .25rem;
-      font-size: 18pt;
+      font-size: 15pt;
     }
 
     h2 {
-      margin: .9rem 0 .35rem;
-      font-size: 13pt;
+      margin: .5rem 0 .2rem;
+      font-size: 10.8pt;
       border-bottom: 1px solid #d0d5dd;
       padding-bottom: .2rem;
+      break-after: avoid;
+      page-break-after: avoid;
     }
 
     h3 {
-      margin: .65rem 0 .25rem;
-      font-size: 11pt;
+      margin: .35rem 0 .15rem;
+      font-size: 9.5pt;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    /* Print flow controls */
+    .compact-section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .compact-notes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .25rem .35rem;
+      align-items: stretch;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .compact-notes h2 {
+      grid-column: 1 / -1;
+    }
+
+    .compact-notes .note-box {
+      height: 100%;
+    }
+
+    .table-section {
+      break-inside: auto;
+      page-break-inside: auto;
+    }
+
+    .table-section h2 {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    .table-section table {
+      break-before: avoid;
+      page-break-before: avoid;
     }
 
     p {
-      margin: .2rem 0 .45rem;
+      margin: .1rem 0 .25rem;
     }
 
     .muted {
@@ -92,16 +134,16 @@
 
     .meta-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: .35rem .75rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .25rem .4rem;
       margin: .65rem 0;
     }
 
     .meta-item {
       border: 1px solid #d0d5dd;
       border-radius: 6px;
-      padding: .35rem .45rem;
-      min-height: 1.75rem;
+      padding: .22rem .32rem;
+      min-height: 1.25rem;
     }
 
     .meta-label {
@@ -115,8 +157,8 @@
     .note-box {
       border: 1px solid #d0d5dd;
       border-radius: 6px;
-      padding: .45rem;
-      margin-bottom: .45rem;
+      padding: .28rem;
+      margin-bottom: .25rem;
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -124,8 +166,10 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: .35rem;
-      font-size: 8.8pt;
+      margin-top: .25rem;
+      font-size: 8.2pt;
+      page-break-inside: auto;
+      break-inside: auto;
     }
 
     thead {
@@ -135,7 +179,7 @@
     th,
     td {
       border: 1px solid #98a2b3;
-      padding: .28rem .32rem;
+      padding: .18rem .22rem;
       vertical-align: top;
       text-align: left;
     }
@@ -146,6 +190,12 @@
     }
 
     tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    td,
+    th {
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -174,7 +224,7 @@
       }
 
       h1 {
-        font-size: 17pt;
+        font-size: 14pt;
       }
     }
   </style>
@@ -196,7 +246,7 @@
     <p>Status: <span class="status">{{ risk_assessment.status }}</span></p>
   </header>
 
-  <section>
+  <section class="compact-section">
     <h2>Camp Details</h2>
 
     <div class="meta-grid">
@@ -235,7 +285,7 @@
     </div>
   </section>
 
-  <section>
+  <section class="compact-notes">
     <h2>Assessment Notes</h2>
 
     <div class="note-box">
@@ -269,7 +319,7 @@
     </div>
   </section>
 
-  <section>
+  <section class="table-section">
     <h2>Risk Control Table</h2>
 
     {% if controls %}
