@@ -12,6 +12,7 @@
   <a class="button" href="/camps/{{ camp.id }}/edit">Edit Camp</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/teams">Teams</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Tasks</a>
   <a class="button secondary" href="/">Dashboard</a>
   <a class="button secondary" href="/camps">All Camps</a>
 </section>
@@ -37,6 +38,12 @@
   </section>
 
   <section class="card">
+    <h3>Tasks</h3>
+    <p><strong>{{ task_count }}</strong> tasks</p>
+    <p><a href="/camps/{{ camp.id }}/tasks">Open task list</a></p>
+  </section>
+
+  <section class="card">
     <h3>Readiness</h3>
     <p><strong>{{ readiness }}%</strong> ready</p>
     <p class="warning">Needs attention</p>
@@ -46,11 +53,10 @@
 <section class="card">
   <h3>Planning Workflow</h3>
   <p class="good">✓ Camp Basics</p>
-  <p class="warning">⚠ Add People</p>
-  <p class="muted">○ Collect Information</p>
-  <p class="muted">○ Create Teams</p>
+  <p class="good">✓ Add People</p>
+  <p class="good">✓ Create Teams</p>
+  <p class="warning">⚠ Assign Tasks</p>
   <p class="muted">○ Build Programme</p>
-  <p class="muted">○ Assign Tasks</p>
   <p class="muted">○ Generate Packs</p>
 </section>
 

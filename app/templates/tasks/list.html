@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Tasks — {{ camp.name }}</h2>
+  <p class="muted">Create tasks, track status and assign work to people or teams.</p>
+
+  <a class="button" href="/camps/{{ camp.id }}/tasks/new">Add Task</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Task List</h3>
+
+  {% if tasks %}
+    <table>
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Status</th>
+          <th>Priority</th>
+          <th>Phase</th>
+          <th>Due</th>
+          <th>Assignments</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+          <tr>
+            <td><strong>{{ task.title }}</strong></td>
+            <td><span class="badge">{{ task.status }}</span></td>
+            <td>{{ task.priority }}</td>
+            <td>{{ task.phase or "" }}</td>
+            <td>{{ task.due_date or "" }}</td>
+            <td>{{ assignment_counts.get(task.id, 0) }}</td>
+            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No tasks have been added to this camp yet.</p>
+    <p><a href="/camps/{{ camp.id }}/tasks/new">Create the first task</a></p>
+  {% endif %}
+</section>
+{% endblock %}

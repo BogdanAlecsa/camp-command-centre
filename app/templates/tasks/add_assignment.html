@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Add Assignment</h2>
+  <p class="muted">Assign "{{ task.title }}" to a person or team.</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  {% if people or teams %}
+    <form method="post" action="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/new">
+      <label for="assignee">Assign To</label>
+      <select id="assignee" name="assignee">
+        {% if people %}
+          <optgroup label="People">
+            {% for person in people %}
+              <option value="person:{{ person.id }}">
+                {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
+              </option>
+            {% endfor %}
+          </optgroup>
+        {% endif %}
+
+        {% if teams %}
+          <optgroup label="Teams">
+            {% for team in teams %}
+              <option value="team:{{ team.id }}">
+                {{ team.name }} — {{ team.team_type }}
+              </option>
+            {% endfor %}
+          </optgroup>
+        {% endif %}
+      </select>
+
+      <label for="status_override">Status Override</label>
+      <select id="status_override" name="status_override">
+        <option value="">No separate assignment status</option>
+        <option>Assigned</option>
+        <option>Accepted</option>
+        <option>In Progress</option>
+        <option>Ready for Check</option>
+        <option>Complete</option>
+        <option>Blocked</option>
+      </select>
+
+      <label for="assignment_notes">Assignment Notes</label>
+      <textarea id="assignment_notes" name="assignment_notes"></textarea>
+
+      <div class="form-actions">
+        <button type="submit">Add Assignment</button>
+        <a class="button secondary" href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <p>There are no people or teams available yet.</p>
+    <a class="button" href="/camps/{{ camp.id }}/people/new">Add Person</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/teams/new">Add Team</a>
+  {% endif %}
+</section>
+{% endblock %}

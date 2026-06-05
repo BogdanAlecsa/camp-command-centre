@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Add Task</h2>
+  <p class="muted">Add a task to {{ camp.name }}.</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/tasks/new">
+    <label for="title">Task Title</label>
+    <input id="title" name="title" required placeholder="Book minibus, check kit list, prepare parent pack...">
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description"></textarea>
+
+    <label for="category">Category</label>
+    <input id="category" name="category" placeholder="Transport, Programme, Food, Equipment, Documents...">
+
+    <label for="phase">Phase</label>
+    <input id="phase" name="phase" placeholder="Before camp, Friday, Saturday, After camp...">
+
+    <label for="priority">Priority</label>
+    <select id="priority" name="priority">
+      <option>Low</option>
+      <option selected>Normal</option>
+      <option>High</option>
+      <option>Urgent</option>
+    </select>
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option>Draft</option>
+      <option selected>Planned</option>
+      <option>Assigned</option>
+      <option>Accepted</option>
+      <option>In Progress</option>
+      <option>Ready for Check</option>
+      <option>Complete</option>
+      <option>Checked</option>
+      <option>Blocked</option>
+      <option>Cancelled</option>
+      <option>Not Needed</option>
+    </select>
+
+    <label for="due_date">Due Date</label>
+    <input id="due_date" name="due_date" type="date">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes"></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Add Task</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

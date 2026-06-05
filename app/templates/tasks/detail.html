@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ task.title }}</h2>
+  <p>Status: <span class="badge">{{ task.status }}</span></p>
+
+  <a class="button" href="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/new">Add Assignment</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Back to Tasks</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Task Details</h3>
+    <p><strong>Priority:</strong> {{ task.priority }}</p>
+    <p><strong>Category:</strong> {{ task.category or "Not set" }}</p>
+    <p><strong>Phase:</strong> {{ task.phase or "Not set" }}</p>
+    <p><strong>Due Date:</strong> {{ task.due_date or "Not set" }}</p>
+  </section>
+
+  <section class="card">
+    <h3>Description</h3>
+    <p>{{ task.description or "No description yet." }}</p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Assignments</h3>
+
+  {% if assignment_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Assigned To</th>
+          <th>Type</th>
+          <th>Status Override</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in assignment_rows %}
+          <tr>
+            <td><strong>{{ row.assignee_label }}</strong></td>
+            <td>{{ row.assignee_type }}</td>
+            <td>{{ row.assignment.status_override or "" }}</td>
+            <td>{{ row.assignment.assignment_notes or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/{{ row.assignment.id }}/remove">
+                <button type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>This task has not been assigned yet.</p>
+    <p><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/new">Add an assignment</a></p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Notes</h3>
+  <p>{{ task.notes or "No notes yet." }}</p>
+</section>
+{% endblock %}

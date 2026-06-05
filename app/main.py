@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
-from app.models import Camp, Person, Team, TeamMembership
+from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment
 
 app = FastAPI(title="Camp Command Centre")
 
@@ -24,13 +24,22 @@ def get_latest_camp(db: Session):
     return db.query(Camp).order_by(Camp.start_date.desc()).first()
 
 
+def parse_optional_date(value: str):
+    value = (value or "").strip()
+    if not value:
+        return None
+    return date.fromisoformat(value)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, db: Session = Depends(get_db)):
     current_camp = get_latest_camp(db)
 
     people_count = 0
+    task_count = 0
     if current_camp:
         people_count = db.query(Person).filter(Person.camp_id == current_camp.id).count()
+        task_count = db.query(Task).filter(Task.camp_id == current_camp.id).count()
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -38,7 +47,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "request": request,
             "camp": current_camp,
             "people_count": people_count,
-            "task_count": 0,
+            "task_count": task_count,
             "programme_sessions": 0,
             "readiness": 0,
         },
@@ -204,6 +213,7 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
 
     people_count = db.query(Person).filter(Person.camp_id == camp.id).count()
     team_count = db.query(Team).filter(Team.camp_id == camp.id).count()
+    task_count = db.query(Task).filter(Task.camp_id == camp.id).count()
 
     return templates.TemplateResponse(
         "camps/detail.html",
@@ -212,7 +222,7 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
             "camp": camp,
             "people_count": people_count,
             "team_count": team_count,
-            "task_count": 0,
+            "task_count": task_count,
             "programme_sessions": 0,
             "readiness": 0,
         },
@@ -936,8 +946,357 @@ async def programme_page(request: Request):
 
 
 @app.get("/tasks", response_class=HTMLResponse)
-async def tasks_page(request: Request):
-    return templates.TemplateResponse("tasks.html", {"request": request})
+async def tasks_page(request: Request, db: Session = Depends(get_db)):
+    camp = get_latest_camp(db)
+
+    if camp is None:
+        return templates.TemplateResponse("tasks/no_camp.html", {"request": request})
+
+    return RedirectResponse(url=f"/camps/{camp.id}/tasks", status_code=303)
+
+
+@app.get("/camps/{camp_id}/tasks", response_class=HTMLResponse)
+async def camp_task_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    tasks = (
+        db.query(Task)
+        .filter(Task.camp_id == camp.id)
+        .order_by(Task.status, Task.priority, Task.due_date, Task.title)
+        .all()
+    )
+
+    assignment_counts = {}
+    for task in tasks:
+        assignment_counts[task.id] = (
+            db.query(TaskAssignment)
+            .filter(TaskAssignment.task_id == task.id, TaskAssignment.camp_id == camp.id)
+            .count()
+        )
+
+    return templates.TemplateResponse(
+        "tasks/list.html",
+        {
+            "request": request,
+            "camp": camp,
+            "tasks": tasks,
+            "assignment_counts": assignment_counts,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/tasks/new", response_class=HTMLResponse)
+async def new_task_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "tasks/new.html",
+        {
+            "request": request,
+            "camp": camp,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/tasks/new")
+async def create_task(
+    request: Request,
+    camp_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    category: str = Form(""),
+    phase: str = Form(""),
+    priority: str = Form("Normal"),
+    status: str = Form("Planned"),
+    due_date: str = Form(""),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    if not title.strip():
+        return templates.TemplateResponse(
+            "tasks/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "error": "Task title is required.",
+            },
+            status_code=400,
+        )
+
+    task = Task(
+        camp_id=camp.id,
+        title=title.strip(),
+        description=description.strip() or None,
+        category=category.strip() or None,
+        phase=phase.strip() or None,
+        priority=priority,
+        status=status,
+        due_date=parse_optional_date(due_date),
+        notes=notes.strip() or None,
+    )
+
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
+
+
+@app.get("/camps/{camp_id}/tasks/{task_id}", response_class=HTMLResponse)
+async def task_detail(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    assignments = (
+        db.query(TaskAssignment)
+        .filter(TaskAssignment.task_id == task.id, TaskAssignment.camp_id == camp.id)
+        .order_by(TaskAssignment.id)
+        .all()
+    )
+
+    assignment_rows = []
+    for assignment in assignments:
+        assignee_label = "Unknown"
+        assignee_type = ""
+
+        if assignment.assigned_person_id:
+            person = db.get(Person, assignment.assigned_person_id)
+            if person:
+                assignee_label = f"{person.first_name} {person.last_name}"
+                assignee_type = person.person_type
+
+        if assignment.assigned_team_id:
+            team = db.get(Team, assignment.assigned_team_id)
+            if team:
+                assignee_label = team.name
+                assignee_type = team.team_type
+
+        assignment_rows.append(
+            {
+                "assignment": assignment,
+                "assignee_label": assignee_label,
+                "assignee_type": assignee_type,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "tasks/detail.html",
+        {
+            "request": request,
+            "camp": camp,
+            "task": task,
+            "assignment_rows": assignment_rows,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/tasks/{task_id}/assignments/new", response_class=HTMLResponse)
+async def new_task_assignment_form(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id)
+        .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    teams = (
+        db.query(Team)
+        .filter(Team.camp_id == camp.id)
+        .order_by(Team.team_type, Team.name)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        "tasks/add_assignment.html",
+        {
+            "request": request,
+            "camp": camp,
+            "task": task,
+            "people": people,
+            "teams": teams,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/tasks/{task_id}/assignments/new")
+async def create_task_assignment(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    assignee: str = Form(...),
+    status_override: str = Form(""),
+    assignment_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    kind, raw_id = assignee.split(":", 1)
+    target_id = int(raw_id)
+
+    assigned_person_id = None
+    assigned_team_id = None
+
+    if kind == "person":
+        person = (
+            db.query(Person)
+            .filter(Person.id == target_id, Person.camp_id == camp.id)
+            .first()
+        )
+        if person is None:
+            return templates.TemplateResponse(
+                "not_found.html",
+                {"request": request, "message": "Person not found."},
+                status_code=404,
+            )
+        assigned_person_id = person.id
+
+    elif kind == "team":
+        team = (
+            db.query(Team)
+            .filter(Team.id == target_id, Team.camp_id == camp.id)
+            .first()
+        )
+        if team is None:
+            return templates.TemplateResponse(
+                "not_found.html",
+                {"request": request, "message": "Team not found."},
+                status_code=404,
+            )
+        assigned_team_id = team.id
+
+    assignment = TaskAssignment(
+        camp_id=camp.id,
+        task_id=task.id,
+        assigned_person_id=assigned_person_id,
+        assigned_team_id=assigned_team_id,
+        status_override=status_override.strip() or None,
+        assignment_notes=assignment_notes.strip() or None,
+    )
+
+    db.add(assignment)
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
+
+
+@app.post("/camps/{camp_id}/tasks/{task_id}/assignments/{assignment_id}/remove")
+async def remove_task_assignment(
+    camp_id: int,
+    task_id: int,
+    assignment_id: int,
+    db: Session = Depends(get_db),
+):
+    assignment = (
+        db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.id == assignment_id,
+            TaskAssignment.camp_id == camp_id,
+            TaskAssignment.task_id == task_id,
+        )
+        .first()
+    )
+
+    if assignment is not None:
+        db.delete(assignment)
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp_id}/tasks/{task_id}", status_code=303)
 
 
 @app.get("/readiness", response_class=HTMLResponse)
