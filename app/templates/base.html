@@ -71,6 +71,84 @@
       margin: 1rem 0;
     }
 
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: .75rem;
+      margin: 1rem 0;
+    }
+
+    .summary-card {
+      padding: .75rem;
+      margin-bottom: 0;
+    }
+
+    .summary-card h3 {
+      font-size: .95rem;
+      margin-bottom: .25rem;
+    }
+
+    .summary-card .summary-number {
+      font-size: 1.45rem;
+      font-weight: bold;
+      margin: .1rem 0;
+    }
+
+    .filter-panel {
+      display: grid;
+      gap: .8rem;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: center;
+    }
+
+    .filter-label {
+      font-weight: bold;
+      margin-right: .25rem;
+    }
+
+    .filter-pill {
+      display: inline-block;
+      padding: .35rem .6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      color: var(--brand);
+      text-decoration: none;
+      font-size: .9rem;
+    }
+
+    .filter-pill:hover {
+      background: #eef4ff;
+    }
+
+    .filter-pill.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .filter-form {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      gap: .5rem;
+      align-items: end;
+      max-width: 640px;
+    }
+
+    .filter-form label {
+      margin-top: 0;
+    }
+
+    .task-table .warning {
+      font-size: .85rem;
+      margin-top: .15rem;
+    }
+
     .card {
       background: var(--panel);
       border: 1px solid var(--border);

@@ -1227,6 +1227,7 @@ async def camp_task_list(
     status: str = "",
     priority: str = "",
     phase: str = "",
+    assignee: str = "",
     db: Session = Depends(get_db),
 ):
     camp = db.get(Camp, camp_id)
@@ -1242,6 +1243,20 @@ async def camp_task_list(
         db.query(Task)
         .filter(Task.camp_id == camp.id)
         .order_by(Task.status, Task.priority, Task.due_date, Task.title)
+        .all()
+    )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id)
+        .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    teams = (
+        db.query(Team)
+        .filter(Team.camp_id == camp.id)
+        .order_by(Team.team_type, Team.name)
         .all()
     )
 
@@ -1285,39 +1300,125 @@ async def camp_task_list(
     ]
 
     tasks = list(all_tasks)
-    active_label = "All tasks"
+    active_parts = []
 
     if view == "unassigned":
         tasks = unassigned_tasks
-        active_label = "Unassigned tasks"
+        active_parts.append("Unassigned")
     elif view == "blocked":
         tasks = blocked_tasks
-        active_label = "Blocked tasks"
+        active_parts.append("Blocked")
     elif view == "high-priority":
         tasks = high_priority_tasks
-        active_label = "High / urgent tasks"
+        active_parts.append("High / urgent")
     elif view == "overdue":
         tasks = overdue_tasks
-        active_label = "Overdue tasks"
+        active_parts.append("Overdue")
     elif view == "due-soon":
         tasks = due_soon_tasks
-        active_label = "Due soon"
+        active_parts.append("Due soon")
+
+    active_assignee_label = ""
+
+    if assignee:
+        try:
+            kind, raw_id = assignee.split(":", 1)
+            target_id = int(raw_id)
+        except ValueError:
+            kind = ""
+            target_id = 0
+
+        task_ids_for_assignee = set()
+
+        if kind == "person":
+            person = (
+                db.query(Person)
+                .filter(Person.id == target_id, Person.camp_id == camp.id)
+                .first()
+            )
+
+            if person:
+                active_assignee_label = f"{person.first_name} {person.last_name}"
+                active_parts.append(f"Assignee: {active_assignee_label}")
+
+                direct_task_ids = [
+                    row.task_id
+                    for row in db.query(TaskAssignment)
+                    .filter(
+                        TaskAssignment.camp_id == camp.id,
+                        TaskAssignment.assigned_person_id == person.id,
+                    )
+                    .all()
+                ]
+
+                team_ids = [
+                    row.team_id
+                    for row in db.query(TeamMembership)
+                    .filter(
+                        TeamMembership.camp_id == camp.id,
+                        TeamMembership.person_id == person.id,
+                    )
+                    .all()
+                ]
+
+                team_task_ids = []
+
+                if team_ids:
+                    team_task_ids = [
+                        row.task_id
+                        for row in db.query(TaskAssignment)
+                        .filter(
+                            TaskAssignment.camp_id == camp.id,
+                            TaskAssignment.assigned_team_id.in_(team_ids),
+                        )
+                        .all()
+                    ]
+
+                task_ids_for_assignee = set(direct_task_ids + team_task_ids)
+
+        elif kind == "team":
+            team = (
+                db.query(Team)
+                .filter(Team.id == target_id, Team.camp_id == camp.id)
+                .first()
+            )
+
+            if team:
+                active_assignee_label = team.name
+                active_parts.append(f"Team: {active_assignee_label}")
+
+                task_ids_for_assignee = {
+                    row.task_id
+                    for row in db.query(TaskAssignment)
+                    .filter(
+                        TaskAssignment.camp_id == camp.id,
+                        TaskAssignment.assigned_team_id == team.id,
+                    )
+                    .all()
+                }
+
+        if task_ids_for_assignee:
+            tasks = [task for task in tasks if task.id in task_ids_for_assignee]
+        else:
+            tasks = []
 
     if status:
         tasks = [task for task in tasks if task.status == status]
-        active_label = f"Status: {status}"
+        active_parts.append(f"Status: {status}")
 
     if priority:
         tasks = [task for task in tasks if task.priority == priority]
-        active_label = f"Priority: {priority}"
+        active_parts.append(f"Priority: {priority}")
 
     if phase:
         tasks = [task for task in tasks if (task.phase or "") == phase]
-        active_label = f"Phase: {phase}"
+        active_parts.append(f"Phase: {phase}")
 
     statuses = sorted({task.status for task in all_tasks if task.status})
     priorities = ["Urgent", "High", "Normal", "Low"]
     phases = sorted({task.phase for task in all_tasks if task.phase})
+
+    active_label = " · ".join(active_parts) if active_parts else "All tasks"
 
     return templates.TemplateResponse(
         "tasks/list.html",
@@ -1331,10 +1432,14 @@ async def camp_task_list(
             "active_status": status,
             "active_priority": priority,
             "active_phase": phase,
+            "active_assignee": assignee,
+            "active_assignee_label": active_assignee_label,
             "active_label": active_label,
             "statuses": statuses,
             "priorities": priorities,
             "phases": phases,
+            "people": people,
+            "teams": teams,
             "summary": {
                 "total": len(all_tasks),
                 "unassigned": len(unassigned_tasks),

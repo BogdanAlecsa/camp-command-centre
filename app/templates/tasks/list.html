@@ -9,104 +9,151 @@
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
 </section>
 
-<div class="grid">
-  <section class="card">
-    <h3>Total Tasks</h3>
-    <p><strong>{{ summary.total }}</strong></p>
-    <p><a href="/camps/{{ camp.id }}/tasks">Show all</a></p>
+<div class="summary-grid">
+  <section class="card summary-card">
+    <h3>Total</h3>
+    <p class="summary-number">{{ summary.total }}</p>
+    <p><a href="/camps/{{ camp.id }}/tasks">All tasks</a></p>
   </section>
 
-  <section class="card">
+  <section class="card summary-card">
     <h3>Unassigned</h3>
-    <p><strong>{{ summary.unassigned }}</strong></p>
+    <p class="summary-number">{{ summary.unassigned }}</p>
     {% if summary.unassigned %}
       <p class="warning">Needs owner</p>
     {% else %}
       <p class="good">All assigned</p>
     {% endif %}
-    <p><a href="/camps/{{ camp.id }}/tasks?view=unassigned">Show unassigned</a></p>
   </section>
 
-  <section class="card">
+  <section class="card summary-card">
     <h3>Blocked</h3>
-    <p><strong>{{ summary.blocked }}</strong></p>
+    <p class="summary-number">{{ summary.blocked }}</p>
     {% if summary.blocked %}
       <p class="warning">Needs attention</p>
     {% else %}
-      <p class="good">None blocked</p>
+      <p class="good">None</p>
     {% endif %}
-    <p><a href="/camps/{{ camp.id }}/tasks?view=blocked">Show blocked</a></p>
   </section>
 
-  <section class="card">
+  <section class="card summary-card">
     <h3>High / Urgent</h3>
-    <p><strong>{{ summary.high_priority }}</strong></p>
-    <p><a href="/camps/{{ camp.id }}/tasks?view=high-priority">Show priority tasks</a></p>
+    <p class="summary-number">{{ summary.high_priority }}</p>
+    <p class="muted">Open priority tasks</p>
   </section>
 
-  <section class="card">
+  <section class="card summary-card">
     <h3>Overdue</h3>
-    <p><strong>{{ summary.overdue }}</strong></p>
+    <p class="summary-number">{{ summary.overdue }}</p>
     {% if summary.overdue %}
-      <p class="warning">Past due date</p>
+      <p class="warning">Past due</p>
     {% else %}
-      <p class="good">None overdue</p>
+      <p class="good">None</p>
     {% endif %}
-    <p><a href="/camps/{{ camp.id }}/tasks?view=overdue">Show overdue</a></p>
   </section>
 
-  <section class="card">
+  <section class="card summary-card">
     <h3>Due Soon</h3>
-    <p><strong>{{ summary.due_soon }}</strong></p>
-    <p class="muted">Due in the next 7 days</p>
-    <p><a href="/camps/{{ camp.id }}/tasks?view=due-soon">Show due soon</a></p>
+    <p class="summary-number">{{ summary.due_soon }}</p>
+    <p class="muted">Next 7 days</p>
   </section>
 </div>
 
 <section class="card">
   <h3>Filters</h3>
 
-  <p>
-    <strong>Quick views:</strong>
-    <a href="/camps/{{ camp.id }}/tasks">All</a> ·
-    <a href="/camps/{{ camp.id }}/tasks?view=unassigned">Unassigned</a> ·
-    <a href="/camps/{{ camp.id }}/tasks?view=blocked">Blocked</a> ·
-    <a href="/camps/{{ camp.id }}/tasks?view=high-priority">High / Urgent</a> ·
-    <a href="/camps/{{ camp.id }}/tasks?view=overdue">Overdue</a> ·
-    <a href="/camps/{{ camp.id }}/tasks?view=due-soon">Due Soon</a>
-  </p>
+  <div class="filter-panel">
+    <div class="filter-row">
+      <span class="filter-label">Quick views:</span>
 
-  {% if statuses %}
-    <p>
-      <strong>Status:</strong>
-      {% for item in statuses %}
-        <a href="/camps/{{ camp.id }}/tasks?status={{ item }}">{{ item }}</a>{% if not loop.last %} · {% endif %}
+      <a class="filter-pill {% if not active_view and not active_status and not active_priority and not active_phase and not active_assignee %}active{% endif %}"
+         href="/camps/{{ camp.id }}/tasks">All</a>
+
+      <a class="filter-pill {% if active_view == 'unassigned' %}active{% endif %}"
+         href="/camps/{{ camp.id }}/tasks?view=unassigned">Unassigned</a>
+
+      <a class="filter-pill {% if active_view == 'blocked' %}active{% endif %}"
+         href="/camps/{{ camp.id }}/tasks?view=blocked">Blocked</a>
+
+      <a class="filter-pill {% if active_view == 'high-priority' %}active{% endif %}"
+         href="/camps/{{ camp.id }}/tasks?view=high-priority">High / Urgent</a>
+
+      <a class="filter-pill {% if active_view == 'overdue' %}active{% endif %}"
+         href="/camps/{{ camp.id }}/tasks?view=overdue">Overdue</a>
+
+      <a class="filter-pill {% if active_view == 'due-soon' %}active{% endif %}"
+         href="/camps/{{ camp.id }}/tasks?view=due-soon">Due Soon</a>
+    </div>
+
+    {% if statuses %}
+      <div class="filter-row">
+        <span class="filter-label">Status:</span>
+        {% for item in statuses %}
+          <a class="filter-pill {% if active_status == item %}active{% endif %}"
+             href="/camps/{{ camp.id }}/tasks?status={{ item | urlencode }}">{{ item }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="filter-row">
+      <span class="filter-label">Priority:</span>
+      {% for item in priorities %}
+        <a class="filter-pill {% if active_priority == item %}active{% endif %}"
+           href="/camps/{{ camp.id }}/tasks?priority={{ item | urlencode }}">{{ item }}</a>
       {% endfor %}
-    </p>
-  {% endif %}
+    </div>
 
-  <p>
-    <strong>Priority:</strong>
-    {% for item in priorities %}
-      <a href="/camps/{{ camp.id }}/tasks?priority={{ item }}">{{ item }}</a>{% if not loop.last %} · {% endif %}
-    {% endfor %}
-  </p>
+    {% if phases %}
+      <div class="filter-row">
+        <span class="filter-label">Phase:</span>
+        {% for item in phases %}
+          <a class="filter-pill {% if active_phase == item %}active{% endif %}"
+             href="/camps/{{ camp.id }}/tasks?phase={{ item | urlencode }}">{{ item }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
 
-  {% if phases %}
-    <p>
-      <strong>Phase:</strong>
-      {% for item in phases %}
-        <a href="/camps/{{ camp.id }}/tasks?phase={{ item }}">{{ item }}</a>{% if not loop.last %} · {% endif %}
-      {% endfor %}
-    </p>
-  {% endif %}
+    <form class="filter-form" method="get" action="/camps/{{ camp.id }}/tasks">
+      <div>
+        <label for="assignee">Show tasks for person or team</label>
+        <select id="assignee" name="assignee">
+          <option value="">All people and teams</option>
+
+          {% if people %}
+            <optgroup label="People">
+              {% for person in people %}
+                {% set value = "person:" ~ person.id %}
+                <option value="{{ value }}" {% if active_assignee == value %}selected{% endif %}>
+                  {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
+                </option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+
+          {% if teams %}
+            <optgroup label="Teams">
+              {% for team in teams %}
+                {% set value = "team:" ~ team.id %}
+                <option value="{{ value }}" {% if active_assignee == value %}selected{% endif %}>
+                  {{ team.name }} — {{ team.team_type }}
+                </option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        </select>
+      </div>
+
+      <button type="submit">Apply</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Clear</a>
+    </form>
+  </div>
 </section>
 
 <section class="card">
   <h3>{{ active_label }}</h3>
 
   {% if tasks %}
-    <table>
+    <table class="task-table">
       <thead>
         <tr>
           <th>Task</th>
@@ -132,7 +179,9 @@
             <td>{{ task.phase or "" }}</td>
             <td>{{ task.due_date or "" }}</td>
             <td>{{ assignment_counts.get(task.id, 0) }}</td>
-            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open</a></td>
+            <td>
+              <a href="/camps/{{ camp.id }}/tasks/{{ task.id }}" target="_blank" rel="noopener noreferrer">Open</a>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
