@@ -4523,3 +4523,98 @@ async def print_activity_risk_assessment(
         },
     )
 
+
+
+@app.get("/camps/{camp_id}/risk-assessments/print-pack", response_class=HTMLResponse)
+async def print_risk_assessment_pack(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    camp_risk = ensure_camp_risk_assessment(db, camp)
+
+    camp_controls = (
+        db.query(CampRiskControl)
+        .filter(CampRiskControl.risk_assessment_id == camp_risk.id)
+        .order_by(CampRiskControl.sort_order, CampRiskControl.id)
+        .all()
+    )
+
+    activities = (
+        db.query(Activity)
+        .filter(Activity.camp_id == camp.id)
+        .order_by(Activity.name)
+        .all()
+    )
+
+    activity_sections = []
+    provider_sections = []
+
+    for activity in activities:
+        risk_assessment = ensure_activity_risk_assessment(db, camp, activity)
+
+        controls = (
+            db.query(ActivityRiskControl)
+            .filter(ActivityRiskControl.risk_assessment_id == risk_assessment.id)
+            .order_by(ActivityRiskControl.sort_order, ActivityRiskControl.id)
+            .all()
+        )
+
+        lead = None
+
+        if activity.activity_lead_id:
+            lead = (
+                db.query(Person)
+                .filter(Person.id == activity.activity_lead_id, Person.camp_id == camp.id)
+                .first()
+            )
+
+        section = {
+            "activity": activity,
+            "risk_assessment": risk_assessment,
+            "controls": controls,
+            "lead": lead,
+        }
+
+        activity_sections.append(section)
+
+        if risk_assessment.source_type == "External provider":
+            provider_sections.append(section)
+
+    status_counts = {
+        "Not Started": 0,
+        "Draft": 0,
+        "Ready for Review": 0,
+        "Submitted": 0,
+        "Approved": 0,
+        "Needs Update": 0,
+    }
+
+    status_counts[camp_risk.status] = status_counts.get(camp_risk.status, 0) + 1
+
+    for section in activity_sections:
+        status = section["risk_assessment"].status
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    return templates.TemplateResponse(
+        "risk_assessments/pack_print.html",
+        {
+            "request": request,
+            "camp": camp,
+            "camp_risk": camp_risk,
+            "camp_controls": camp_controls,
+            "activity_sections": activity_sections,
+            "provider_sections": provider_sections,
+            "status_counts": status_counts,
+        },
+    )
+
