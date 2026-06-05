@@ -35,7 +35,6 @@
         <tr>
           <th>Assigned To</th>
           <th>Type</th>
-          <th>Assignment Status</th>
           <th>Notes</th>
           <th>Actions</th>
         </tr>
@@ -45,7 +44,6 @@
           <tr>
             <td><strong>{{ row.assignee_label }}</strong></td>
             <td>{{ row.assignee_type }}</td>
-            <td>{{ row.assignment.status_override or "" }}</td>
             <td>{{ row.assignment.assignment_notes or "" }}</td>
             <td>
               <a class="button secondary small" href="/camps/{{ camp.id }}/tasks/{{ task.id }}/assignments/{{ row.assignment.id }}/edit">Edit</a>

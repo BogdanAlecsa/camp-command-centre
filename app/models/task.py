@@ -25,7 +25,7 @@ class Task(Base):
     phase: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     priority: Mapped[str] = mapped_column(String(50), nullable=False, default="Normal")
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default="Planned")
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="To Do")
 
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

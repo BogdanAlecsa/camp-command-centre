@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.database import Base, engine, get_db
+from app.database import Base, SessionLocal, engine, get_db
 from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment
 
 app = FastAPI(title="Camp Command Centre")
@@ -18,6 +18,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    normalize_existing_task_statuses()
 
 
 def get_latest_camp(db: Session):
@@ -31,24 +32,40 @@ def parse_optional_date(value: str):
     return date.fromisoformat(value)
 
 
-AUTO_ASSIGNMENT_SOURCE_STATUSES = {"Draft", "Planned", "Unassigned"}
+
+TASK_STATUSES = ["To Do", "In Progress", "Blocked", "Done"]
+
+OLD_TASK_STATUS_MAP = {
+    "Draft": "To Do",
+    "Planned": "To Do",
+    "Unassigned": "To Do",
+    "Assigned": "To Do",
+    "Accepted": "To Do",
+    "Ready for Check": "In Progress",
+    "Complete": "Done",
+    "Checked": "Done",
+    "Cancelled": "Done",
+    "Not Needed": "Done",
+}
+
+
+def normalize_existing_task_statuses():
+    with SessionLocal() as db:
+        changed = False
+
+        for task in db.query(Task).all():
+            if task.status in OLD_TASK_STATUS_MAP:
+                task.status = OLD_TASK_STATUS_MAP[task.status]
+                changed = True
+
+        if changed:
+            db.commit()
 
 
 def update_task_status_from_assignments(db: Session, task: Task):
-    assignment_count = (
-        db.query(TaskAssignment)
-        .filter(TaskAssignment.task_id == task.id, TaskAssignment.camp_id == task.camp_id)
-        .count()
-    )
-
-    if assignment_count == 0:
-        task.status = "Unassigned"
-        return
-
-    if task.status in AUTO_ASSIGNMENT_SOURCE_STATUSES:
-        task.status = "Assigned"
-
-
+    # Assignment ownership is derived from TaskAssignment rows.
+    # Do not change task.status when assignments are added or removed.
+    return
 def task_assignment_duplicate_exists(
     db: Session,
     task: Task,
@@ -1269,7 +1286,7 @@ async def camp_task_list(
         )
 
     today = date.today()
-    complete_statuses = {"Complete", "Checked", "Cancelled", "Not Needed"}
+    complete_statuses = {"Done"}
 
     unassigned_tasks = [
         task for task in all_tasks
@@ -1407,20 +1424,7 @@ async def camp_task_list(
         tasks = [task for task in tasks if (task.phase or "") == phase]
         active_parts.append(f"Phase: {phase}")
 
-    statuses = [
-        "Draft",
-        "Planned",
-        "Unassigned",
-        "Assigned",
-        "Accepted",
-        "In Progress",
-        "Ready for Check",
-        "Complete",
-        "Checked",
-        "Blocked",
-        "Cancelled",
-        "Not Needed",
-    ]
+    statuses = TASK_STATUSES
     priorities = ["Urgent", "High", "Normal", "Low"]
     phases = sorted({task.phase for task in all_tasks if task.phase})
 
@@ -1486,7 +1490,7 @@ async def create_task(
     category: str = Form(""),
     phase: str = Form(""),
     priority: str = Form("Normal"),
-    status: str = Form("Planned"),
+    status: str = Form("To Do"),
     due_date: str = Form(""),
     notes: str = Form(""),
     db: Session = Depends(get_db),
@@ -1582,7 +1586,7 @@ async def update_task(
     category: str = Form(""),
     phase: str = Form(""),
     priority: str = Form("Normal"),
-    status: str = Form("Planned"),
+    status: str = Form("To Do"),
     due_date: str = Form(""),
     notes: str = Form(""),
     db: Session = Depends(get_db),

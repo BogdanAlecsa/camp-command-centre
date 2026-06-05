@@ -39,21 +39,6 @@
       {% endif %}
     </select>
 
-    <label for="status_override">Assignment Status</label>
-    <select id="status_override" name="status_override">
-      <option value="" {% if not assignment.status_override %}selected{% endif %}>No separate assignment status</option>
-      {% for option in [
-        "Assigned",
-        "Accepted",
-        "In Progress",
-        "Ready for Check",
-        "Complete",
-        "Blocked"
-      ] %}
-        <option {% if assignment.status_override == option %}selected{% endif %}>{{ option }}</option>
-      {% endfor %}
-    </select>
-
     <label for="assignment_notes">Assignment Notes</label>
     <textarea id="assignment_notes" name="assignment_notes">{{ assignment.assignment_notes or '' }}</textarea>
 

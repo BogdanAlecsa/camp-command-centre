@@ -31,20 +31,7 @@
 
     <label for="status">Status</label>
     <select id="status" name="status">
-      {% for option in [
-        "Draft",
-        "Planned",
-        "Unassigned",
-        "Assigned",
-        "Accepted",
-        "In Progress",
-        "Ready for Check",
-        "Complete",
-        "Checked",
-        "Blocked",
-        "Cancelled",
-        "Not Needed"
-      ] %}
+      {% for option in ["To Do", "In Progress", "Blocked", "Done"] %}
         <option {% if task.status == option %}selected{% endif %}>{{ option }}</option>
       {% endfor %}
     </select>
