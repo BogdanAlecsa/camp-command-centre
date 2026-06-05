@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Edit Camp</h2>
+  <p class="muted">Update the core details for this camp.</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/edit">
+    <label for="name">Camp Name</label>
+    <input id="name" name="name" required value="{{ camp.name }}">
+
+    <label for="camp_type">Camp Type</label>
+    <select id="camp_type" name="camp_type">
+      {% for option in [
+        "Campsite Camp",
+        "Indoor Sleepover",
+        "Greenfield Camp",
+        "Lightweight Camp",
+        "Expedition",
+        "Family Camp",
+        "Group Camp",
+        "Other"
+      ] %}
+        <option {% if camp.camp_type == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="start_date">Start Date</label>
+    <input id="start_date" name="start_date" type="date" required value="{{ camp.start_date }}">
+
+    <label for="end_date">End Date</label>
+    <input id="end_date" name="end_date" type="date" required value="{{ camp.end_date }}">
+
+    <label for="venue_name">Venue</label>
+    <input id="venue_name" name="venue_name" value="{{ camp.venue_name or '' }}">
+
+    <label for="camp_leader">Camp Leader</label>
+    <input id="camp_leader" name="camp_leader" value="{{ camp.camp_leader or '' }}">
+
+    <label for="permit_holder">Permit Holder</label>
+    <input id="permit_holder" name="permit_holder" value="{{ camp.permit_holder or '' }}">
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {% for option in ["Draft", "Planning", "Ready", "Running", "Complete", "Archived", "Cancelled"] %}
+        <option {% if camp.status == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes">{{ camp.notes or '' }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Changes</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

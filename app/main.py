@@ -103,6 +103,85 @@ async def create_camp(
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/edit", response_class=HTMLResponse)
+async def edit_camp_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "camps/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/edit")
+async def update_camp(
+    request: Request,
+    camp_id: int,
+    name: str = Form(...),
+    camp_type: str = Form("Campsite Camp"),
+    start_date: date = Form(...),
+    end_date: date = Form(...),
+    venue_name: str = Form(""),
+    camp_leader: str = Form(""),
+    permit_holder: str = Form(""),
+    status: str = Form("Planning"),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {
+                "request": request,
+                "message": "Camp not found.",
+            },
+            status_code=404,
+        )
+
+    if end_date < start_date:
+        return templates.TemplateResponse(
+            "camps/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "error": "The end date cannot be before the start date.",
+            },
+            status_code=400,
+        )
+
+    camp.name = name.strip()
+    camp.camp_type = camp_type
+    camp.start_date = start_date
+    camp.end_date = end_date
+    camp.venue_name = venue_name.strip() or None
+    camp.camp_leader = camp_leader.strip() or None
+    camp.permit_holder = permit_holder.strip() or None
+    camp.status = status
+    camp.notes = notes.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
+
+
 @app.get("/camps/{camp_id}", response_class=HTMLResponse)
 async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.query(Camp).filter(Camp.id == camp_id).first()
