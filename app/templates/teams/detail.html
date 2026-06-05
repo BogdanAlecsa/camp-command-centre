@@ -21,9 +21,7 @@
         <tr>
           <th>Name</th>
           <th>Person Type</th>
-          <th>Contact</th>
           <th>Role in Team</th>
-          <th>Notes</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -33,23 +31,19 @@
             <td>
               <strong>{{ person.first_name }} {{ person.last_name }}</strong>
             </td>
+
             <td>{{ person.person_type }}</td>
+
             <td>
-              {% if person.email %}
-                <div>{{ person.email }}</div>
-              {% endif %}
-              {% if person.phone %}
-                <div>{{ person.phone }}</div>
-              {% endif %}
-              {% if not person.email and not person.phone %}
-                <span class="muted">No contact details</span>
+              <div>{{ membership.role_in_team or "" }}</div>
+              {% if membership.notes %}
+                <div class="muted">Notes saved</div>
               {% endif %}
             </td>
-            <td>{{ membership.role_in_team or "" }}</td>
-            <td>{{ membership.notes or "" }}</td>
+
             <td>
               <a class="button secondary small" href="/camps/{{ camp.id }}/people/{{ person.id }}">Contact Details</a>
-              <a class="button secondary small" href="/camps/{{ camp.id }}/teams/{{ team.id }}/members/{{ membership.id }}/edit">Edit Role</a>
+              <a class="button secondary small" href="/camps/{{ camp.id }}/teams/{{ team.id }}/members/{{ membership.id }}/edit">Edit</a>
               <form class="inline-form" method="post" action="/camps/{{ camp.id }}/teams/{{ team.id }}/members/{{ membership.id }}/remove">
                 <button class="small" type="submit">Remove</button>
               </form>
