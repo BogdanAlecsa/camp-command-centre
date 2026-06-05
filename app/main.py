@@ -455,6 +455,9 @@ async def create_camp(
     db.refresh(camp)
 
     ensure_default_task_phases(db, camp)
+    ensure_default_task_categories(db, camp)
+    apply_default_task_phase_descriptions(db, camp)
+    apply_default_task_category_descriptions(db, camp)
 
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
 
