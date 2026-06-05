@@ -1066,6 +1066,111 @@ async def create_task(
     return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/tasks/{task_id}/edit", response_class=HTMLResponse)
+async def edit_task_form(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "tasks/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "task": task,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/tasks/{task_id}/edit")
+async def update_task(
+    request: Request,
+    camp_id: int,
+    task_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    category: str = Form(""),
+    phase: str = Form(""),
+    priority: str = Form("Normal"),
+    status: str = Form("Planned"),
+    due_date: str = Form(""),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.camp_id == camp.id)
+        .first()
+    )
+
+    if task is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task not found."},
+            status_code=404,
+        )
+
+    if not title.strip():
+        return templates.TemplateResponse(
+            "tasks/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "task": task,
+                "error": "Task title is required.",
+            },
+            status_code=400,
+        )
+
+    task.title = title.strip()
+    task.description = description.strip() or None
+    task.category = category.strip() or None
+    task.phase = phase.strip() or None
+    task.priority = priority
+    task.status = status
+    task.due_date = parse_optional_date(due_date)
+    task.notes = notes.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/tasks/{task.id}", status_code=303)
+
+
 @app.get("/camps/{camp_id}/tasks/{task_id}", response_class=HTMLResponse)
 async def task_detail(
     request: Request,

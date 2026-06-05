@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Edit Task</h2>
+  <p class="muted">Update details for "{{ task.title }}".</p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/tasks/{{ task.id }}/edit">
+    <label for="title">Task Title</label>
+    <input id="title" name="title" required value="{{ task.title }}">
+
+    <label for="description">Description</label>
+    <textarea id="description" name="description">{{ task.description or '' }}</textarea>
+
+    <label for="category">Category</label>
+    <input id="category" name="category" value="{{ task.category or '' }}">
+
+    <label for="phase">Phase</label>
+    <input id="phase" name="phase" value="{{ task.phase or '' }}">
+
+    <label for="priority">Priority</label>
+    <select id="priority" name="priority">
+      {% for option in ["Low", "Normal", "High", "Urgent"] %}
+        <option {% if task.priority == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {% for option in [
+        "Draft",
+        "Planned",
+        "Assigned",
+        "Accepted",
+        "In Progress",
+        "Ready for Check",
+        "Complete",
+        "Checked",
+        "Blocked",
+        "Cancelled",
+        "Not Needed"
+      ] %}
+        <option {% if task.status == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="due_date">Due Date</label>
+    <input id="due_date" name="due_date" type="date" value="{{ task.due_date or '' }}">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes">{{ task.notes or '' }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Changes</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
