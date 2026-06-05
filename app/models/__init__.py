@@ -7,6 +7,7 @@ from app.models.task_assignment import TaskAssignment
 from app.models.task_phase import TaskPhase
 from app.models.task_category import TaskCategory
 from app.models.activity import Activity
+from app.models.programme_session import ProgrammeSession
 from app.models.activity_risk_control import ActivityRiskControl
 from app.models.activity_risk_assessment import ActivityRiskAssessment
 from app.models.camp_risk_control import CampRiskControl
@@ -22,6 +23,7 @@ __all__ = [
     "TaskPhase",
     "TaskCategory",
     "Activity",
+    "ProgrammeSession",
     "ActivityRiskControl",
     "ActivityRiskAssessment",
     "CampRiskControl",

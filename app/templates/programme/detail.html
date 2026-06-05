@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ session.title }}</h2>
+  <p class="muted">
+    {{ session.session_date }} · {{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/programme/{{ session.id }}/edit">Edit Session</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/programme">Back to Programme</a>
+
+  <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/delete" onsubmit="return confirm('Delete this programme session?');" style="display:inline;">
+    <button class="secondary" type="submit">Delete</button>
+  </form>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Session Details</h3>
+    <p><strong>Type:</strong> {{ session.session_type }}</p>
+    <p><strong>Location:</strong> {{ session.location or "Not set" }}</p>
+
+    <p>
+      <strong>Participant Group:</strong>
+      {% if session.participant_team_id %}
+        {{ team_names.get(session.participant_team_id, "Unknown team") }}
+      {% else %}
+        Whole camp
+      {% endif %}
+    </p>
+
+    <p>
+      <strong>Lead:</strong>
+      {% if session.lead_person_id %}
+        {{ person_names.get(session.lead_person_id, "Unknown person") }}
+      {% else %}
+        Not set
+      {% endif %}
+    </p>
+  </section>
+
+  <section class="card">
+    <h3>Linked Activity</h3>
+
+    {% if session.activity_id %}
+      <p><strong>{{ activity_names.get(session.activity_id, "Unknown activity") }}</strong></p>
+
+      {% set risk_status = risk_statuses.get(session.activity_id, "Not Started") %}
+      <p>
+        <strong>Risk Assessment:</strong>
+        <span class="badge risk-status risk-status-{{ risk_status | lower | replace(' ', '-') }}">{{ risk_status }}</span>
+      </p>
+
+      <p><a href="/camps/{{ camp.id }}/activities/{{ session.activity_id }}">Open activity</a></p>
+      <p><a href="/camps/{{ camp.id }}/activities/{{ session.activity_id }}/risk-assessment">Open / Create RA</a></p>
+    {% else %}
+      <p>No linked activity. This is a manual programme block.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <h3>Rotation</h3>
+
+  {% if session.rotation_group %}
+    <p><strong>Rotation:</strong> {{ session.rotation_group }}</p>
+    <p><strong>Slot:</strong> {{ session.rotation_slot_number or "Not set" }}</p>
+  {% else %}
+    <p>No rotation information recorded.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Notes</h3>
+  <p>{{ session.notes or "No notes yet." }}</p>
+</section>
+{% endblock %}

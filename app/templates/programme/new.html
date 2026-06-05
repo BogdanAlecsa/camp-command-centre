@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Add Programme Session — {{ camp.name }}</h2>
+  <p class="muted">
+    Choose an activity from the activity library, or leave activity blank and enter a manual title such as Breakfast, Travel or Lights Out.
+  </p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/programme">Back to Programme</a>
+</section>
+
+<section class="card">
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <p class="required-note"><span class="required-marker">*</span> Required fields</p>
+
+  <form method="post" action="/camps/{{ camp.id }}/programme/new">
+    <label for="session_date">Date <span class="required-marker">*</span></label>
+    <input id="session_date" name="session_date" type="date" min="{{ camp.start_date }}" max="{{ camp.end_date }}" required>
+
+    <label for="start_time">Start Time <span class="required-marker">*</span></label>
+    <input id="start_time" name="start_time" type="time" required>
+
+    <label for="end_time">End Time <span class="required-marker">*</span></label>
+    <input id="end_time" name="end_time" type="time" required>
+
+    <label for="session_type">Session Type <span class="required-marker">*</span></label>
+    <select id="session_type" name="session_type">
+      {% for item in session_types %}
+        <option value="{{ item }}">{{ item }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="activity_id">Linked Activity</label>
+    <span class="form-hint">Choose an activity, or leave this blank and type a manual session title below.</span>
+    <select id="activity_id" name="activity_id">
+      <option value="">No linked activity / manual session</option>
+      {% for activity in activities %}
+        <option value="{{ activity.id }}">{{ activity.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="title">Session Title <span class="required-marker">*</span></label>
+    <span class="form-hint">Required only when no linked activity is selected. If an activity is selected, this can be left blank and the activity name will be used.</span>
+    <input id="title" name="title" placeholder="Example: Breakfast / Travel / Free Time / Lights Out">
+
+    <label for="participant_team_id">Participant Group</label>
+    <select id="participant_team_id" name="participant_team_id">
+      <option value="">Whole camp / everyone</option>
+      {% for team in teams %}
+        <option value="{{ team.id }}">{{ team.name }} — {{ team.team_type }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="location">Location</label>
+    <input id="location" name="location">
+
+    <label for="lead_person_id">Lead Person</label>
+    <select id="lead_person_id" name="lead_person_id">
+      <option value="">Not set</option>
+      {% for person in people %}
+        <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="rotation_group">Rotation Group / Rotation Name</label>
+    <input id="rotation_group" name="rotation_group" placeholder="Example: Saturday morning bases">
+
+    <label for="rotation_slot_number">Rotation Slot Number</label>
+    <input id="rotation_slot_number" name="rotation_slot_number" type="number" min="1" step="1">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes"></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Add Programme Session</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

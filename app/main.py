@@ -8,9 +8,11 @@ from sqlalchemy import text as sqlalchemy_text
 from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
+from app.routes.programme import router as programme_router
+from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
 
 app = FastAPI(title="Camp Command Centre")
+app.include_router(programme_router)
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -458,11 +460,13 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     people_count = 0
     task_count = 0
     activity_count = 0
+    programme_session_count = 0
 
     if current_camp:
         people_count = db.query(Person).filter(Person.camp_id == current_camp.id).count()
         task_count = db.query(Task).filter(Task.camp_id == current_camp.id).count()
         activity_count = db.query(Activity).filter(Activity.camp_id == current_camp.id).count()
+        programme_session_count = db.query(ProgrammeSession).filter(ProgrammeSession.camp_id == current_camp.id).count()
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -472,7 +476,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "people_count": people_count,
             "task_count": task_count,
             "activity_count": activity_count,
-            "programme_sessions": 0,
+            "programme_sessions": programme_session_count,
             "readiness": 0,
         },
     )
@@ -644,6 +648,7 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
     team_count = db.query(Team).filter(Team.camp_id == camp.id).count()
     task_count = db.query(Task).filter(Task.camp_id == camp.id).count()
     activity_count = db.query(Activity).filter(Activity.camp_id == camp.id).count()
+    programme_session_count = db.query(ProgrammeSession).filter(ProgrammeSession.camp_id == camp.id).count()
 
     return templates.TemplateResponse(
         "camps/detail.html",
@@ -654,7 +659,7 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
             "team_count": team_count,
             "task_count": task_count,
             "activity_count": activity_count,
-            "programme_sessions": 0,
+            "programme_sessions": programme_session_count,
             "readiness": 0,
         },
     )

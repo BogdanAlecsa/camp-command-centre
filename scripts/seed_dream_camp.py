@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 import sys
 
@@ -19,6 +19,7 @@ from app.models import (
     TaskPhase,
     TaskCategory,
     Activity,
+    ProgrammeSession,
     CampRiskAssessment,
     CampRiskControl,
     ActivityRiskAssessment,
@@ -300,6 +301,7 @@ def delete_existing_sample(db):
     db.query(Person).filter(Person.camp_id == camp_id).delete()
     db.query(TaskPhase).filter(TaskPhase.camp_id == camp_id).delete()
     db.query(TaskCategory).filter(TaskCategory.camp_id == camp_id).delete()
+    db.query(ProgrammeSession).filter(ProgrammeSession.camp_id == camp_id).delete()
     db.query(Activity).filter(Activity.camp_id == camp_id).delete()
     db.query(Camp).filter(Camp.id == camp_id).delete()
 
@@ -443,6 +445,70 @@ def main():
             db.add(activity)
             db.flush()
             activities_by_name[name] = activity
+
+        db.commit()
+
+
+        # Programme sessions demonstrate whole-camp blocks, manual blocks,
+        # group-specific sessions and a simple rotation pattern.
+        programme_sessions = [
+            (date(2026, 8, 7), time(18, 0), time(19, 30), "Arrival, Register and Site Setup", "Setup / Pack Down", "Arrival, Register and Site Setup", None, "Main camping field", "Alice Morgan", "Whole-camp arrival and setup.", None, None),
+            (date(2026, 8, 7), time(19, 45), time(20, 45), "Opening Campfire", "Whole Camp", "Opening Campfire", None, "Campfire circle", "Ben Taylor", "Whole-camp opening activity.", None, None),
+            (date(2026, 8, 7), time(21, 30), time(22, 0), "Lights Out", "Leader / Admin", None, None, "Tent areas", "Alice Morgan", "Quiet time and overnight routine.", None, None),
+
+            (date(2026, 8, 8), time(8, 0), time(8, 45), "Breakfast", "Meal", None, None, "Kitchen shelter", "Cara Jenkins", "Whole-camp breakfast.", None, None),
+
+            (date(2026, 8, 8), time(9, 15), time(10, 15), "Fox Patrol — Pioneering Skills Bases", "Group Rotation", "Pioneering Skills Bases", "Fox Patrol", "Activity field", "Emma Shaw", "Rotation slot 1.", "Saturday morning bases", 1),
+            (date(2026, 8, 8), time(9, 15), time(10, 15), "Otter Patrol — Woodland Navigation Trail", "Group Rotation", "Woodland Navigation Trail", "Otter Patrol", "Woodland trail", "Felix Brown", "Rotation slot 1.", "Saturday morning bases", 1),
+            (date(2026, 8, 8), time(9, 15), time(10, 15), "Falcon Patrol — Backwoods Cooking Taster", "Group Rotation", "Backwoods Cooking Taster", "Falcon Patrol", "Cooking area", "Cara Jenkins", "Rotation slot 1.", "Saturday morning bases", 1),
+
+            (date(2026, 8, 8), time(10, 30), time(11, 30), "Fox Patrol — Woodland Navigation Trail", "Group Rotation", "Woodland Navigation Trail", "Fox Patrol", "Woodland trail", "Felix Brown", "Rotation slot 2.", "Saturday morning bases", 2),
+            (date(2026, 8, 8), time(10, 30), time(11, 30), "Otter Patrol — Backwoods Cooking Taster", "Group Rotation", "Backwoods Cooking Taster", "Otter Patrol", "Cooking area", "Cara Jenkins", "Rotation slot 2.", "Saturday morning bases", 2),
+            (date(2026, 8, 8), time(10, 30), time(11, 30), "Falcon Patrol — Pioneering Skills Bases", "Group Rotation", "Pioneering Skills Bases", "Falcon Patrol", "Activity field", "Emma Shaw", "Rotation slot 2.", "Saturday morning bases", 2),
+
+            (date(2026, 8, 8), time(12, 0), time(13, 0), "Lunch", "Meal", None, None, "Kitchen shelter", "Cara Jenkins", "Whole-camp lunch.", None, None),
+            (date(2026, 8, 8), time(14, 0), time(15, 30), "Wide Game: Lost Expedition", "Whole Camp", "Wide Game: Lost Expedition", None, "Main field and woodland boundary", "Ben Taylor", "Whole-camp afternoon activity.", None, None),
+            (date(2026, 8, 8), time(19, 0), time(19, 45), "Reflection Circle", "Whole Camp", "Reflection Circle", None, "Campfire circle", "Alice Morgan", "Evening reflection.", None, None),
+
+            (date(2026, 8, 9), time(8, 0), time(8, 45), "Breakfast", "Meal", None, None, "Kitchen shelter", "Cara Jenkins", "Whole-camp breakfast.", None, None),
+            (date(2026, 8, 9), time(9, 30), time(11, 0), "Pack Down and Site Check", "Setup / Pack Down", "Pack Down and Site Check", None, "Whole site", "Alice Morgan", "Whole-camp pack down.", None, None),
+        ]
+
+        for (
+            session_date,
+            start_time,
+            end_time,
+            title,
+            session_type,
+            activity_name,
+            team_name,
+            location,
+            lead_name,
+            notes,
+            rotation_group,
+            rotation_slot_number,
+        ) in programme_sessions:
+            activity = activities_by_name.get(activity_name) if activity_name else None
+            team = teams_by_name.get(team_name) if team_name else None
+            lead = people_by_name.get(lead_name) if lead_name else None
+
+            db.add(
+                ProgrammeSession(
+                    camp_id=camp.id,
+                    session_date=session_date,
+                    start_time=start_time,
+                    end_time=end_time,
+                    title=title,
+                    session_type=session_type,
+                    activity_id=activity.id if activity else None,
+                    participant_team_id=team.id if team else None,
+                    lead_person_id=lead.id if lead else None,
+                    location=location,
+                    notes=notes,
+                    rotation_group=rotation_group,
+                    rotation_slot_number=rotation_slot_number,
+                )
+            )
 
         db.commit()
 

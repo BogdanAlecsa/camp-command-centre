@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Programme — {{ camp.name }}</h2>
+  <p class="muted">
+    Build the camp timetable using activities, meals, travel, whole-camp blocks, group sessions and rotation slots.
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/programme/new">Add Programme Session</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities">Activities</a>
+</section>
+
+<section class="card">
+  <h3>Programme Sessions</h3>
+
+  {% if sessions %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Session</th>
+          <th>Type</th>
+          <th>Group</th>
+          <th>Location</th>
+          <th>Lead</th>
+          <th>RA Status</th>
+          <th>Rotation</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in sessions %}
+          <tr>
+            <td>{{ session.session_date }}</td>
+            <td>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</td>
+            <td>
+              <strong>{{ session.title }}</strong>
+              {% if session.activity_id %}
+                <div class="muted">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}</div>
+              {% endif %}
+            </td>
+            <td>{{ session.session_type }}</td>
+            <td>
+              {% if session.participant_team_id %}
+                {{ team_names.get(session.participant_team_id, "Unknown team") }}
+              {% else %}
+                Whole camp
+              {% endif %}
+            </td>
+            <td>{{ session.location or "Not set" }}</td>
+            <td>
+              {% if session.lead_person_id %}
+                {{ person_names.get(session.lead_person_id, "Unknown person") }}
+              {% else %}
+                Not set
+              {% endif %}
+            </td>
+            <td>
+              {% if session.activity_id %}
+                {% set risk_status = risk_statuses.get(session.activity_id, "Not Started") %}
+                <span class="badge risk-status risk-status-{{ risk_status | lower | replace(' ', '-') }}">{{ risk_status }}</span>
+              {% else %}
+                <span class="muted">N/A</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if session.rotation_group %}
+                {{ session.rotation_group }}
+                {% if session.rotation_slot_number %}
+                  <div class="muted">Slot {{ session.rotation_slot_number }}</div>
+                {% endif %}
+              {% else %}
+                <span class="muted">None</span>
+              {% endif %}
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/programme/{{ session.id }}">Open</a>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/programme/{{ session.id }}/edit">Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No programme sessions have been added yet.</p>
+    <p><a class="button" href="/camps/{{ camp.id }}/programme/new">Add first programme session</a></p>
+  {% endif %}
+</section>
+{% endblock %}
