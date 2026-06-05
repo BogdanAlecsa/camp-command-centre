@@ -9,146 +9,124 @@
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
 </section>
 
-<div class="summary-grid">
-  <section class="card summary-card">
-    <h3>Total</h3>
-    <p class="summary-number">{{ summary.total }}</p>
-    <p><a href="/camps/{{ camp.id }}/tasks">All tasks</a></p>
-  </section>
+<section class="card task-summary-strip">
+  <div>
+    <span class="summary-label">Total</span>
+    <strong>{{ summary.total }}</strong>
+  </div>
 
-  <section class="card summary-card">
-    <h3>Unassigned</h3>
-    <p class="summary-number">{{ summary.unassigned }}</p>
-    {% if summary.unassigned %}
-      <p class="warning">Needs owner</p>
-    {% else %}
-      <p class="good">All assigned</p>
-    {% endif %}
-  </section>
+  <div>
+    <span class="summary-label">Unassigned</span>
+    <strong class="{% if summary.unassigned %}warning{% else %}good{% endif %}">
+      {{ summary.unassigned }}
+    </strong>
+  </div>
 
-  <section class="card summary-card">
-    <h3>Blocked</h3>
-    <p class="summary-number">{{ summary.blocked }}</p>
-    {% if summary.blocked %}
-      <p class="warning">Needs attention</p>
-    {% else %}
-      <p class="good">None</p>
-    {% endif %}
-  </section>
+  <div>
+    <span class="summary-label">Blocked</span>
+    <strong class="{% if summary.blocked %}warning{% else %}good{% endif %}">
+      {{ summary.blocked }}
+    </strong>
+  </div>
 
-  <section class="card summary-card">
-    <h3>High / Urgent</h3>
-    <p class="summary-number">{{ summary.high_priority }}</p>
-    <p class="muted">Priority tasks</p>
-  </section>
+  <div>
+    <span class="summary-label">High / Urgent</span>
+    <strong>{{ summary.high_priority }}</strong>
+  </div>
 
-  <section class="card summary-card">
-    <h3>Overdue</h3>
-    <p class="summary-number">{{ summary.overdue }}</p>
-    {% if summary.overdue %}
-      <p class="warning">Past due</p>
-    {% else %}
-      <p class="good">None</p>
-    {% endif %}
-  </section>
+  <div>
+    <span class="summary-label">Overdue</span>
+    <strong class="{% if summary.overdue %}warning{% else %}good{% endif %}">
+      {{ summary.overdue }}
+    </strong>
+  </div>
 
-  <section class="card summary-card">
-    <h3>Due Soon</h3>
-    <p class="summary-number">{{ summary.due_soon }}</p>
-    <p class="muted">Next 7 days</p>
-  </section>
-</div>
+  <div>
+    <span class="summary-label">Due Soon</span>
+    <strong>{{ summary.due_soon }}</strong>
+  </div>
+</section>
 
-<section class="card filter-card">
+<section class="card task-filter-card">
   <h3>Filters</h3>
 
-  <div class="compact-filter-panel">
-    <div class="compact-filter-grid">
-      <div class="compact-filter-row">
-        <span class="filter-label">View</span>
-
-        <a class="filter-pill {% if not active_view and not active_status and not active_priority and not active_phase and not active_assignee %}active{% endif %}"
-           href="/camps/{{ camp.id }}/tasks">All</a>
-
-        <a class="filter-pill {% if active_view == 'unassigned' %}active{% endif %}"
-           href="/camps/{{ camp.id }}/tasks?view=unassigned">Unassigned</a>
-
-        <a class="filter-pill {% if active_view == 'blocked' %}active{% endif %}"
-           href="/camps/{{ camp.id }}/tasks?view=blocked">Blocked</a>
-
-        <a class="filter-pill {% if active_view == 'high-priority' %}active{% endif %}"
-           href="/camps/{{ camp.id }}/tasks?view=high-priority">High / Urgent</a>
-
-        <a class="filter-pill {% if active_view == 'overdue' %}active{% endif %}"
-           href="/camps/{{ camp.id }}/tasks?view=overdue">Overdue</a>
-
-        <a class="filter-pill {% if active_view == 'due-soon' %}active{% endif %}"
-           href="/camps/{{ camp.id }}/tasks?view=due-soon">Due Soon</a>
-      </div>
-
-      {% if statuses %}
-        <div class="compact-filter-row">
-          <span class="filter-label">Status</span>
-          {% for item in statuses %}
-            <a class="filter-pill {% if active_status == item %}active{% endif %}"
-               href="/camps/{{ camp.id }}/tasks?status={{ item | urlencode }}">{{ item }}</a>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      <div class="compact-filter-row">
-        <span class="filter-label">Priority</span>
-        {% for item in priorities %}
-          <a class="filter-pill {% if active_priority == item %}active{% endif %}"
-             href="/camps/{{ camp.id }}/tasks?priority={{ item | urlencode }}">{{ item }}</a>
-        {% endfor %}
-      </div>
-
-      {% if phases %}
-        <div class="compact-filter-row">
-          <span class="filter-label">Phase</span>
-          {% for item in phases %}
-            <a class="filter-pill {% if active_phase == item %}active{% endif %}"
-               href="/camps/{{ camp.id }}/tasks?phase={{ item | urlencode }}">{{ item }}</a>
-          {% endfor %}
-        </div>
-      {% endif %}
+  <form class="task-filter-form" method="get" action="/camps/{{ camp.id }}/tasks">
+    <div>
+      <label for="view">View</label>
+      <select id="view" name="view">
+        <option value="" {% if not active_view %}selected{% endif %}>All</option>
+        <option value="unassigned" {% if active_view == "unassigned" %}selected{% endif %}>Unassigned</option>
+        <option value="blocked" {% if active_view == "blocked" %}selected{% endif %}>Blocked</option>
+        <option value="high-priority" {% if active_view == "high-priority" %}selected{% endif %}>High / Urgent</option>
+        <option value="overdue" {% if active_view == "overdue" %}selected{% endif %}>Overdue</option>
+        <option value="due-soon" {% if active_view == "due-soon" %}selected{% endif %}>Due Soon</option>
+      </select>
     </div>
 
-    <form class="compact-assignee-form" method="get" action="/camps/{{ camp.id }}/tasks">
-      <div>
-        <label for="assignee">Person or team</label>
-        <select id="assignee" name="assignee">
-          <option value="">All people and teams</option>
+    <div>
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="">Any</option>
+        {% for item in statuses %}
+          <option value="{{ item }}" {% if active_status == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-          {% if people %}
-            <optgroup label="People">
-              {% for person in people %}
-                {% set value = "person:" ~ person.id %}
-                <option value="{{ value }}" {% if active_assignee == value %}selected{% endif %}>
-                  {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
-                </option>
-              {% endfor %}
-            </optgroup>
-          {% endif %}
+    <div>
+      <label for="priority">Priority</label>
+      <select id="priority" name="priority">
+        <option value="">Any</option>
+        {% for item in priorities %}
+          <option value="{{ item }}" {% if active_priority == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-          {% if teams %}
-            <optgroup label="Teams">
-              {% for team in teams %}
-                {% set value = "team:" ~ team.id %}
-                <option value="{{ value }}" {% if active_assignee == value %}selected{% endif %}>
-                  {{ team.name }} — {{ team.team_type }}
-                </option>
-              {% endfor %}
-            </optgroup>
-          {% endif %}
-        </select>
-      </div>
+    <div>
+      <label for="phase">Phase</label>
+      <select id="phase" name="phase">
+        <option value="">Any</option>
+        {% for item in phases %}
+          <option value="{{ item }}" {% if active_phase == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
+    <div>
+      <label for="assignee">Person / Team</label>
+      <select id="assignee" name="assignee">
+        <option value="">Any</option>
+
+        {% if people %}
+          <optgroup label="People">
+            {% for person in people %}
+              {% set value = "person:" ~ person.id %}
+              <option value="{{ value }}" {% if active_assignee == value %}selected{% endif %}>
+                {{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}
+              </option>
+            {% endfor %}
+          </optgroup>
+        {% endif %}
+
+        {% if teams %}
+          <optgroup label="Teams">
+            {% for team in teams %}
+              {% set value = "team:" ~ team.id %}
+              <option value="{{ value }}" {% if active_assignee == value %}selected{% endif %}>
+                {{ team.name }} — {{ team.team_type }}
+              </option>
+            {% endfor %}
+          </optgroup>
+        {% endif %}
+      </select>
+    </div>
+
+    <div class="task-filter-actions">
       <button type="submit">Apply</button>
       <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Clear</a>
-    </form>
-  </div>
+    </div>
+  </form>
 </section>
 
 <section class="card">
@@ -167,6 +145,7 @@
           <th></th>
         </tr>
       </thead>
+
       <tbody>
         {% for task in tasks %}
           <tr>
@@ -176,11 +155,13 @@
                 <div class="warning">Unassigned</div>
               {% endif %}
             </td>
+
             <td><span class="badge">{{ task.status }}</span></td>
             <td>{{ task.priority }}</td>
             <td>{{ task.phase or "" }}</td>
             <td>{{ task.due_date or "" }}</td>
             <td>{{ assignment_counts.get(task.id, 0) }}</td>
+
             <td>
               <a href="/camps/{{ camp.id }}/tasks/{{ task.id }}" target="_blank" rel="noopener noreferrer">Open</a>
             </td>

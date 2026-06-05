@@ -333,6 +333,91 @@
         min-width: 100%;
       }
     }
+  
+    /* Task Command Centre compact layout */
+    .task-summary-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: .5rem;
+      padding: .75rem 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .task-summary-strip div {
+      border-right: 1px solid var(--border);
+      padding-right: .75rem;
+    }
+
+    .task-summary-strip div:last-child {
+      border-right: none;
+    }
+
+    .task-summary-strip strong {
+      display: block;
+      font-size: 1.3rem;
+      margin-top: .15rem;
+    }
+
+    .summary-label {
+      display: block;
+      color: var(--muted);
+      font-size: .85rem;
+      font-weight: bold;
+    }
+
+    .task-filter-card h3 {
+      margin-bottom: .65rem;
+    }
+
+    .task-filter-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: .65rem;
+      align-items: end;
+    }
+
+    .task-filter-form label {
+      margin-top: 0;
+      margin-bottom: .2rem;
+      font-size: .88rem;
+    }
+
+    .task-filter-form select {
+      padding: .45rem .55rem;
+      font-size: .92rem;
+    }
+
+    .task-filter-actions {
+      display: flex;
+      gap: .4rem;
+      align-items: end;
+    }
+
+    .task-filter-actions button,
+    .task-filter-actions .button {
+      padding: .45rem .65rem;
+      font-size: .9rem;
+      margin-right: 0;
+      white-space: nowrap;
+    }
+
+    .task-table .warning {
+      font-size: .85rem;
+      margin-top: .15rem;
+    }
+
+    @media (max-width: 700px) {
+      .task-summary-strip div {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: .4rem;
+      }
+
+      .task-filter-actions {
+        align-items: stretch;
+      }
+    }
+
   </style>
 </head>
 

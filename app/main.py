@@ -1318,17 +1318,15 @@ async def camp_task_list(
         tasks = due_soon_tasks
         active_parts.append("Due soon")
 
-    active_assignee_label = ""
-
     if assignee:
+        task_ids_for_assignee = set()
+
         try:
             kind, raw_id = assignee.split(":", 1)
             target_id = int(raw_id)
         except ValueError:
             kind = ""
             target_id = 0
-
-        task_ids_for_assignee = set()
 
         if kind == "person":
             person = (
@@ -1338,8 +1336,7 @@ async def camp_task_list(
             )
 
             if person:
-                active_assignee_label = f"{person.first_name} {person.last_name}"
-                active_parts.append(f"Assignee: {active_assignee_label}")
+                active_parts.append(f"Person: {person.first_name} {person.last_name}")
 
                 direct_task_ids = [
                     row.task_id
@@ -1384,8 +1381,7 @@ async def camp_task_list(
             )
 
             if team:
-                active_assignee_label = team.name
-                active_parts.append(f"Team: {active_assignee_label}")
+                active_parts.append(f"Team: {team.name}")
 
                 task_ids_for_assignee = {
                     row.task_id
@@ -1397,10 +1393,7 @@ async def camp_task_list(
                     .all()
                 }
 
-        if task_ids_for_assignee:
-            tasks = [task for task in tasks if task.id in task_ids_for_assignee]
-        else:
-            tasks = []
+        tasks = [task for task in tasks if task.id in task_ids_for_assignee]
 
     if status:
         tasks = [task for task in tasks if task.status == status]
@@ -1426,14 +1419,12 @@ async def camp_task_list(
             "request": request,
             "camp": camp,
             "tasks": tasks,
-            "all_tasks": all_tasks,
             "assignment_counts": assignment_counts,
             "active_view": view,
             "active_status": status,
             "active_priority": priority,
             "active_phase": phase,
             "active_assignee": assignee,
-            "active_assignee_label": active_assignee_label,
             "active_label": active_label,
             "statuses": statuses,
             "priorities": priorities,
