@@ -77,11 +77,11 @@
     <table>
       <thead>
         <tr>
-          <th>Hazard</th>
-          <th>Who / How</th>
-          <th>Controls</th>
-          <th>Further Controls</th>
-          <th>Responsible</th>
+          <th>Hazards identified</th>
+          <th>Who is at risk?</th>
+          <th>Control measures already in place</th>
+          <th>Additional controls / actions required</th>
+          <th>Person responsible</th>
           <th></th>
         </tr>
       </thead>
@@ -111,22 +111,22 @@
   <h3>Add Risk Control Row</h3>
 
   <form method="post" action="/camps/{{ camp.id }}/risk-assessments/camp/controls/new">
-    <label for="hazard">Hazard</label>
+    <label for="hazard">Hazards identified</label>
     <input id="hazard" name="hazard" required>
 
-    <label for="who_might_be_harmed">Who might be harmed and how?</label>
+    <label for="who_might_be_harmed">Who is at risk?</label>
     <textarea id="who_might_be_harmed" name="who_might_be_harmed"></textarea>
 
-    <label for="controls_in_place">Controls already in place</label>
+    <label for="controls_in_place">Control measures already in place</label>
     <textarea id="controls_in_place" name="controls_in_place"></textarea>
 
-    <label for="further_controls_needed">Further controls needed</label>
+    <label for="further_controls_needed">Additional controls / actions required</label>
     <textarea id="further_controls_needed" name="further_controls_needed"></textarea>
 
-    <label for="responsible_person">Responsible person</label>
+    <label for="responsible_person">Person responsible</label>
     <input id="responsible_person" name="responsible_person">
 
-    <label for="review_notes">Review notes</label>
+    <label for="review_notes">Done / review notes</label>
     <textarea id="review_notes" name="review_notes"></textarea>
 
     <div class="form-actions">

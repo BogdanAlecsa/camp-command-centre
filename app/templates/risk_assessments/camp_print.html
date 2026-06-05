@@ -187,6 +187,7 @@
     th {
       background: #f2f4f7;
       font-weight: bold;
+      line-height: 1.15;
     }
 
     tr {
@@ -198,6 +199,7 @@
     th {
       break-inside: avoid;
       page-break-inside: avoid;
+      overflow-wrap: anywhere;
     }
 
     .footer-note {
@@ -320,18 +322,22 @@
   </section>
 
   <section class="table-section">
-    <h2>Risk Control Table</h2>
+    <h2>Risk Assessment Table</h2>
+    <p class="muted">
+      Use this table to record hazards, who is at risk, control measures already in place,
+      further actions required, responsibility and review/done status.
+    </p>
 
     {% if controls %}
       <table>
         <thead>
           <tr>
-            <th style="width: 18%;">Hazard</th>
-            <th style="width: 20%;">Who might be harmed and how?</th>
-            <th style="width: 25%;">Controls already in place</th>
-            <th style="width: 20%;">Further controls needed</th>
-            <th style="width: 10%;">Responsible</th>
-            <th style="width: 7%;">Review</th>
+            <th style="width: 16%;">Hazards identified</th>
+            <th style="width: 18%;">Who is at risk?</th>
+            <th style="width: 28%;">Control measures already in place</th>
+            <th style="width: 22%;">Additional controls / actions required</th>
+            <th style="width: 9%;">Person responsible</th>
+            <th style="width: 7%;">Done / review</th>
           </tr>
         </thead>
         <tbody>
