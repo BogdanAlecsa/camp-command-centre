@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Camp Risk Assessment — {{ camp.name }}</h2>
+  <p class="muted">
+    This records the camp-level risk assessment information. It does not replace the actual approval process.
+  </p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/risk-assessments">Back to Risk Assessments</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Overview</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/risk-assessments/camp">
+    <div class="top-save-bar">
+      <button type="submit">Save Changes Now</button>
+      <span class="muted">Use this after quick changes such as status, prepared by or review date.</span>
+    </div>
+
+    <label for="title">Title</label>
+    <input id="title" name="title" required value="{{ risk_assessment.title }}">
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {% for item in statuses %}
+        <option value="{{ item }}" {% if risk_assessment.status == item %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="prepared_by">Prepared By</label>
+    <input id="prepared_by" name="prepared_by" value="{{ risk_assessment.prepared_by or '' }}">
+
+    <label for="review_date">Review Date</label>
+    <input id="review_date" name="review_date" type="date" value="{{ risk_assessment.review_date or '' }}">
+
+    <label for="submitted_date">Submitted Date</label>
+    <input id="submitted_date" name="submitted_date" type="date" value="{{ risk_assessment.submitted_date or '' }}">
+
+    <label for="approved_date">Approved Date</label>
+    <input id="approved_date" name="approved_date" type="date" value="{{ risk_assessment.approved_date or '' }}">
+
+    <label for="approval_notes">Approval / Review Notes</label>
+    <textarea id="approval_notes" name="approval_notes">{{ risk_assessment.approval_notes or "" }}</textarea>
+
+    <label for="site_notes">Site / Venue Notes</label>
+    <textarea id="site_notes" name="site_notes">{{ risk_assessment.site_notes or "" }}</textarea>
+
+    <label for="overnight_notes">Overnight / Camping Notes</label>
+    <textarea id="overnight_notes" name="overnight_notes">{{ risk_assessment.overnight_notes or "" }}</textarea>
+
+    <label for="supervision_notes">Supervision Notes</label>
+    <textarea id="supervision_notes" name="supervision_notes">{{ risk_assessment.supervision_notes or "" }}</textarea>
+
+    <label for="emergency_notes">Emergency Arrangements</label>
+    <textarea id="emergency_notes" name="emergency_notes">{{ risk_assessment.emergency_notes or "" }}</textarea>
+
+    <label for="communication_notes">Communication Notes</label>
+    <textarea id="communication_notes" name="communication_notes">{{ risk_assessment.communication_notes or "" }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Camp Risk Assessment</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Risk Control Rows</h3>
+  <p class="muted">
+    Use these rows for the main hazards, who may be harmed, existing controls and further actions.
+  </p>
+
+  {% if controls %}
+    <table>
+      <thead>
+        <tr>
+          <th>Hazard</th>
+          <th>Who / How</th>
+          <th>Controls</th>
+          <th>Further Controls</th>
+          <th>Responsible</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for control in controls %}
+          <tr>
+            <td><strong>{{ control.hazard }}</strong></td>
+            <td>{{ control.who_might_be_harmed or "" }}</td>
+            <td>{{ control.controls_in_place or "" }}</td>
+            <td>{{ control.further_controls_needed or "" }}</td>
+            <td>{{ control.responsible_person or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/risk-assessments/camp/controls/{{ control.id }}/delete" onsubmit="return confirm('Delete this risk control row?');">
+                <button class="small secondary" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No risk control rows have been added yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Add Risk Control Row</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/risk-assessments/camp/controls/new">
+    <label for="hazard">Hazard</label>
+    <input id="hazard" name="hazard" required>
+
+    <label for="who_might_be_harmed">Who might be harmed and how?</label>
+    <textarea id="who_might_be_harmed" name="who_might_be_harmed"></textarea>
+
+    <label for="controls_in_place">Controls already in place</label>
+    <textarea id="controls_in_place" name="controls_in_place"></textarea>
+
+    <label for="further_controls_needed">Further controls needed</label>
+    <textarea id="further_controls_needed" name="further_controls_needed"></textarea>
+
+    <label for="responsible_person">Responsible person</label>
+    <input id="responsible_person" name="responsible_person">
+
+    <label for="review_notes">Review notes</label>
+    <textarea id="review_notes" name="review_notes"></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Add Risk Control Row</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

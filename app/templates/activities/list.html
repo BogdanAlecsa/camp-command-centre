@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Activities — {{ camp.name }}</h2>
+  <p class="muted">
+    Build the activity library for this camp. Programme sessions will use these activities in the next milestone.
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/activities/new">Add Activity</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Activity List</h3>
+
+  {% if activities %}
+    <table>
+      <thead>
+        <tr>
+          <th>Activity</th>
+          <th>Default Duration</th>
+          <th>Default Location</th>
+          <th>Lead</th>
+          <th>Risk Assessment</th>
+          <th>Wet Weather</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for activity in activities %}
+          <tr>
+            <td>
+              <strong>{{ activity.name }}</strong>
+              {% if activity.description %}
+                <div class="muted">{{ activity.description }}</div>
+              {% endif %}
+            </td>
+            <td class="nowrap">
+              {% if activity.default_duration_minutes %}
+                {{ activity.default_duration_minutes }} min
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>{{ activity.default_location or "—" }}</td>
+            <td>{{ lead_names.get(activity.activity_lead_id, "Not set") }}</td>
+            <td>
+              {% set risk_status = risk_statuses.get(activity.id, "Not Started") %}
+              <span class="badge risk-status risk-status-{{ risk_status | lower | replace(' ', '-') }}">{{ risk_status }}</span>
+            </td>
+            <td>
+              {% if activity.wet_weather_alternative %}
+                <span class="badge">Yes</span>
+              {% else %}
+                <span class="muted">No</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="table-actions">
+                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}">Open</a>
+                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open / Create RA</a>
+                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">Edit</a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No activities have been added yet.</p>
+    <p><a class="button" href="/camps/{{ camp.id }}/activities/new">Add the first activity</a></p>
+  {% endif %}
+</section>
+{% endblock %}

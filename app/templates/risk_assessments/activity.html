@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Activity Risk Assessment — {{ activity.name }}</h2>
+  <p class="muted">{{ camp.name }}</p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/risk-assessments">Back to Risk Assessments</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}">Back to Activity</a>
+</section>
+
+<section class="card">
+  <h3>Overview</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">
+    <div class="top-save-bar">
+      <button type="submit">Save Changes Now</button>
+      <span class="muted">Use this after quick changes such as source, status, leader or review date.</span>
+    </div>
+
+    <label for="source_type">Risk Assessment Source</label>
+    <select id="source_type" name="source_type">
+      {% for item in source_types %}
+        <option value="{{ item }}" {% if risk_assessment.source_type == item %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      {% for item in statuses %}
+        <option value="{{ item }}" {% if risk_assessment.status == item %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="leader_in_charge">Leader in Charge</label>
+    <input id="leader_in_charge" name="leader_in_charge" value="{{ risk_assessment.leader_in_charge or '' }}">
+
+    <label for="prepared_by">Prepared By</label>
+    <input id="prepared_by" name="prepared_by" value="{{ risk_assessment.prepared_by or '' }}">
+
+    <label for="review_date">Review Date</label>
+    <input id="review_date" name="review_date" type="date" value="{{ risk_assessment.review_date or '' }}">
+
+    <h3>External Provider Details</h3>
+    <p class="muted">
+      Use this section when an activity is run by a third party. The Group still needs to record the parts it remains responsible for.
+    </p>
+
+    <label for="provider_name">Provider Name</label>
+    <input id="provider_name" name="provider_name" value="{{ risk_assessment.provider_name or '' }}">
+
+    <label for="provider_contact">Provider Contact / Reference</label>
+    <input id="provider_contact" name="provider_contact" value="{{ risk_assessment.provider_contact or '' }}">
+
+    <label>
+      <input type="checkbox" name="provider_risk_assessment_received" {% if risk_assessment.provider_risk_assessment_received %}checked{% endif %}>
+      Provider risk assessment received
+    </label>
+
+    <label>
+      <input type="checkbox" name="provider_insurance_checked" {% if risk_assessment.provider_insurance_checked %}checked{% endif %}>
+      Insurance checked
+    </label>
+
+    <label>
+      <input type="checkbox" name="provider_qualification_checked" {% if risk_assessment.provider_qualification_checked %}checked{% endif %}>
+      Accreditation / qualification checked where relevant
+    </label>
+
+    <label for="provider_reference">Provider Evidence / Storage Reference</label>
+    <textarea id="provider_reference" name="provider_reference" placeholder="Example: Provider RA received by email, saved in Group Drive. Booking ref ABC123.">{{ risk_assessment.provider_reference or "" }}</textarea>
+
+    <label for="scout_led_parts_notes">Scout-led Parts Still Needing Our Assessment</label>
+    <textarea id="scout_led_parts_notes" name="scout_led_parts_notes">{{ risk_assessment.scout_led_parts_notes or "" }}</textarea>
+
+    <label for="overall_notes">Overall Notes</label>
+    <textarea id="overall_notes" name="overall_notes">{{ risk_assessment.overall_notes or "" }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Activity Risk Assessment</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Risk Control Rows</h3>
+
+  {% if controls %}
+    <table>
+      <thead>
+        <tr>
+          <th>Hazard</th>
+          <th>Who / How</th>
+          <th>Controls</th>
+          <th>Further Controls</th>
+          <th>Responsible</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for control in controls %}
+          <tr>
+            <td><strong>{{ control.hazard }}</strong></td>
+            <td>{{ control.who_might_be_harmed or "" }}</td>
+            <td>{{ control.controls_in_place or "" }}</td>
+            <td>{{ control.further_controls_needed or "" }}</td>
+            <td>{{ control.responsible_person or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment/controls/{{ control.id }}/delete" onsubmit="return confirm('Delete this risk control row?');">
+                <button class="small secondary" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No risk control rows have been added yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Add Risk Control Row</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment/controls/new">
+    <label for="hazard">Hazard</label>
+    <input id="hazard" name="hazard" required>
+
+    <label for="who_might_be_harmed">Who might be harmed and how?</label>
+    <textarea id="who_might_be_harmed" name="who_might_be_harmed"></textarea>
+
+    <label for="controls_in_place">Controls already in place</label>
+    <textarea id="controls_in_place" name="controls_in_place"></textarea>
+
+    <label for="further_controls_needed">Further controls needed</label>
+    <textarea id="further_controls_needed" name="further_controls_needed"></textarea>
+
+    <label for="responsible_person">Responsible person</label>
+    <input id="responsible_person" name="responsible_person">
+
+    <label for="review_notes">Review notes</label>
+    <textarea id="review_notes" name="review_notes"></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Add Risk Control Row</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -405,6 +405,66 @@
     }
 
 
+
+    /* Risk assessment status pills */
+    .risk-status {
+      font-weight: bold;
+      border: 1px solid transparent;
+    }
+
+    .risk-status-not-started {
+      background: #f2f4f7;
+      color: #344054;
+      border-color: #d0d5dd;
+    }
+
+    .risk-status-draft {
+      background: #fef0c7;
+      color: #93370d;
+      border-color: #fedf89;
+    }
+
+    .risk-status-ready-for-review {
+      background: #d1e9ff;
+      color: #175cd3;
+      border-color: #84caff;
+    }
+
+    .risk-status-submitted {
+      background: #e0e7ff;
+      color: #3730a3;
+      border-color: #c7d2fe;
+    }
+
+    .risk-status-approved {
+      background: #dcfae6;
+      color: #067647;
+      border-color: #abefc6;
+    }
+
+    .risk-status-needs-update {
+      background: #fee4e2;
+      color: #b42318;
+      border-color: #fecdca;
+    }
+
+    .top-save-bar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem;
+      margin: 0 0 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f9fafb;
+    }
+
+    .top-save-bar button {
+      margin-right: 0;
+    }
+
+
     @media (max-width: 700px) {
       .compact-assignee-form {
         grid-template-columns: 1fr;

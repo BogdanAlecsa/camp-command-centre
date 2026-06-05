@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Risk Assessments — {{ camp.name }}</h2>
+  <p class="muted">
+    Track the camp-level risk assessment and the risk assessment status for each activity.
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/risk-assessments/camp">Open Camp Risk Assessment</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Camp Risk Assessment</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Prepared By</th>
+        <th>Review Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>{{ camp_risk.title }}</strong></td>
+        <td><span class="badge risk-status risk-status-{{ camp_risk.status | lower | replace(' ', '-') }}">{{ camp_risk.status }}</span></td>
+        <td>{{ camp_risk.prepared_by or "Not set" }}</td>
+        <td>{{ camp_risk.review_date or "Not set" }}</td>
+        <td>
+          <a class="button small secondary" href="/camps/{{ camp.id }}/risk-assessments/camp">Open</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h3>Activity Risk Assessments</h3>
+
+  {% if activities %}
+    <table>
+      <thead>
+        <tr>
+          <th>Activity</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Provider Checks</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for activity in activities %}
+          {% set risk = activity_risks.get(activity.id) %}
+          <tr>
+            <td>
+              <strong>{{ activity.name }}</strong>
+              {% if activity.badge_notes %}
+                <div class="muted">Badge notes recorded</div>
+              {% endif %}
+            </td>
+            <td>{{ risk.source_type if risk else "Not Started" }}</td>
+            <td>{% set risk_status = risk.status if risk else "Not Started" %}
+              <span class="badge risk-status risk-status-{{ risk_status | lower | replace(' ', '-') }}">{{ risk_status }}</span></td>
+            <td>
+              {% if risk and risk.source_type == "External provider" %}
+                RA: {% if risk.provider_risk_assessment_received %}Yes{% else %}No{% endif %} ·
+                Insurance: {% if risk.provider_insurance_checked %}Yes{% else %}No{% endif %} ·
+                Qualifications: {% if risk.provider_qualification_checked %}Yes{% else %}No{% endif %}
+              {% else %}
+                <span class="muted">Not external</span>
+              {% endif %}
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No activities have been added yet.</p>
+    <p><a class="button" href="/camps/{{ camp.id }}/activities/new">Add Activity</a></p>
+  {% endif %}
+</section>
+{% endblock %}

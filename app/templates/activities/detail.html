@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ activity.name }}</h2>
+  <p class="muted">{{ camp.name }}</p>
+
+  <a class="button" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">Edit Activity</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open / Create RA</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/activities">Back to Activities</a>
+
+  <form class="inline-form" method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/delete" onsubmit="return confirm('Delete this activity?');">
+    <button class="secondary" type="submit">Delete</button>
+  </form>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h3>Activity Details</h3>
+    <p><strong>Default Duration:</strong>
+      {% if activity.default_duration_minutes %}
+        {{ activity.default_duration_minutes }} minutes
+      {% else %}
+        Not set
+      {% endif %}
+    </p>
+    <p><strong>Default Location:</strong> {{ activity.default_location or "Not set" }}</p>
+    <p><strong>Activity Lead:</strong>
+      {% if lead %}
+        {{ lead.first_name }} {{ lead.last_name }}
+      {% else %}
+        Not set
+      {% endif %}
+    </p>
+    <p><strong>Risk Assessment Status:</strong> <span class="badge risk-status risk-status-{{ risk_status | lower | replace(' ', '-') }}">{{ risk_status }}</span></p>
+  </section>
+
+  <section class="card">
+    <h3>Description</h3>
+    <p>{{ activity.description or "No description yet." }}</p>
+  </section>
+</div>
+
+<section class="card">
+  <h3>Supporting Adults</h3>
+  <p>{{ activity.supporting_adults_notes or "No supporting adult notes yet." }}</p>
+</section>
+
+<section class="card">
+  <h3>Equipment Notes</h3>
+  <p>{{ activity.equipment_notes or "No equipment notes yet." }}</p>
+</section>
+
+<section class="card">
+  <h3>Risk / Safety Notes</h3>
+  <p>{{ activity.risk_notes or "No risk or safety notes yet. This app note does not replace the formal risk assessment." }}</p>
+</section>
+
+<section class="card">
+  <h3>Wet Weather Alternative</h3>
+  <p>{{ activity.wet_weather_alternative or "No wet weather alternative yet." }}</p>
+</section>
+
+<section class="card">
+  <h3>Badge / Requirement Notes</h3>
+  <p>{{ activity.badge_notes or "No badge or requirement notes yet." }}</p>
+</section>
+{% endblock %}
