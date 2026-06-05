@@ -26,9 +26,29 @@
 <section class="card">
   <h3>Needs Owner</h3>
   <p class="muted">Tasks that have not yet been assigned to a person or team.</p>
-  <a class="button" href="/camps/{{ camp.id }}/task-sheets/unassigned" target="_blank" rel="noopener noreferrer">
-    Open Unassigned Task Sheet ({{ unassigned_count }})
-  </a>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Sheet</th>
+        <th>Tasks</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Unassigned Task Sheet</strong></td>
+        <td>
+          <span class="badge">{{ unassigned_count }}</span>
+        </td>
+        <td>
+          <a class="button small" href="/camps/{{ camp.id }}/task-sheets/unassigned" target="_blank" rel="noopener noreferrer">
+            Open sheet
+          </a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </section>
 
 <section class="card">
@@ -40,17 +60,22 @@
         <tr>
           <th>Person</th>
           <th>Type</th>
+          <th>Tasks</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for person in people %}
+          {% set task_count = person_task_counts.get(person.id, 0) %}
           <tr>
             <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
             <td>{{ person.person_type }}</td>
             <td>
-              <a href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
-                Open task sheet
+              <span class="badge">{{ task_count }}</span>
+            </td>
+            <td>
+              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
+                Open sheet
               </a>
             </td>
           </tr>
@@ -71,17 +96,22 @@
         <tr>
           <th>Team</th>
           <th>Type</th>
+          <th>Tasks</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for team in teams %}
+          {% set task_count = team_task_counts.get(team.id, 0) %}
           <tr>
             <td><strong>{{ team.name }}</strong></td>
             <td>{{ team.team_type }}</td>
             <td>
-              <a href="/camps/{{ camp.id }}/task-sheets/team/{{ team.id }}" target="_blank" rel="noopener noreferrer">
-                Open task sheet
+              <span class="badge">{{ task_count }}</span>
+            </td>
+            <td>
+              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/team/{{ team.id }}" target="_blank" rel="noopener noreferrer">
+                Open sheet
               </a>
             </td>
           </tr>
@@ -102,17 +132,22 @@
         <tr>
           <th>Phase</th>
           <th>Description</th>
+          <th>Tasks</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for phase in phases %}
+          {% set task_count = phase_task_counts.get(phase.id, 0) %}
           <tr>
             <td><strong>{{ phase.name }}</strong></td>
             <td>{{ phase.description or "" }}</td>
             <td>
-              <a href="/camps/{{ camp.id }}/task-sheets/phase/{{ phase.id }}" target="_blank" rel="noopener noreferrer">
-                Open task sheet
+              <span class="badge">{{ task_count }}</span>
+            </td>
+            <td>
+              <a class="button small {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/task-sheets/phase/{{ phase.id }}" target="_blank" rel="noopener noreferrer">
+                Open sheet
               </a>
             </td>
           </tr>

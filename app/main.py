@@ -2983,6 +2983,65 @@ async def task_sheet_hub(request: Request, camp_id: int, db: Session = Depends(g
 
     unassigned_count = sum(1 for task in all_tasks if assignment_counts.get(task.id, 0) == 0)
 
+    person_task_counts = {}
+
+    for person in people:
+        direct_task_ids = {
+            row.task_id
+            for row in db.query(TaskAssignment)
+            .filter(
+                TaskAssignment.camp_id == camp.id,
+                TaskAssignment.assigned_person_id == person.id,
+            )
+            .all()
+        }
+
+        team_ids = {
+            row.team_id
+            for row in db.query(TeamMembership)
+            .filter(
+                TeamMembership.camp_id == camp.id,
+                TeamMembership.person_id == person.id,
+            )
+            .all()
+        }
+
+        team_task_ids = set()
+
+        if team_ids:
+            team_task_ids = {
+                row.task_id
+                for row in db.query(TaskAssignment)
+                .filter(
+                    TaskAssignment.camp_id == camp.id,
+                    TaskAssignment.assigned_team_id.in_(team_ids),
+                )
+                .all()
+            }
+
+        person_task_counts[person.id] = len(direct_task_ids | team_task_ids)
+
+    team_task_counts = {}
+
+    for team in teams:
+        team_task_counts[team.id] = (
+            db.query(TaskAssignment)
+            .filter(
+                TaskAssignment.camp_id == camp.id,
+                TaskAssignment.assigned_team_id == team.id,
+            )
+            .count()
+        )
+
+    phase_task_counts = {}
+
+    for phase in phases:
+        phase_task_counts[phase.id] = (
+            db.query(Task)
+            .filter(Task.camp_id == camp.id, Task.phase == phase.name)
+            .count()
+        )
+
     return templates.TemplateResponse(
         "task_sheets/hub.html",
         {
@@ -2992,6 +3051,9 @@ async def task_sheet_hub(request: Request, camp_id: int, db: Session = Depends(g
             "teams": teams,
             "phases": phases,
             "unassigned_count": unassigned_count,
+            "person_task_counts": person_task_counts,
+            "team_task_counts": team_task_counts,
+            "phase_task_counts": phase_task_counts,
         },
     )
 
