@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Edit Team Member</h2>
+  <p class="muted">
+    Update this person's role and notes within {{ team.name }}.
+  </p>
+
+  <div class="grid">
+    <section class="card">
+      <h3>Person</h3>
+      <p><strong>{{ person.first_name }} {{ person.last_name }}</strong></p>
+      <p><span class="badge">{{ person.person_type }}</span></p>
+      <p><strong>Email:</strong> {{ person.email or "Not set" }}</p>
+      <p><strong>Phone:</strong> {{ person.phone or "Not set" }}</p>
+      <p>
+        <a href="/camps/{{ camp.id }}/people/{{ person.id }}">
+          Open full contact details
+        </a>
+      </p>
+    </section>
+
+    <section class="card">
+      <h3>Team</h3>
+      <p><strong>{{ team.name }}</strong></p>
+      <p><span class="badge">{{ team.team_type }}</span></p>
+    </section>
+  </div>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/teams/{{ team.id }}/members/{{ membership.id }}/edit">
+    <label for="role_in_team">Role in Team</label>
+    <input
+      id="role_in_team"
+      name="role_in_team"
+      value="{{ membership.role_in_team or '' }}"
+      placeholder="Team leader, member, driver, helper..."
+    >
+
+    <label for="notes">Team Membership Notes</label>
+    <textarea id="notes" name="notes">{{ membership.notes or '' }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit">Save Changes</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/teams/{{ team.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

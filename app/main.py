@@ -986,6 +986,138 @@ async def add_team_member(
     return RedirectResponse(url=f"/camps/{camp.id}/teams/{team.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/teams/{team_id}/members/{membership_id}/edit", response_class=HTMLResponse)
+async def edit_team_member_form(
+    request: Request,
+    camp_id: int,
+    team_id: int,
+    membership_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    team = (
+        db.query(Team)
+        .filter(Team.id == team_id, Team.camp_id == camp.id)
+        .first()
+    )
+
+    if team is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Team not found."},
+            status_code=404,
+        )
+
+    membership = (
+        db.query(TeamMembership)
+        .filter(
+            TeamMembership.id == membership_id,
+            TeamMembership.team_id == team.id,
+            TeamMembership.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if membership is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Team membership not found."},
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == membership.person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Person not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "teams/edit_member.html",
+        {
+            "request": request,
+            "camp": camp,
+            "team": team,
+            "membership": membership,
+            "person": person,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/teams/{team_id}/members/{membership_id}/edit")
+async def update_team_member(
+    request: Request,
+    camp_id: int,
+    team_id: int,
+    membership_id: int,
+    role_in_team: str = Form(""),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    team = (
+        db.query(Team)
+        .filter(Team.id == team_id, Team.camp_id == camp.id)
+        .first()
+    )
+
+    if team is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Team not found."},
+            status_code=404,
+        )
+
+    membership = (
+        db.query(TeamMembership)
+        .filter(
+            TeamMembership.id == membership_id,
+            TeamMembership.team_id == team.id,
+            TeamMembership.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if membership is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Team membership not found."},
+            status_code=404,
+        )
+
+    membership.role_in_team = role_in_team.strip() or None
+    membership.notes = notes.strip() or None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/teams/{team.id}", status_code=303)
+
+
 @app.post("/camps/{camp_id}/teams/{team_id}/members/{membership_id}/remove")
 async def remove_team_member(
     camp_id: int,
