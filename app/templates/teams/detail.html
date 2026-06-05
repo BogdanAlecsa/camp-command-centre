@@ -47,4 +47,37 @@
     <p><a href="/camps/{{ camp.id }}/teams/{{ team.id }}/members/new">Add the first member</a></p>
   {% endif %}
 </section>
+
+<section class="card">
+  <h3>Tasks Assigned to This Team</h3>
+
+  {% if task_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Status</th>
+          <th>Priority</th>
+          <th>Due</th>
+          <th>Assignment Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment, task in task_rows %}
+          <tr>
+            <td><strong>{{ task.title }}</strong></td>
+            <td><span class="badge">{{ task.status }}</span></td>
+            <td>{{ task.priority }}</td>
+            <td>{{ task.due_date or "" }}</td>
+            <td>{{ assignment.assignment_notes or "" }}</td>
+            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open Task</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No tasks are assigned to this team yet.</p>
+  {% endif %}
+</section>
 {% endblock %}

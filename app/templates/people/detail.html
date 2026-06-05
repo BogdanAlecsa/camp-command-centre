@@ -25,6 +25,101 @@
 </div>
 
 <section class="card">
+  <h3>Teams</h3>
+
+  {% if team_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>Type</th>
+          <th>Role</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for membership, team in team_rows %}
+          <tr>
+            <td><strong>{{ team.name }}</strong></td>
+            <td>{{ team.team_type }}</td>
+            <td>{{ membership.role_in_team or "" }}</td>
+            <td><a href="/camps/{{ camp.id }}/teams/{{ team.id }}">Open Team</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>This person is not currently in any teams.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Tasks Assigned Directly</h3>
+
+  {% if direct_task_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Status</th>
+          <th>Priority</th>
+          <th>Due</th>
+          <th>Assignment Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment, task in direct_task_rows %}
+          <tr>
+            <td><strong>{{ task.title }}</strong></td>
+            <td><span class="badge">{{ task.status }}</span></td>
+            <td>{{ task.priority }}</td>
+            <td>{{ task.due_date or "" }}</td>
+            <td>{{ assignment.assignment_notes or "" }}</td>
+            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open Task</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No tasks are assigned directly to this person.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Tasks Through Teams</h3>
+
+  {% if team_task_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Team</th>
+          <th>Status</th>
+          <th>Priority</th>
+          <th>Due</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for assignment, task, team in team_task_rows %}
+          <tr>
+            <td><strong>{{ task.title }}</strong></td>
+            <td>{{ team.name }}</td>
+            <td><span class="badge">{{ task.status }}</span></td>
+            <td>{{ task.priority }}</td>
+            <td>{{ task.due_date or "" }}</td>
+            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open Task</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No tasks are assigned through this person's teams.</p>
+  {% endif %}
+</section>
+
+<section class="card">
   <h3>Notes</h3>
   <p>{{ person.role_notes or "No notes yet." }}</p>
 </section>

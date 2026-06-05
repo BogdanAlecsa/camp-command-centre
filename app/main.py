@@ -512,16 +512,56 @@ async def person_detail(
             status_code=404,
         )
 
+    team_rows = (
+        db.query(TeamMembership, Team)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .filter(
+            TeamMembership.person_id == person.id,
+            TeamMembership.camp_id == camp.id,
+        )
+        .order_by(Team.team_type, Team.name)
+        .all()
+    )
+
+    team_ids = [team.id for membership, team in team_rows]
+
+    direct_task_rows = (
+        db.query(TaskAssignment, Task)
+        .join(Task, Task.id == TaskAssignment.task_id)
+        .filter(
+            TaskAssignment.assigned_person_id == person.id,
+            TaskAssignment.camp_id == camp.id,
+        )
+        .order_by(Task.status, Task.priority, Task.due_date, Task.title)
+        .all()
+    )
+
+    team_task_rows = []
+
+    if team_ids:
+        team_task_rows = (
+            db.query(TaskAssignment, Task, Team)
+            .join(Task, Task.id == TaskAssignment.task_id)
+            .join(Team, Team.id == TaskAssignment.assigned_team_id)
+            .filter(
+                TaskAssignment.assigned_team_id.in_(team_ids),
+                TaskAssignment.camp_id == camp.id,
+            )
+            .order_by(Team.name, Task.status, Task.priority, Task.due_date, Task.title)
+            .all()
+        )
+
     return templates.TemplateResponse(
         "people/detail.html",
         {
             "request": request,
             "camp": camp,
             "person": person,
+            "team_rows": team_rows,
+            "direct_task_rows": direct_task_rows,
+            "team_task_rows": team_task_rows,
         },
     )
-
-
 
 
 @app.get("/teams", response_class=HTMLResponse)
@@ -794,6 +834,17 @@ async def team_detail(
         .all()
     )
 
+    task_rows = (
+        db.query(TaskAssignment, Task)
+        .join(Task, Task.id == TaskAssignment.task_id)
+        .filter(
+            TaskAssignment.assigned_team_id == team.id,
+            TaskAssignment.camp_id == camp.id,
+        )
+        .order_by(Task.status, Task.priority, Task.due_date, Task.title)
+        .all()
+    )
+
     return templates.TemplateResponse(
         "teams/detail.html",
         {
@@ -801,6 +852,7 @@ async def team_detail(
             "camp": camp,
             "team": team,
             "memberships": memberships,
+            "task_rows": task_rows,
         },
     )
 
