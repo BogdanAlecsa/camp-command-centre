@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Printable Task Work Packs — {{ camp.name }}</h2>
+  <p class="muted">
+    Generate print-friendly task sheets for people, teams, phases and unassigned work.
+  </p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Back to Tasks</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  <h3>Print guidance</h3>
+  <p>
+    These sheets are designed for A4 printing. Each task is shown as a compact card so it is less likely
+    to split awkwardly across pages.
+  </p>
+  <p class="muted">
+    Use your browser print preview before printing. For best results, use portrait orientation,
+    default margins or minimum margins, and background graphics enabled if your browser asks.
+  </p>
+</section>
+
+<section class="card">
+  <h3>Needs Owner</h3>
+  <p class="muted">Tasks that have not yet been assigned to a person or team.</p>
+  <a class="button" href="/camps/{{ camp.id }}/task-sheets/unassigned" target="_blank" rel="noopener noreferrer">
+    Open Unassigned Task Sheet ({{ unassigned_count }})
+  </a>
+</section>
+
+<section class="card">
+  <h3>People Task Sheets</h3>
+
+  {% if people %}
+    <table>
+      <thead>
+        <tr>
+          <th>Person</th>
+          <th>Type</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in people %}
+          <tr>
+            <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
+            <td>{{ person.person_type }}</td>
+            <td>
+              <a href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
+                Open task sheet
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No people have been added yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Team Task Sheets</h3>
+
+  {% if teams %}
+    <table>
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>Type</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for team in teams %}
+          <tr>
+            <td><strong>{{ team.name }}</strong></td>
+            <td>{{ team.team_type }}</td>
+            <td>
+              <a href="/camps/{{ camp.id }}/task-sheets/team/{{ team.id }}" target="_blank" rel="noopener noreferrer">
+                Open task sheet
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No teams have been added yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Phase Task Sheets</h3>
+
+  {% if phases %}
+    <table>
+      <thead>
+        <tr>
+          <th>Phase</th>
+          <th>Description</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for phase in phases %}
+          <tr>
+            <td><strong>{{ phase.name }}</strong></td>
+            <td>{{ phase.description or "" }}</td>
+            <td>
+              <a href="/camps/{{ camp.id }}/task-sheets/phase/{{ phase.id }}" target="_blank" rel="noopener noreferrer">
+                Open task sheet
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No phases have been added yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

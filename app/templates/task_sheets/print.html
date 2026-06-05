@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }} — {{ camp.name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --text: #111827;
+      --muted: #4b5563;
+      --border: #cbd5e1;
+      --soft: #f8fafc;
+      --header: #e5e7eb;
+      --warn: #92400e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      color: var(--text);
+      background: #eef2f7;
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.35;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 12mm;
+      background: white;
+    }
+
+    .screen-toolbar {
+      display: flex;
+      gap: .5rem;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 210mm;
+      margin: 1rem auto;
+      padding: .75rem;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .screen-toolbar a,
+    .screen-toolbar button {
+      display: inline-block;
+      padding: .55rem .75rem;
+      border-radius: 6px;
+      border: none;
+      background: #1f7a8c;
+      color: white;
+      text-decoration: none;
+      font-size: .95rem;
+      cursor: pointer;
+    }
+
+    .screen-toolbar a.secondary {
+      background: #475467;
+    }
+
+    .pack-header {
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 5mm;
+      margin-bottom: 5mm;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    .pack-title {
+      margin: 0;
+      font-size: 20pt;
+      line-height: 1.1;
+    }
+
+    .pack-subtitle {
+      margin: 2mm 0 0;
+      color: var(--muted);
+      font-size: 10.5pt;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2mm;
+      margin-top: 4mm;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .meta-box {
+      border: 1px solid var(--border);
+      background: var(--soft);
+      padding: 2mm;
+      min-height: 13mm;
+    }
+
+    .meta-label {
+      display: block;
+      color: var(--muted);
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 1mm;
+    }
+
+    .meta-value {
+      font-weight: bold;
+      font-size: 10pt;
+    }
+
+    .section-title {
+      font-size: 13pt;
+      margin: 6mm 0 2.5mm;
+      padding-bottom: 1mm;
+      border-bottom: 1px solid var(--border);
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    .member-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5mm 4mm;
+      margin: 2mm 0 5mm;
+      padding: 0;
+      list-style: none;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .member-list li {
+      border-bottom: 1px dotted var(--border);
+      padding-bottom: 1mm;
+    }
+
+    .task-card {
+      border: 1px solid var(--border);
+      border-left: 4px solid #64748b;
+      margin: 0 0 3mm;
+      padding: 3mm;
+      background: white;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .task-card.blocked {
+      border-left-color: var(--warn);
+    }
+
+    .task-card.done {
+      opacity: .82;
+    }
+
+    .task-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4mm;
+      align-items: start;
+      margin-bottom: 2mm;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .task-title {
+      margin: 0;
+      font-size: 12.5pt;
+      line-height: 1.2;
+    }
+
+    .status-pill {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .8mm 2mm;
+      white-space: nowrap;
+      font-size: 8.5pt;
+      background: var(--soft);
+    }
+
+    .task-fields {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5mm;
+      margin: 2mm 0;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .field {
+      border: 1px solid var(--border);
+      background: var(--soft);
+      padding: 1.5mm;
+      min-height: 10mm;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 7.5pt;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      margin-bottom: .5mm;
+    }
+
+    .field-value {
+      font-size: 9.5pt;
+      font-weight: bold;
+    }
+
+    .task-notes {
+      margin-top: 2mm;
+      white-space: pre-wrap;
+      font-size: 9.5pt;
+    }
+
+    .task-description {
+      margin-top: 2mm;
+      font-size: 9.5pt;
+    }
+
+    .completion-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4mm;
+      margin-top: 3mm;
+      padding-top: 2mm;
+      border-top: 1px dotted var(--border);
+      font-size: 9pt;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .signature-line {
+      border-bottom: 1px solid var(--text);
+      min-height: 7mm;
+      margin-top: 1mm;
+    }
+
+    .empty-message {
+      border: 1px dashed var(--border);
+      padding: 6mm;
+      color: var(--muted);
+      background: var(--soft);
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    @media print {
+      html,
+      body {
+        background: white;
+        font-size: 10pt;
+      }
+
+      .screen-toolbar {
+        display: none !important;
+      }
+
+      .page {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+      }
+
+      .pack-header {
+        margin-top: 0;
+      }
+
+      .task-card,
+      .meta-grid,
+      .member-list,
+      .task-header,
+      .task-fields,
+      .completion-row {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .section-title,
+      .pack-header {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .task-card {
+        margin-bottom: 2.5mm;
+      }
+
+      .task-description,
+      .task-notes {
+        orphans: 3;
+        widows: 3;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen-toolbar">
+    <div>
+      <a class="secondary" href="{{ back_url }}">Back</a>
+      <a class="secondary" href="/camps/{{ camp.id }}/tasks">Tasks</a>
+    </div>
+    <button type="button" onclick="window.print()">Print / Save PDF</button>
+  </div>
+
+  <main class="page">
+    <header class="pack-header">
+      <h1 class="pack-title">{{ title }}</h1>
+      <p class="pack-subtitle">{{ subtitle }}</p>
+
+      <div class="meta-grid">
+        <div class="meta-box">
+          <span class="meta-label">Camp</span>
+          <span class="meta-value">{{ camp.name }}</span>
+        </div>
+
+        <div class="meta-box">
+          <span class="meta-label">Dates</span>
+          <span class="meta-value">{{ camp.start_date }} to {{ camp.end_date }}</span>
+        </div>
+
+        <div class="meta-box">
+          <span class="meta-label">Venue</span>
+          <span class="meta-value">{{ camp.venue_name or "Not set" }}</span>
+        </div>
+      </div>
+    </header>
+
+    {% if members %}
+      <section>
+        <h2 class="section-title">Team Members</h2>
+        <ul class="member-list">
+          {% for membership, person in members %}
+            <li>
+              <strong>{{ person.first_name }} {{ person.last_name }}</strong>
+              <span class="muted">— {{ person.person_type }}</span>
+              {% if membership.role_in_team %}
+                <br>{{ membership.role_in_team }}
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section>
+      <h2 class="section-title">Tasks</h2>
+
+      {% if rows %}
+        {% for row in rows %}
+          {% set task = row.task %}
+          <article class="task-card {% if task.status == 'Blocked' %}blocked{% endif %} {% if task.status == 'Done' %}done{% endif %}">
+            <div class="task-header">
+              <h3 class="task-title">{{ task.title }}</h3>
+              <span class="status-pill">{{ task.status }}</span>
+            </div>
+
+            <div class="task-fields">
+              <div class="field">
+                <span class="field-label">Priority</span>
+                <span class="field-value">{{ task.priority or "Normal" }}</span>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Due</span>
+                <span class="field-value">{{ task.due_date or "No date" }}</span>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Phase</span>
+                <span class="field-value">{{ task.phase or "No phase" }}</span>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Category</span>
+                <span class="field-value">{{ task.category or "No category" }}</span>
+              </div>
+            </div>
+
+            <div class="task-fields">
+              <div class="field">
+                <span class="field-label">Source</span>
+                <span class="field-value">{{ row.source or "Task" }}</span>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Assignments</span>
+                <span class="field-value">{{ row.assignment_count }}</span>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Completed?</span>
+                <span class="field-value">□ Yes</span>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Checked?</span>
+                <span class="field-value">□ Yes</span>
+              </div>
+            </div>
+
+            {% if task.description %}
+              <div class="task-description">
+                <strong>Description:</strong>
+                {{ task.description }}
+              </div>
+            {% endif %}
+
+            {% if task.notes %}
+              <div class="task-notes">
+                <strong>Notes:</strong>
+                {{ task.notes }}
+              </div>
+            {% endif %}
+
+            <div class="completion-row">
+              <div>
+                Completed by:
+                <div class="signature-line"></div>
+              </div>
+              <div>
+                Notes / follow-up:
+                <div class="signature-line"></div>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p class="empty-message">{{ empty_message }}</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
