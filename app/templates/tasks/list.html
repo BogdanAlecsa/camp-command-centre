@@ -8,6 +8,7 @@
   <a class="button" href="/camps/{{ camp.id }}/tasks/new">Add Task</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/task-phases">Manage Phases</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/task-categories">Manage Categories</a>
 </section>
 
 <section class="card task-summary-strip">
@@ -94,6 +95,16 @@
     </div>
 
     <div>
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        <option value="">Any category</option>
+        {% for item in categories %}
+          <option value="{{ item }}" {% if active_category == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
       <label for="assignee">Person / Team</label>
       <select id="assignee" name="assignee">
         <option value="">Any person or team</option>
@@ -140,6 +151,7 @@
           <th>Status</th>
           <th>Priority</th>
           <th>Phase</th>
+          <th>Category</th>
           <th>Due</th>
           <th>Assignments</th>
           <th></th>
@@ -159,6 +171,7 @@
             <td><span class="badge">{{ task.status }}</span></td>
             <td>{{ task.priority }}</td>
             <td>{{ task.phase or "" }}</td>
+            <td>{{ task.category or "" }}</td>
             <td>{{ task.due_date or "" }}</td>
             <td>{{ assignment_counts.get(task.id, 0) }}</td>
 

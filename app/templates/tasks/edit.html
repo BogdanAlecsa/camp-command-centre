@@ -17,7 +17,13 @@
     <textarea id="description" name="description">{{ task.description or '' }}</textarea>
 
     <label for="category">Category</label>
-    <input id="category" name="category" value="{{ task.category or '' }}">
+    <select id="category" name="category">
+      <option value="" {% if not task.category %}selected{% endif %}>No category yet</option>
+      {% for category in categories %}
+        <option value="{{ category.name }}" {% if task.category == category.name %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <p class="muted"><a href="/camps/{{ camp.id }}/task-categories" target="_blank" rel="noopener noreferrer">Manage categories</a></p>
 
     <label for="phase">Phase</label>
     <select id="phase" name="phase">

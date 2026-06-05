@@ -13,6 +13,9 @@
     <label for="name">Phase Name</label>
     <input id="name" name="name" required value="{{ phase.name }}">
 
+    <label for="description">Description / Definition</label>
+    <textarea id="description" name="description">{{ phase.description or '' }}</textarea>
+
     <label for="sort_order">Sort Order</label>
     <input id="sort_order" name="sort_order" type="number" value="{{ phase.sort_order }}">
 

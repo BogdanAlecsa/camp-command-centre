@@ -17,7 +17,13 @@
     <textarea id="description" name="description"></textarea>
 
     <label for="category">Category</label>
-    <input id="category" name="category" placeholder="Transport, Programme, Food, Equipment, Documents...">
+    <select id="category" name="category">
+      <option value="">No category yet</option>
+      {% for category in categories %}
+        <option value="{{ category.name }}">{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <p class="muted"><a href="/camps/{{ camp.id }}/task-categories" target="_blank" rel="noopener noreferrer">Manage categories</a></p>
 
     <label for="phase">Phase</label>
     <select id="phase" name="phase">

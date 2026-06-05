@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class TaskPhase(Base):
-    __tablename__ = "task_phase"
+class TaskCategory(Base):
+    __tablename__ = "task_category"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 

@@ -4,10 +4,11 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text as sqlalchemy_text
 from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase
+from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory
 
 app = FastAPI(title="Camp Command Centre")
 
@@ -18,11 +19,15 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    ensure_optional_schema_columns()
     normalize_existing_task_statuses()
 
     with SessionLocal() as db:
         for camp in db.query(Camp).all():
             ensure_default_task_phases(db, camp)
+            ensure_default_task_categories(db, camp)
+            apply_default_task_phase_descriptions(db, camp)
+            apply_default_task_category_descriptions(db, camp)
 
 
 def get_latest_camp(db: Session):
@@ -36,6 +41,145 @@ def parse_optional_date(value: str):
     return date.fromisoformat(value)
 
 
+
+def ensure_optional_schema_columns():
+    """Small SQLite-safe schema patcher for MVP development.
+
+    SQLAlchemy create_all() creates missing tables, but it does not add new
+    columns to tables that already exist. Keep this before any ORM query that
+    touches TaskPhase or TaskCategory.
+    """
+    with engine.begin() as connection:
+        for table_name in ["task_phase", "task_category"]:
+            columns = [
+                row[1]
+                for row in connection.execute(
+                    sqlalchemy_text(f"PRAGMA table_info({table_name})")
+                )
+            ]
+
+            if not columns:
+                continue
+
+            if "description" not in columns:
+                connection.execute(
+                    sqlalchemy_text(f"ALTER TABLE {table_name} ADD COLUMN description TEXT")
+                )
+
+
+
+DEFAULT_TASK_CATEGORIES = [
+    "Venue",
+    "People & Forms",
+    "Programme",
+    "Equipment",
+    "Food",
+    "Transport",
+    "Documents",
+    "Safety / Risk",
+    "Communications",
+    "Finance",
+    "General",
+]
+
+
+DEFAULT_TASK_CATEGORY_DESCRIPTIONS = {
+    "Venue": "Site, building, booking, access and venue-related arrangements.",
+    "People & Forms": "Young people, adults, permissions, medical information, dietary information and missing responses.",
+    "Programme": "Activities, sessions, rotations, activity leads and programme preparation.",
+    "Equipment": "Group kit, activity equipment, personal kit checks, storage, loading and returns.",
+    "Food": "Menus, food shopping, cooking arrangements, dietary handling and kitchen jobs.",
+    "Transport": "Vehicles, drivers, passengers, trailers, loading plans and travel arrangements.",
+    "Documents": "Parent packs, leader packs, printed lists, permission records and generated outputs.",
+    "Safety / Risk": "Risk assessments, first aid, emergency arrangements and safety checks.",
+    "Communications": "Messages to parents, leaders, helpers and other camp contacts.",
+    "Finance": "Payments, costs, receipts, reimbursements and budget tracking.",
+    "General": "Useful fallback for tasks that do not clearly belong elsewhere.",
+}
+
+
+def ensure_default_task_categories(db: Session, camp: Camp):
+    existing_count = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.camp_id == camp.id)
+        .count()
+    )
+
+    if existing_count == 0:
+        for index, name in enumerate(DEFAULT_TASK_CATEGORIES, start=1):
+            db.add(
+                TaskCategory(
+                    camp_id=camp.id,
+                    name=name,
+                    description=DEFAULT_TASK_CATEGORY_DESCRIPTIONS.get(name),
+                    sort_order=index,
+                    is_active=True,
+                )
+            )
+
+        db.commit()
+
+    existing_names = {
+        row.name
+        for row in db.query(TaskCategory)
+        .filter(TaskCategory.camp_id == camp.id)
+        .all()
+    }
+
+    task_category_names = {
+        task.category.strip()
+        for task in db.query(Task)
+        .filter(Task.camp_id == camp.id, Task.category.isnot(None))
+        .all()
+        if task.category and task.category.strip()
+    }
+
+    next_order = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.camp_id == camp.id)
+        .count()
+        + 1
+    )
+
+    changed = False
+
+    for name in sorted(task_category_names):
+        if name not in existing_names:
+            db.add(
+                TaskCategory(
+                    camp_id=camp.id,
+                    name=name,
+                    description=DEFAULT_TASK_CATEGORY_DESCRIPTIONS.get(name),
+                    sort_order=next_order,
+                    is_active=True,
+                )
+            )
+            next_order += 1
+            changed = True
+
+    if changed:
+        db.commit()
+
+
+def get_active_task_categories(db: Session, camp: Camp):
+    return (
+        db.query(TaskCategory)
+        .filter(TaskCategory.camp_id == camp.id, TaskCategory.is_active == True)
+        .order_by(TaskCategory.sort_order, TaskCategory.name)
+        .all()
+    )
+
+
+def apply_default_task_category_descriptions(db: Session, camp: Camp):
+    changed = False
+
+    for category in db.query(TaskCategory).filter(TaskCategory.camp_id == camp.id).all():
+        if not category.description and category.name in DEFAULT_TASK_CATEGORY_DESCRIPTIONS:
+            category.description = DEFAULT_TASK_CATEGORY_DESCRIPTIONS[category.name]
+            changed = True
+
+    if changed:
+        db.commit()
 
 
 DEFAULT_TASK_PHASES = [
@@ -79,6 +223,55 @@ def get_active_task_phases(db: Session, camp: Camp):
         .order_by(TaskPhase.sort_order, TaskPhase.name)
         .all()
     )
+
+
+DEFAULT_TASK_PHASE_DESCRIPTIONS = {
+    "Early Planning": "Early decisions and bookings, usually before detailed camp preparation begins.",
+    "Preparation": "General preparation work before the final week, including organising people, tasks and materials.",
+    "Final Week": "Tasks that must be completed in the final week before camp.",
+    "Camp Setup": "Work needed to set up the site or venue before activities begin.",
+    "During Camp": "Tasks that happen while camp is running.",
+    "Pack Down": "Jobs for packing away, clearing the site and checking nothing is left behind.",
+    "After Camp": "Follow-up work after camp, such as returns, reviews, payments and lessons learned.",
+}
+
+DEFAULT_TASK_CATEGORY_DESCRIPTIONS = {
+    "Venue": "Site, building, booking, access and venue-related arrangements.",
+    "People & Forms": "Young people, adults, permissions, medical information, dietary information and missing responses.",
+    "Programme": "Activities, sessions, rotations, activity leads and programme preparation.",
+    "Equipment": "Group kit, activity equipment, personal kit checks, storage, loading and returns.",
+    "Food": "Menus, food shopping, cooking arrangements, dietary handling and kitchen jobs.",
+    "Transport": "Vehicles, drivers, passengers, trailers, loading plans and travel arrangements.",
+    "Documents": "Parent packs, leader packs, printed lists, permission records and generated outputs.",
+    "Safety / Risk": "Risk assessments, first aid, emergency arrangements and safety checks.",
+    "Communications": "Messages to parents, leaders, helpers and other camp contacts.",
+    "Finance": "Payments, costs, receipts, reimbursements and budget tracking.",
+    "General": "Useful fallback for tasks that do not clearly belong elsewhere.",
+}
+
+
+def apply_default_task_phase_descriptions(db: Session, camp: Camp):
+    changed = False
+
+    for phase in db.query(TaskPhase).filter(TaskPhase.camp_id == camp.id).all():
+        if not phase.description and phase.name in DEFAULT_TASK_PHASE_DESCRIPTIONS:
+            phase.description = DEFAULT_TASK_PHASE_DESCRIPTIONS[phase.name]
+            changed = True
+
+    if changed:
+        db.commit()
+
+
+def apply_default_task_category_descriptions(db: Session, camp: Camp):
+    changed = False
+
+    for category in db.query(TaskCategory).filter(TaskCategory.camp_id == camp.id).all():
+        if not category.description and category.name in DEFAULT_TASK_CATEGORY_DESCRIPTIONS:
+            category.description = DEFAULT_TASK_CATEGORY_DESCRIPTIONS[category.name]
+            changed = True
+
+    if changed:
+        db.commit()
 
 TASK_STATUSES = ["To Do", "In Progress", "Blocked", "Done"]
 
@@ -1287,6 +1480,242 @@ async def tasks_page(request: Request, db: Session = Depends(get_db)):
 
 
 
+
+
+@app.get("/camps/{camp_id}/task-categories", response_class=HTMLResponse)
+async def task_category_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    ensure_default_task_categories(db, camp)
+    apply_default_task_category_descriptions(db, camp)
+
+    categories = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.camp_id == camp.id)
+        .order_by(TaskCategory.sort_order, TaskCategory.name)
+        .all()
+    )
+
+    category_task_counts = {}
+    for category in categories:
+        category_task_counts[category.id] = (
+            db.query(Task)
+            .filter(Task.camp_id == camp.id, Task.category == category.name)
+            .count()
+        )
+
+    return templates.TemplateResponse(
+        "task_categories/list.html",
+        {
+            "request": request,
+            "camp": camp,
+            "categories": categories,
+            "category_task_counts": category_task_counts,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/task-categories/new")
+async def create_task_category(
+    request: Request,
+    camp_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    sort_order: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    clean_name = name.strip()
+
+    if clean_name:
+        existing = (
+            db.query(TaskCategory)
+            .filter(TaskCategory.camp_id == camp.id, TaskCategory.name == clean_name)
+            .first()
+        )
+
+        if existing is None:
+            db.add(
+                TaskCategory(
+                    camp_id=camp.id,
+                    name=clean_name,
+                    description=description.strip() or None,
+                    sort_order=sort_order,
+                    is_active=True,
+                )
+            )
+            db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/task-categories", status_code=303)
+
+
+@app.get("/camps/{camp_id}/task-categories/{category_id}/edit", response_class=HTMLResponse)
+async def edit_task_category_form(
+    request: Request,
+    camp_id: int,
+    category_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    category = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.id == category_id, TaskCategory.camp_id == camp.id)
+        .first()
+    )
+
+    if category is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task category not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "task_categories/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "category": category,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/task-categories/{category_id}/edit")
+async def update_task_category(
+    request: Request,
+    camp_id: int,
+    category_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    sort_order: int = Form(0),
+    is_active: str = Form("off"),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    category = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.id == category_id, TaskCategory.camp_id == camp.id)
+        .first()
+    )
+
+    if category is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task category not found."},
+            status_code=404,
+        )
+
+    clean_name = name.strip()
+
+    if not clean_name:
+        return templates.TemplateResponse(
+            "task_categories/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "category": category,
+                "error": "Category name is required.",
+            },
+            status_code=400,
+        )
+
+    old_name = category.name
+
+    category.name = clean_name
+    category.description = description.strip() or None
+    category.sort_order = sort_order
+    category.is_active = is_active == "on"
+
+    if old_name != clean_name:
+        tasks_using_category = (
+            db.query(Task)
+            .filter(Task.camp_id == camp.id, Task.category == old_name)
+            .all()
+        )
+
+        for task in tasks_using_category:
+            task.category = clean_name
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/task-categories", status_code=303)
+
+
+@app.post("/camps/{camp_id}/task-categories/{category_id}/delete")
+async def delete_task_category(
+    request: Request,
+    camp_id: int,
+    category_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    category = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.id == category_id, TaskCategory.camp_id == camp.id)
+        .first()
+    )
+
+    if category is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Task category not found."},
+            status_code=404,
+        )
+
+    task_count = (
+        db.query(Task)
+        .filter(Task.camp_id == camp.id, Task.category == category.name)
+        .count()
+    )
+
+    if task_count == 0:
+        db.delete(category)
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/task-categories", status_code=303)
+
+
 @app.get("/camps/{camp_id}/task-phases", response_class=HTMLResponse)
 async def task_phase_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)
@@ -1299,6 +1728,7 @@ async def task_phase_list(request: Request, camp_id: int, db: Session = Depends(
         )
 
     ensure_default_task_phases(db, camp)
+    apply_default_task_phase_descriptions(db, camp)
 
     phases = (
         db.query(TaskPhase)
@@ -1332,6 +1762,7 @@ async def create_task_phase(
     request: Request,
     camp_id: int,
     name: str = Form(...),
+    description: str = Form(""),
     sort_order: int = Form(0),
     db: Session = Depends(get_db),
 ):
@@ -1347,23 +1778,7 @@ async def create_task_phase(
     clean_name = name.strip()
 
     if not clean_name:
-        phases = (
-            db.query(TaskPhase)
-            .filter(TaskPhase.camp_id == camp.id)
-            .order_by(TaskPhase.sort_order, TaskPhase.name)
-            .all()
-        )
-
-        return templates.TemplateResponse(
-            "task_phases/list.html",
-            {
-                "request": request,
-                "camp": camp,
-                "phases": phases,
-                "error": "Phase name is required.",
-            },
-            status_code=400,
-        )
+        return RedirectResponse(url=f"/camps/{camp.id}/task-phases", status_code=303)
 
     existing = (
         db.query(TaskPhase)
@@ -1376,6 +1791,7 @@ async def create_task_phase(
             TaskPhase(
                 camp_id=camp.id,
                 name=clean_name,
+                description=description.strip() or None,
                 sort_order=sort_order,
                 is_active=True,
             )
@@ -1383,8 +1799,6 @@ async def create_task_phase(
         db.commit()
 
     return RedirectResponse(url=f"/camps/{camp.id}/task-phases", status_code=303)
-
-
 
 
 @app.post("/camps/{camp_id}/task-phases/{phase_id}/delete")
@@ -1502,6 +1916,7 @@ async def update_task_phase(
     camp_id: int,
     phase_id: int,
     name: str = Form(...),
+    description: str = Form(""),
     sort_order: int = Form(0),
     is_active: str = Form("off"),
     db: Session = Depends(get_db),
@@ -1545,6 +1960,7 @@ async def update_task_phase(
     old_name = phase.name
 
     phase.name = clean_name
+    phase.description = description.strip() or None
     phase.sort_order = sort_order
     phase.is_active = is_active == "on"
 
@@ -1571,6 +1987,7 @@ async def camp_task_list(
     status: str = "",
     priority: str = "",
     phase: str = "",
+    category: str = "",
     assignee: str = "",
     db: Session = Depends(get_db),
 ):
@@ -1751,9 +2168,14 @@ async def camp_task_list(
         tasks = [task for task in tasks if (task.phase or "") == phase]
         active_parts.append(f"Phase: {phase}")
 
+    if category:
+        tasks = [task for task in tasks if (task.category or "") == category]
+        active_parts.append(f"Category: {category}")
+
     statuses = TASK_STATUSES
     priorities = ["Urgent", "High", "Normal", "Low"]
     phases = [phase.name for phase in get_active_task_phases(db, camp)]
+    categories = [category.name for category in get_active_task_categories(db, camp)]
 
     active_label = " · ".join(active_parts) if active_parts else "All tasks"
 
@@ -1768,11 +2190,13 @@ async def camp_task_list(
             "active_status": status,
             "active_priority": priority,
             "active_phase": phase,
+            "active_category": category,
             "active_assignee": assignee,
             "active_label": active_label,
             "statuses": statuses,
             "priorities": priorities,
             "phases": phases,
+            "categories": categories,
             "people": people,
             "teams": teams,
             "summary": {
@@ -1799,6 +2223,7 @@ async def new_task_form(request: Request, camp_id: int, db: Session = Depends(ge
         )
 
     phases = get_active_task_phases(db, camp)
+    categories = get_active_task_categories(db, camp)
 
     return templates.TemplateResponse(
         "tasks/new.html",
@@ -1806,6 +2231,7 @@ async def new_task_form(request: Request, camp_id: int, db: Session = Depends(ge
             "request": request,
             "camp": camp,
             "phases": phases,
+            "categories": categories,
             "error": None,
         },
     )
@@ -1836,6 +2262,7 @@ async def create_task(
 
     if not title.strip():
         phases = get_active_task_phases(db, camp)
+        categories = get_active_task_categories(db, camp)
 
         return templates.TemplateResponse(
             "tasks/new.html",
@@ -1899,6 +2326,7 @@ async def edit_task_form(
         )
 
     phases = get_active_task_phases(db, camp)
+    categories = get_active_task_categories(db, camp)
 
     return templates.TemplateResponse(
         "tasks/edit.html",
@@ -1907,6 +2335,7 @@ async def edit_task_form(
             "camp": camp,
             "task": task,
             "phases": phases,
+            "categories": categories,
             "error": None,
         },
     )
@@ -1951,6 +2380,7 @@ async def update_task(
 
     if not title.strip():
         phases = get_active_task_phases(db, camp)
+        categories = get_active_task_categories(db, camp)
 
         return templates.TemplateResponse(
             "tasks/edit.html",

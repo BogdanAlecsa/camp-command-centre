@@ -10,18 +10,6 @@
 </section>
 
 <section class="card">
-  <h3>How to use phases</h3>
-  <p>
-    Use phases for meaningful stages of work, such as Early Planning, Final Week,
-    Camp Setup, During Camp and After Camp.
-  </p>
-  <p class="muted">
-    Split a phase only when it helps with responsibility, deadlines or printable work packs.
-    For example, Camp Setup Day 1 and Camp Setup Day 2 are useful if the work really happens separately.
-  </p>
-</section>
-
-<section class="card">
   <h3>Add Phase</h3>
 
   {% if error %}
@@ -31,6 +19,9 @@
   <form method="post" action="/camps/{{ camp.id }}/task-phases/new">
     <label for="name">Phase Name</label>
     <input id="name" name="name" required placeholder="Camp Setup Day 1, Final Weekend, Equipment Prep...">
+
+    <label for="description">Description / Definition</label>
+    <textarea id="description" name="description" placeholder="What should this phase be used for?"></textarea>
 
     <label for="sort_order">Sort Order</label>
     <input id="sort_order" name="sort_order" type="number" value="0">
@@ -49,9 +40,9 @@
       <thead>
         <tr>
           <th>Order</th>
-          <th>Name</th>
+          <th>Phase</th>
           <th>Active</th>
-          <th>Tasks Using Phase</th>
+          <th>Tasks</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -60,7 +51,12 @@
           {% set task_count = phase_task_counts.get(phase.id, 0) %}
           <tr>
             <td>{{ phase.sort_order }}</td>
-            <td><strong>{{ phase.name }}</strong></td>
+            <td>
+              <strong>{{ phase.name }}</strong>
+              {% if phase.description %}
+                <div class="muted">{{ phase.description }}</div>
+              {% endif %}
+            </td>
             <td>{% if phase.is_active %}Yes{% else %}No{% endif %}</td>
             <td>{{ task_count }}</td>
             <td>
