@@ -43,7 +43,7 @@
             <td><strong>{{ team.name }}</strong></td>
             <td>{{ team.team_type }}</td>
             <td>{{ membership.role_in_team or "" }}</td>
-            <td><a href="/camps/{{ camp.id }}/teams/{{ team.id }}">Open Team</a></td>
+            <td><a href="/camps/{{ camp.id }}/teams/{{ team.id }}" target="_blank" rel="noopener noreferrer">Open Team</a></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -76,7 +76,7 @@
             <td>{{ task.priority }}</td>
             <td>{{ task.due_date or "" }}</td>
             <td>{{ assignment.assignment_notes or "" }}</td>
-            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open Task</a></td>
+            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}" target="_blank" rel="noopener noreferrer">Open Task</a></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -109,7 +109,7 @@
             <td><span class="badge">{{ task.status }}</span></td>
             <td>{{ task.priority }}</td>
             <td>{{ task.due_date or "" }}</td>
-            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}">Open Task</a></td>
+            <td><a href="/camps/{{ camp.id }}/tasks/{{ task.id }}" target="_blank" rel="noopener noreferrer">Open Task</a></td>
           </tr>
         {% endfor %}
       </tbody>
