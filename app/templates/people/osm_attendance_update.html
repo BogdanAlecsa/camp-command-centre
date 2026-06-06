@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Update Attendance from OSM Event Export</h2>
+  <p class="muted">
+    Upload an OSM event export for one section. This updates attendance status only.
+  </p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Upload Event Export</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/people/osm-attendance-update" enctype="multipart/form-data">
+    <label for="section_id">Section</label>
+    <select id="section_id" name="section_id" required>
+      {% for section in sections %}
+        <option value="{{ section.id }}" {% if selected_section_id is defined and selected_section_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="default_person_type">Default Person Type for New Rows</label>
+    <select id="default_person_type" name="default_person_type">
+      {% for option in ["Young Person", "Leader", "Helper", "Young Leader", "Visitor"] %}
+        <option value="{{ option }}" {% if default_person_type is defined and default_person_type == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="osm_file">OSM event export (.xlsx)</label>
+    <input id="osm_file" name="osm_file" type="file" accept=".xlsx" required>
+
+    <p id="selected-file-message" class="muted">No file selected yet.</p>
+
+    <p class="muted">Expected columns: First Name, Last Name, Attending.</p>
+
+    <div class="form-actions">
+      <button id="preview-attendance-button" type="submit" disabled>Choose a file first</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/people">Back to People</a>
+    </div>
+  </form>
+
+  <script>
+    const attendanceFileInput = document.getElementById("osm_file");
+    const selectedFileMessage = document.getElementById("selected-file-message");
+    const previewButton = document.getElementById("preview-attendance-button");
+
+    if (attendanceFileInput && selectedFileMessage && previewButton) {
+      attendanceFileInput.addEventListener("change", function () {
+        if (attendanceFileInput.files && attendanceFileInput.files.length > 0) {
+          const fileName = attendanceFileInput.files[0].name;
+          selectedFileMessage.textContent = "Selected file: " + fileName + ". Click Preview to check matches before applying.";
+          previewButton.disabled = false;
+          previewButton.textContent = "Preview attendance export";
+        } else {
+          selectedFileMessage.textContent = "No file selected yet.";
+          previewButton.disabled = true;
+          previewButton.textContent = "Choose a file first";
+        }
+      });
+    }
+  </script>
+</section>
+
+{% if preview_rows is defined %}
+<section class="card">
+  <h3>Preview Attendance Update</h3>
+
+  <p class="muted">
+    File: {{ filename }}<br>
+    Section: {{ selected_section.name }}<br>
+    Matched: {{ matched_count }} · Unmatched: {{ unmatched_count }}
+  </p>
+
+  {% if preview_rows %}
+    <form method="post" action="/camps/{{ camp.id }}/people/osm-attendance-update/apply">
+      <input type="hidden" name="section_id" value="{{ selected_section.id }}">
+      <input type="hidden" name="default_person_type" value="{{ default_person_type }}">
+
+      <table>
+        <thead>
+          <tr>
+            <th>Apply</th>
+            <th>Row</th>
+            <th>Name</th>
+            <th>OSM Attending</th>
+            <th>Status to Set</th>
+            <th>Matched Person</th>
+            <th>Warning</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview_rows %}
+            <tr>
+              <td><input type="checkbox" name="selected_payload" value="{{ row.payload }}" checked></td>
+              <td>{{ row.excel_row }}</td>
+              <td><strong>{{ row.display_name }}</strong></td>
+              <td>{{ row.attending_raw or "blank" }}</td>
+              <td>{{ row.attendance_status }}</td>
+              <td>
+                {% if row.matched_person %}
+                  {{ row.matched_person.first_name }} {{ row.matched_person.last_name }}
+                  <br><span class="muted">Current: {{ row.matched_person.attendance_status or "Not set" }}</span>
+                {% else %}
+                  <span class="muted">No existing person matched</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if row.warning %}
+                  <span class="warning">{{ row.warning }}</span>
+                {% else %}
+                  <span class="good">Matched</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <label>
+        <input type="checkbox" name="create_missing" value="yes">
+        Create missing people for unmatched rows
+      </label>
+
+      <p class="muted">
+        Untick rows you do not want to apply. Creating missing people only imports name, section, person type and attendance status.
+      </p>
+
+      <div class="form-actions">
+        <button type="submit">Apply Attendance Update</button>
+        <a class="button secondary" href="/camps/{{ camp.id }}/people">Cancel</a>
+      </div>
+    </form>
+  {% else %}
+    <p class="warning">No attendance rows were found in this export.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

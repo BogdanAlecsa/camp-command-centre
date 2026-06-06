@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import Base, SessionLocal, engine, get_db
 from app.routes.programme import router as programme_router
 from app.models import Camp, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
+from app.services.osm_event_import import parse_osm_event_attendance_export, normalise_person_match_value
 
 app = FastAPI(title="Camp Command Centre")
 app.include_router(programme_router)
@@ -1251,6 +1252,247 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             "section_lookup": section_lookup,
         },
     )
+
+
+@app.get("/camps/{camp_id}/people/osm-attendance-update", response_class=HTMLResponse)
+async def osm_attendance_update_form(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    return templates.TemplateResponse(
+        "people/osm_attendance_update.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sections": sections,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/osm-attendance-update", response_class=HTMLResponse)
+async def preview_osm_attendance_update(
+    request: Request,
+    camp_id: int,
+    section_id: int = Form(...),
+    default_person_type: str = Form("Young Person"),
+    osm_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "people/osm_attendance_update.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": "Please choose a valid section.",
+            },
+            status_code=400,
+        )
+
+    filename = osm_file.filename or ""
+
+    if not filename.lower().endswith(".xlsx"):
+        return templates.TemplateResponse(
+            "people/osm_attendance_update.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": "Please upload an OSM event export in .xlsx format.",
+            },
+            status_code=400,
+        )
+
+    try:
+        rows = parse_osm_event_attendance_export(await osm_file.read())
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "people/osm_attendance_update.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": f"Could not read this OSM event export: {exc}",
+            },
+            status_code=400,
+        )
+
+    people_in_section = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.home_section_id == section.id)
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+    lookup = {}
+    for person in people_in_section:
+        key = (
+            normalise_person_match_value(person.first_name),
+            normalise_person_match_value(person.last_name),
+        )
+        lookup.setdefault(key, []).append(person)
+
+    preview_rows = []
+    matched_count = 0
+    unmatched_count = 0
+
+    for row in rows:
+        key = (
+            normalise_person_match_value(row["first_name"]),
+            normalise_person_match_value(row["last_name"]),
+        )
+
+        matches = lookup.get(key, [])
+        matched_person = matches[0] if len(matches) == 1 else None
+
+        if matched_person:
+            matched_count += 1
+            warning = ""
+        elif len(matches) > 1:
+            unmatched_count += 1
+            warning = "Multiple matches found"
+        else:
+            unmatched_count += 1
+            warning = "No match found"
+
+        payload = {
+            "first_name": row["first_name"],
+            "last_name": row["last_name"],
+            "attendance_status": row["attendance_status"],
+            "attending_raw": row["attending_raw"],
+            "matched_person_id": matched_person.id if matched_person else None,
+        }
+
+        preview_rows.append(
+            {
+                **row,
+                "matched_person": matched_person,
+                "warning": warning,
+                "payload": json.dumps(payload),
+            }
+        )
+
+    return templates.TemplateResponse(
+        "people/osm_attendance_update.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sections": sections,
+            "selected_section": section,
+            "selected_section_id": section.id,
+            "default_person_type": default_person_type,
+            "filename": filename,
+            "preview_rows": preview_rows,
+            "matched_count": matched_count,
+            "unmatched_count": unmatched_count,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/osm-attendance-update/apply")
+async def apply_osm_attendance_update(
+    request: Request,
+    camp_id: int,
+    section_id: int = Form(...),
+    default_person_type: str = Form("Young Person"),
+    create_missing: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Section not found."},
+            status_code=404,
+        )
+
+    form = await request.form()
+    selected_payloads = form.getlist("selected_payload")
+
+    for payload_text in selected_payloads:
+        data = json.loads(payload_text)
+        matched_person_id = data.get("matched_person_id")
+        person = None
+
+        if matched_person_id:
+            person = (
+                db.query(Person)
+                .filter(Person.id == int(matched_person_id), Person.camp_id == camp.id)
+                .first()
+            )
+
+        if person:
+            person.attendance_status = data.get("attendance_status") or "No response"
+            person.information_source = "OSM Event Export"
+            continue
+
+        if create_missing == "yes":
+            first_name = (data.get("first_name") or "").strip()
+            last_name = (data.get("last_name") or "").strip()
+
+            if first_name or last_name:
+                db.add(
+                    Person(
+                        camp_id=camp.id,
+                        first_name=first_name or "Unknown",
+                        last_name=last_name or "Unknown",
+                        person_type=default_person_type,
+                        home_section_id=section.id,
+                        is_provisional=False,
+                        attendance_status=data.get("attendance_status") or "No response",
+                        information_source="OSM Event Export",
+                    )
+                )
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people", status_code=303)
 
 
 @app.get("/camps/{camp_id}/people/provisional", response_class=HTMLResponse)
