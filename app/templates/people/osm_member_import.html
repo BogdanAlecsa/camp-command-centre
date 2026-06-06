@@ -84,6 +84,8 @@
           <th>Sheet</th>
           <th>Row</th>
           <th>Name</th>
+          <th>OSM Unit</th>
+          <th>Suggested Type</th>
           <th>Matched Person</th>
           <th>Primary Contact</th>
           <th>Emergency Contact</th>
@@ -97,6 +99,8 @@
             <td>{{ row.sheet_name }}</td>
             <td>{{ row.excel_row }}</td>
             <td><strong>{{ row.display_name }}</strong></td>
+            <td>{{ row.section_unit or "" }}</td>
+            <td>{{ row.suggested_person_type or default_person_type }}</td>
             <td>
               {% if row.matched_person %}
                 {{ row.matched_person.first_name }} {{ row.matched_person.last_name }}

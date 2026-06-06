@@ -108,6 +108,18 @@ def combine_names(first_name, last_name):
     return " ".join(parts)
 
 
+
+def detect_person_type_from_osm_unit(unit_name, default_person_type="Young Person"):
+    value = normalise_osm_label(unit_name)
+
+    if "young leader" in value or value == "yl" or "yls" in value:
+        return "Young Leader"
+
+    if "leader" in value:
+        return "Leader"
+
+    return default_person_type
+
 def extract_osm_candidate(row_data, sheet_name, excel_row):
     member_first_name = (
         find_osm_value(row_data, ["member"], ["first name"])
@@ -152,9 +164,17 @@ def extract_osm_candidate(row_data, sheet_name, excel_row):
         or find_osm_value(row_data, ["additional information"], ["dietary"])
     )
 
+    section_unit = (
+        find_osm_value(row_data, [], ["six"])
+        or find_osm_value(row_data, [], ["patrol"])
+        or find_osm_value(row_data, [], ["unit"])
+        or find_osm_value(row_data, [], ["section"])
+    )
+
     candidate = {
         "sheet_name": sheet_name,
         "excel_row": excel_row,
+        "section_unit": section_unit,
         "first_name": member_first_name,
         "last_name": member_last_name,
         "email": find_osm_value(row_data, ["member"], ["email"]),
@@ -185,6 +205,7 @@ def extract_osm_candidate(row_data, sheet_name, excel_row):
     }
 
     candidate["display_name"] = combine_names(candidate["first_name"], candidate["last_name"]) or f"{sheet_name} row {excel_row}"
+    candidate["suggested_person_type"] = detect_person_type_from_osm_unit(section_unit)
     candidate["payload"] = json.dumps(candidate)
 
     return candidate
