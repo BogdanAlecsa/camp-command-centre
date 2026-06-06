@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Sections — {{ camp.name }}</h2>
+  <p class="muted">
+    Sections are used to organise people by their home Scout section. OSM imports are section-based, so this is the foundation for future attendee imports.
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/sections/new">Add Section</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
+</section>
+
+<section class="card">
+  {% if sections %}
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>People</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for section in sections %}
+          <tr>
+            <td>{{ section.sort_order }}</td>
+            <td><strong>{{ section.name }}</strong></td>
+            <td>{{ section.section_type }}</td>
+            <td>
+              {% if section.is_active %}
+                <span class="badge risk-status risk-status-approved">Active</span>
+              {% else %}
+                <span class="badge risk-status risk-status-not-started">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ section_person_counts.get(section.id, 0) }}</td>
+            <td>{{ section.notes or "" }}</td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/sections/{{ section.id }}/edit">Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No sections have been added yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

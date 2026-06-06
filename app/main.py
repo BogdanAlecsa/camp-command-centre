@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
 from app.routes.programme import router as programme_router
-from app.models import Camp, Person, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
+from app.models import Camp, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
 
 app = FastAPI(title="Camp Command Centre")
 app.include_router(programme_router)
@@ -26,11 +26,11 @@ def on_startup():
 
     with SessionLocal() as db:
         for camp in db.query(Camp).all():
+            ensure_default_sections(db, camp)
             ensure_default_task_phases(db, camp)
             ensure_default_task_categories(db, camp)
             apply_default_task_phase_descriptions(db, camp)
             apply_default_task_category_descriptions(db, camp)
-
 
 def get_latest_camp(db: Session):
     return db.query(Camp).order_by(Camp.start_date.desc()).first()
@@ -87,6 +87,7 @@ def ensure_optional_schema_columns():
 
         optional_columns = [
             ("activity", "badge_notes", "TEXT"),
+            ("person", "home_section_id", "INTEGER"),
         ]
 
         for table_name, column_name, column_type in optional_columns:
@@ -101,6 +102,48 @@ def ensure_optional_schema_columns():
                 connection.execute(
                     sqlalchemy_text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
                 )
+
+
+
+DEFAULT_SECTIONS = [
+    ("Squirrels", "Squirrels"),
+    ("Beavers", "Beavers"),
+    ("Cubs", "Cubs"),
+    ("Scouts", "Scouts"),
+    ("Explorers", "Explorers"),
+    ("Young Leaders", "Young Leaders"),
+    ("Leaders / Adults", "Leaders / Adults"),
+    ("Other", "Other"),
+]
+
+
+def ensure_default_sections(db: Session, camp: Camp):
+    existing_count = db.query(Section).filter(Section.camp_id == camp.id).count()
+
+    if existing_count > 0:
+        return
+
+    for index, (name, section_type) in enumerate(DEFAULT_SECTIONS, start=1):
+        db.add(
+            Section(
+                camp_id=camp.id,
+                name=name,
+                section_type=section_type,
+                sort_order=index,
+                is_active=True,
+            )
+        )
+
+    db.commit()
+
+
+def get_active_sections(db: Session, camp: Camp):
+    return (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id, Section.is_active == True)
+        .order_by(Section.sort_order, Section.name)
+        .all()
+    )
 
 
 
@@ -663,6 +706,221 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
             "readiness": 0,
         },
     )
+
+
+@app.get("/camps/{camp_id}/sections", response_class=HTMLResponse)
+async def camp_section_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    ensure_default_sections(db, camp)
+
+    sections = (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id)
+        .order_by(Section.sort_order, Section.name)
+        .all()
+    )
+
+    section_person_counts = {
+        section.id: db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.home_section_id == section.id)
+        .count()
+        for section in sections
+    }
+
+    return templates.TemplateResponse(
+        "sections/list.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sections": sections,
+            "section_person_counts": section_person_counts,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/sections/new", response_class=HTMLResponse)
+async def new_section_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "sections/new.html",
+        {
+            "request": request,
+            "camp": camp,
+            "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/sections/new")
+async def create_section(
+    request: Request,
+    camp_id: int,
+    name: str = Form(...),
+    section_type: str = Form("Other"),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    clean_name = name.strip()
+
+    if not clean_name:
+        return templates.TemplateResponse(
+            "sections/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+                "error": "Section name is required.",
+            },
+            status_code=400,
+        )
+
+    next_order = (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id)
+        .count()
+        + 1
+    )
+
+    section = Section(
+        camp_id=camp.id,
+        name=clean_name,
+        section_type=section_type,
+        notes=notes.strip() or None,
+        sort_order=next_order,
+        is_active=True,
+    )
+
+    db.add(section)
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/sections", status_code=303)
+
+
+@app.get("/camps/{camp_id}/sections/{section_id}/edit", response_class=HTMLResponse)
+async def edit_section_form(
+    request: Request,
+    camp_id: int,
+    section_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Section not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "sections/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "section": section,
+            "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/sections/{section_id}/edit")
+async def update_section(
+    request: Request,
+    camp_id: int,
+    section_id: int,
+    name: str = Form(...),
+    section_type: str = Form("Other"),
+    notes: str = Form(""),
+    sort_order: int = Form(0),
+    is_active: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Section not found."},
+            status_code=404,
+        )
+
+    clean_name = name.strip()
+
+    if not clean_name:
+        return templates.TemplateResponse(
+            "sections/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "section": section,
+                "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+                "error": "Section name is required.",
+            },
+            status_code=400,
+        )
+
+    section.name = clean_name
+    section.section_type = section_type
+    section.notes = notes.strip() or None
+    section.sort_order = sort_order
+    section.is_active = is_active == "yes"
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/sections", status_code=303)
 
 
 @app.get("/people", response_class=HTMLResponse)

@@ -11,6 +11,7 @@
 
   <a class="button" href="/camps/{{ camp.id }}/edit">Edit Camp</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/teams">Teams</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/activities">Activities</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/programme">Programme</a>
@@ -32,6 +33,12 @@
     <h3>People</h3>
     <p><strong>{{ people_count }}</strong> people</p>
     <p><a href="/camps/{{ camp.id }}/people">Open people list</a></p>
+  </section>
+
+  <section class="card">
+    <h3>Sections</h3>
+    <p>Home sections for young people, leaders and future OSM imports.</p>
+    <p><a href="/camps/{{ camp.id }}/sections">Open sections</a></p>
   </section>
 
   <section class="card">
