@@ -99,7 +99,7 @@
         </thead>
         <tbody>
           {% for session in day_sessions %}
-            <tr>
+            <tr class="programme-session-row session-type-{{ programme_type_class(session.session_type) }}">
               <td>
                 <strong>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</strong>
               </td>
@@ -114,7 +114,7 @@
                 {% endif %}
               </td>
 
-              <td>{{ session.session_type }}</td>
+              <td><span class="programme-type-pill session-type-{{ programme_type_class(session.session_type) }}">{{ session.session_type }}</span></td>
 
               <td>
                 {% if session.participant_team_id %}

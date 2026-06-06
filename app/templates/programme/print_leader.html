@@ -131,6 +131,56 @@
       margin-top: 0.8rem;
     }
 
+
+    .programme-type-pill {
+      display: inline-block;
+      padding: 0.1rem 0.35rem;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      font-size: 8.5pt;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .programme-session-row td:first-child {
+      border-left: 5px solid #cbd5e1;
+    }
+
+    .session-type-whole-camp td:first-child,
+    .programme-type-pill.session-type-whole-camp {
+      border-color: #c7d2fe;
+      border-left-color: #4f46e5;
+      background: #eef2ff;
+    }
+
+    .session-type-meal td:first-child,
+    .programme-type-pill.session-type-meal {
+      border-color: #fde68a;
+      border-left-color: #d97706;
+      background: #fffbeb;
+    }
+
+    .session-type-setup-pack-down td:first-child,
+    .programme-type-pill.session-type-setup-pack-down {
+      border-color: #bbf7d0;
+      border-left-color: #16a34a;
+      background: #f0fdf4;
+    }
+
+    .session-type-leader-admin td:first-child,
+    .programme-type-pill.session-type-leader-admin {
+      border-color: #cbd5e1;
+      border-left-color: #64748b;
+      background: #f8fafc;
+    }
+
+    .rotation-block {
+      border-left-color: #7c3aed;
+      background: #f5f3ff;
+    }
+
+
     @media print {
       .screen-actions {
         display: none;
@@ -185,7 +235,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr>
+              <tr class="programme-session-row session-type-{{ programme_type_class(session.session_type) }}">
                 <td><strong>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</strong></td>
                 <td>
                   <strong>{{ session.title }}</strong>
@@ -196,7 +246,7 @@
                     <br><span class="muted">{{ session.notes }}</span>
                   {% endif %}
                 </td>
-                <td>{{ session.session_type }}</td>
+                <td><span class="programme-type-pill session-type-{{ programme_type_class(session.session_type) }}">{{ session.session_type }}</span></td>
                 <td>
                   {% if session.participant_team_id %}
                     {{ team_names.get(session.participant_team_id, "Unknown team") }}

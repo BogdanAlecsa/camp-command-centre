@@ -1,4 +1,5 @@
 from datetime import date, time
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -21,6 +22,19 @@ router = APIRouter()
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+
+def programme_type_class(session_type: str | None):
+    value = (session_type or "Other").strip().lower()
+    value = value.replace("&", "and")
+    value = re.sub(r"[^a-z0-9]+", "-", value)
+    value = value.strip("-")
+    return value or "other"
+
+
+templates.env.globals["programme_type_class"] = programme_type_class
+
 
 PROGRAMME_SESSION_TYPES = [
     "Activity",
