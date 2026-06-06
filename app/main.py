@@ -1208,6 +1208,117 @@ async def create_person(
 
 
 
+@app.get("/camps/{camp_id}/people/{person_id}/replace-provisional", response_class=HTMLResponse)
+async def replace_provisional_person_form(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Person not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    return templates.TemplateResponse(
+        "people/replace_provisional.html",
+        {
+            "request": request,
+            "camp": camp,
+            "person": person,
+            "sections": sections,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/{person_id}/replace-provisional")
+async def replace_provisional_person(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    home_section_id: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    information_source: str = Form("Manual Entry"),
+    role_notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Person not found."},
+            status_code=404,
+        )
+
+    if not first_name.strip() or not last_name.strip():
+        return templates.TemplateResponse(
+            "people/replace_provisional.html",
+            {
+                "request": request,
+                "camp": camp,
+                "person": person,
+                "sections": get_active_sections(db, camp),
+                "error": "First name and last name are required.",
+            },
+            status_code=400,
+        )
+
+    person.first_name = first_name.strip()
+    person.last_name = last_name.strip()
+    person.home_section_id = int(home_section_id) if home_section_id else None
+    person.email = email.strip() or None
+    person.phone = phone.strip() or None
+    person.information_source = information_source.strip() or "Manual Entry"
+    person.attendance_status = "Expected"
+    person.is_provisional = False
+
+    if role_notes.strip():
+        person.role_notes = role_notes.strip()
+    elif person.role_notes and "Provisional attendee placeholder" in person.role_notes:
+        person.role_notes = None
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people/{person.id}", status_code=303)
+
+
 @app.get("/camps/{camp_id}/people/{person_id}/edit", response_class=HTMLResponse)
 async def edit_person_form(
     request: Request,

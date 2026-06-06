@@ -6,6 +6,11 @@
   <p>Status: <span class="badge">{{ person.person_type }}</span></p>
 
   <a class="button" href="/camps/{{ camp.id }}/people/{{ person.id }}/edit">Edit Person</a>
+  {% if person.is_provisional %}
+    <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Replace Provisional</a>
+  {% elif person.last_name.startswith("YP") %}
+    <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Fill Placeholder Details</a>
+  {% endif %}
   <a class="button secondary" href="/camps/{{ camp.id }}/people">Back to People</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
 </section>
