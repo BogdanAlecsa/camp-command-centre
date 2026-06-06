@@ -274,6 +274,111 @@ def get_session_staff_lookup(db: Session, camp: Camp, sessions):
     return lookup
 
 
+def build_programme_warnings(
+    camp: Camp,
+    sessions,
+    person_names,
+    team_names,
+    risk_statuses,
+    session_staff_by_session_id,
+):
+    from collections import defaultdict
+
+    warnings = []
+    assigned_by_person = defaultdict(dict)
+
+    def session_detail(session: ProgrammeSession):
+        group_name = (
+            team_names.get(session.participant_team_id, "Unknown group")
+            if session.participant_team_id
+            else "Whole camp"
+        )
+        return (
+            f"{session.session_date} "
+            f"{session.start_time.strftime('%H:%M')}–{session.end_time.strftime('%H:%M')} · "
+            f"{session.title} · {group_name}"
+        )
+
+    for session in sessions:
+        session_assignments = {}
+
+        if session.lead_person_id:
+            session_assignments.setdefault(session.lead_person_id, set()).add("Lead Person")
+
+        for staff_item in session_staff_by_session_id.get(session.id, []):
+            session_assignments.setdefault(staff_item["person_id"], set()).add(staff_item["role"])
+
+        for person_id, roles in session_assignments.items():
+            assigned_by_person[person_id][session.id] = {
+                "session": session,
+                "roles": sorted(roles),
+            }
+
+        if not session_assignments:
+            warnings.append(
+                {
+                    "severity": "high",
+                    "title": "No adult or young leader assigned",
+                    "detail": session_detail(session),
+                    "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                }
+            )
+        elif not session.lead_person_id:
+            warnings.append(
+                {
+                    "severity": "medium",
+                    "title": "Missing lead person",
+                    "detail": session_detail(session),
+                    "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                }
+            )
+
+        if session.activity_id:
+            risk_status = risk_statuses.get(session.activity_id, "Not Started")
+
+            if risk_status != "Approved":
+                warnings.append(
+                    {
+                        "severity": "medium",
+                        "title": f"Risk assessment not approved: {risk_status}",
+                        "detail": session_detail(session),
+                        "url": f"/camps/{camp.id}/activities/{session.activity_id}/risk-assessment",
+                    }
+                )
+
+    for person_id, assignments in assigned_by_person.items():
+        items = list(assignments.values())
+
+        for i, first in enumerate(items):
+            for second in items[i + 1:]:
+                a = first["session"]
+                b = second["session"]
+
+                if a.session_date != b.session_date:
+                    continue
+
+                overlaps = a.start_time < b.end_time and b.start_time < a.end_time
+
+                if not overlaps:
+                    continue
+
+                person_name = person_names.get(person_id, "Unknown person")
+
+                warnings.append(
+                    {
+                        "severity": "high",
+                        "title": f"Staffing clash: {person_name}",
+                        "detail": f"{session_detail(a)} overlaps with {session_detail(b)}",
+                        "url": f"/camps/{camp.id}/programme",
+                    }
+                )
+
+    severity_order = {"high": 0, "medium": 1, "low": 2}
+    warnings.sort(key=lambda item: (severity_order.get(item["severity"], 99), item["title"], item["detail"]))
+
+    return warnings
+
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -328,6 +433,8 @@ async def camp_programme_list(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    session_staff_by_session_id = get_session_staff_lookup(db, camp, sessions)
+
     return templates.TemplateResponse(
         "programme/list.html",
         {
@@ -340,7 +447,15 @@ async def camp_programme_list(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
-            "session_staff_by_session_id": get_session_staff_lookup(db, camp, sessions),
+            "session_staff_by_session_id": session_staff_by_session_id,
+            "programme_warnings": build_programme_warnings(
+                camp,
+                sessions,
+                person_names,
+                team_names,
+                risk_statuses,
+                session_staff_by_session_id,
+            ),
         },
     )
 

@@ -1,6 +1,78 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+  .programme-rolling-details {
+    border-left: 6px solid #0f766e;
+  }
+
+  .programme-rolling-details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .programme-rolling-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .programme-rolling-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    font-weight: 700;
+  }
+
+  .programme-rolling-count {
+    color: #0f766e;
+    font-weight: 700;
+  }
+
+  .programme-rolling-body {
+    margin-top: 0.75rem;
+  }
+</style>
+
+
+
+<style>
+  .programme-warning-details {
+    border-left: 6px solid #f59e0b;
+  }
+
+  .programme-warning-details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .programme-warning-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .programme-warning-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    font-weight: 700;
+  }
+
+  .programme-warning-count {
+    color: #b45309;
+    font-weight: 700;
+  }
+
+  .programme-warning-count-high {
+    color: #b91c1c;
+  }
+
+  .programme-warning-hint {
+    margin-top: 0.75rem;
+  }
+</style>
+
+
 <section class="card">
   <h2>Programme — {{ camp.name }}</h2>
   <p class="muted">
@@ -22,6 +94,65 @@
   </div>
 </section>
 
+
+{% if programme_warnings %}
+  {% set ns = namespace(high=0) %}
+  {% for warning in programme_warnings %}
+    {% if warning.severity == "high" %}
+      {% set ns.high = ns.high + 1 %}
+    {% endif %}
+  {% endfor %}
+
+  <details class="card programme-warning-details">
+    <summary>
+      <div class="programme-warning-summary">
+        <span>Programme Warnings</span>
+        <span class="programme-warning-count {% if ns.high %}programme-warning-count-high{% endif %}">
+          {{ programme_warnings | length }} check{% if programme_warnings | length != 1 %}s{% endif %}
+          {% if ns.high %} · {{ ns.high }} high priority{% endif %}
+        </span>
+      </div>
+    </summary>
+
+    <p class="muted programme-warning-hint">
+      These are planning checks only. They do not block you from saving, but they highlight things worth reviewing before camp.
+    </p>
+
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th style="width: 12%;">Level</th>
+          <th style="width: 28%;">Issue</th>
+          <th>Details</th>
+          <th style="width: 12%;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for warning in programme_warnings %}
+          <tr>
+            <td>
+              {% if warning.severity == "high" %}
+                <span class="badge risk-status risk-status-needs-update">High</span>
+              {% elif warning.severity == "medium" %}
+                <span class="badge risk-status risk-status-draft">Check</span>
+              {% else %}
+                <span class="badge">Info</span>
+              {% endif %}
+            </td>
+            <td><strong>{{ warning.title }}</strong></td>
+            <td>{{ warning.detail }}</td>
+            <td>
+              {% if warning.url %}
+                <a class="button secondary" href="{{ warning.url }}">Open</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+{% endif %}
+
 {% if sessions %}
   {% for session_date, day_sessions in sessions_by_date.items() %}
     <section class="card">
@@ -29,70 +160,85 @@
 
       {% set rotation_summaries = rotation_summaries_by_date.get(session_date, []) %}
       {% if rotation_summaries %}
-        <div class="programme-rotation-summary">
-          <h4>Rotation Summary</h4>
+        {% set slot_ns = namespace(count=0) %}
+        {% for rotation in rotation_summaries %}
+          {% set slot_ns.count = slot_ns.count + (rotation.slots | length) %}
+        {% endfor %}
 
-          {% for rotation in rotation_summaries %}
-            <div class="rotation-block">
-              <h5>{{ rotation.rotation_name }}</h5>
-
-              {% for slot in rotation.slots %}
-                <div class="rotation-slot">
-                  <strong>
-                    {% if slot.slot_number %}
-                      Slot {{ slot.slot_number }} —
-                    {% endif %}
-                    {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
-                  </strong>
-
-                  <table class="compact-table">
-                    <thead>
-                      <tr>
-                        <th>Group</th>
-                        <th>Activity / Session</th>
-                        <th>Location</th>
-                        <th>Lead</th>
-                        <th>Staff</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for rotation_session in slot.sessions %}
-                        <tr>
-                          <td>
-                            {% if rotation_session.participant_team_id %}
-                              {{ team_names.get(rotation_session.participant_team_id, "Unknown team") }}
-                            {% else %}
-                              Whole camp
-                            {% endif %}
-                          </td>
-                          <td>{{ rotation_session.title }}</td>
-                          <td>{{ rotation_session.location or "Not set" }}</td>
-                          <td>
-                            {% if rotation_session.lead_person_id %}
-                              {{ person_names.get(rotation_session.lead_person_id, "Unknown person") }}
-                            {% else %}
-                              <span class="muted">Not set</span>
-                            {% endif %}
-                          </td>
-                          <td>
-                            {% set staff_items = session_staff_by_session_id.get(rotation_session.id, []) %}
-                            {% if staff_items %}
-                              {% for item in staff_items %}
-                                <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
-                              {% endfor %}
-                            {% else %}
-                              <span class="muted">None</span>
-                            {% endif %}
-                          </td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              {% endfor %}
+        <details class="programme-rotation-summary programme-rolling-details">
+          <summary>
+            <div class="programme-rolling-summary">
+              <span>Rotation Summary</span>
+              <span class="programme-rolling-count">
+                {{ rotation_summaries | length }} rotation{% if rotation_summaries | length != 1 %}s{% endif %}
+                · {{ slot_ns.count }} slot{% if slot_ns.count != 1 %}s{% endif %}
+              </span>
             </div>
-          {% endfor %}
-        </div>
+          </summary>
+
+          <div class="programme-rolling-body">
+            {% for rotation in rotation_summaries %}
+              <div class="rotation-block">
+                <h5>{{ rotation.rotation_name }}</h5>
+
+                {% for slot in rotation.slots %}
+                  <div class="rotation-slot">
+                    <strong>
+                      {% if slot.slot_number %}
+                        Slot {{ slot.slot_number }} —
+                      {% endif %}
+                      {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
+                    </strong>
+
+                    <table class="compact-table">
+                      <thead>
+                        <tr>
+                          <th>Group</th>
+                          <th>Activity / Session</th>
+                          <th>Location</th>
+                          <th>Lead</th>
+                          <th>Staff</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for rotation_session in slot.sessions %}
+                          <tr>
+                            <td>
+                              {% if rotation_session.participant_team_id %}
+                                {{ team_names.get(rotation_session.participant_team_id, "Unknown team") }}
+                              {% else %}
+                                Whole camp
+                              {% endif %}
+                            </td>
+                            <td>{{ rotation_session.title }}</td>
+                            <td>{{ rotation_session.location or "Not set" }}</td>
+                            <td>
+                              {% if rotation_session.lead_person_id %}
+                                {{ person_names.get(rotation_session.lead_person_id, "Unknown person") }}
+                              {% else %}
+                                <span class="muted">Not set</span>
+                              {% endif %}
+                            </td>
+                            <td>
+                              {% set staff_items = session_staff_by_session_id.get(rotation_session.id, []) %}
+                              {% if staff_items %}
+                                {% for item in staff_items %}
+                                  <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
+                                {% endfor %}
+                              {% else %}
+                                <span class="muted">None</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+        </details>
       {% endif %}
 
       <table>
