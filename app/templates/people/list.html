@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% set member_import_updated = request.query_params.get("member_import_updated") %}
+{% if member_import_updated is not none %}
+<section class="card">
+  <h3>OSM Member Import Complete</h3>
+  <p>
+    Updated: {{ request.query_params.get("member_import_updated", "0") }} ·
+    Replaced provisional: {{ request.query_params.get("member_import_replaced", "0") }} ·
+    Created: {{ request.query_params.get("member_import_created", "0") }} ·
+    Skipped: {{ request.query_params.get("member_import_skipped", "0") }}
+  </p>
+</section>
+{% endif %}
+
+
 <section class="card">
   <h2>People — {{ camp.name }}</h2>
   <p class="muted">
