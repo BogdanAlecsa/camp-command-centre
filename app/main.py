@@ -61,6 +61,58 @@ def person_display_name(person: Person | None):
 
 
 
+def field_is_blank(value):
+    return value is None or str(value).strip() == ""
+
+
+def get_missing_profile_fields(person: Person):
+    missing = []
+
+    if field_is_blank(person.first_name):
+        missing.append("First name")
+
+    if field_is_blank(person.last_name):
+        missing.append("Last name")
+
+    if field_is_blank(person.person_type):
+        missing.append("Person type")
+
+    if person.person_type in ["Young Person", "Young Leader"]:
+        checks = [
+            ("Home section", person.home_section_id),
+            ("Primary contact name", person.primary_contact_name),
+            ("Primary contact phone or email", person.primary_contact_phone or person.primary_contact_email),
+            ("Emergency contact name", person.emergency_contact_name),
+            ("Emergency contact phone", person.emergency_contact_phone),
+            ("Allergies", person.allergies),
+            ("Medication", person.medication),
+            ("Medical notes", person.medical_notes),
+            ("Dietary requirements", person.dietary_requirements),
+        ]
+    elif person.person_type in ["Leader", "Helper"]:
+        checks = [
+            ("Home section", person.home_section_id),
+            ("Phone or email", person.phone or person.email),
+            ("Emergency contact name", person.emergency_contact_name),
+            ("Emergency contact phone", person.emergency_contact_phone),
+            ("Allergies", person.allergies),
+            ("Medication", person.medication),
+            ("Medical notes", person.medical_notes),
+            ("Dietary requirements", person.dietary_requirements),
+        ]
+    else:
+        checks = [
+            ("Phone or email", person.phone or person.email),
+        ]
+
+    for label, value in checks:
+        if field_is_blank(value):
+            missing.append(label)
+
+    return missing
+
+
+
 def ensure_optional_schema_columns():
     """Small SQLite-safe schema patcher for MVP development.
 
@@ -992,6 +1044,11 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
         for person in people
     }
 
+    person_missing_profile_fields = {
+        person.id: get_missing_profile_fields(person)
+        for person in people
+    }
+
     return templates.TemplateResponse(
         "people/list.html",
         {
@@ -1002,6 +1059,7 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             "people_by_section": people_by_section,
             "people_without_section": people_without_section,
             "person_task_counts": person_task_counts,
+            "person_missing_profile_fields": person_missing_profile_fields,
             "section_lookup": section_lookup,
         },
     )
@@ -1219,6 +1277,54 @@ async def create_person(
     return RedirectResponse(url=f"/camps/{camp.id}/people/{person.id}", status_code=303)
 
 
+
+
+@app.get("/camps/{camp_id}/people/{person_id}/osm-update", response_class=HTMLResponse)
+async def osm_update_person_form(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Person not found."},
+            status_code=404,
+        )
+
+    home_section = None
+    if person.home_section_id:
+        home_section = (
+            db.query(Section)
+            .filter(Section.id == person.home_section_id, Section.camp_id == camp.id)
+            .first()
+        )
+
+    return templates.TemplateResponse(
+        "people/osm_update.html",
+        {
+            "request": request,
+            "camp": camp,
+            "person": person,
+            "home_section": home_section,
+        },
+    )
 
 
 @app.get("/camps/{camp_id}/people/{person_id}/replace-provisional", response_class=HTMLResponse)
@@ -1567,6 +1673,8 @@ async def person_detail(
             .all()
         )
 
+    missing_profile_fields = get_missing_profile_fields(person)
+
     return templates.TemplateResponse(
         "people/detail.html",
         {
@@ -1575,6 +1683,7 @@ async def person_detail(
             "person": person,
             "team_rows": team_rows,
             "home_section": home_section,
+            "missing_profile_fields": missing_profile_fields,
             "direct_task_rows": direct_task_rows,
             "team_task_rows": team_task_rows,
         },

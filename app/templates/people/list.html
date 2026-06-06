@@ -21,6 +21,7 @@
         <th>Name</th>
         <th>Type</th>
         <th>Status</th>
+        <th>Profile</th>
         <th>Email</th>
         <th>Phone</th>
         <th>Tasks</th>
@@ -40,6 +41,14 @@
             {% endif %}
           </td>
           <td>{{ person.attendance_status or "" }}</td>
+          <td>
+            {% set missing = person_missing_profile_fields.get(person.id, []) %}
+            {% if missing %}
+              <span class="badge risk-status risk-status-needs-update">{{ missing|length }} missing</span>
+            {% else %}
+              <span class="badge risk-status risk-status-approved">Complete</span>
+            {% endif %}
+          </td>
           <td>{{ person.email or "" }}</td>
           <td>{{ person.phone or "" }}</td>
           <td>

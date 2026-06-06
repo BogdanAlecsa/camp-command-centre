@@ -6,6 +6,7 @@
   <p>Status: <span class="badge">{{ person.person_type }}</span></p>
 
   <a class="button" href="/camps/{{ camp.id }}/people/{{ person.id }}/edit">Edit Person</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/osm-update">Update from OSM Export</a>
   {% if person.is_provisional %}
     <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Replace Provisional</a>
   {% elif person.last_name.startswith("YP") %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Update from OSM Export</h2>
+  <p class="muted">
+    This screen will be used to update {{ person.first_name }} {{ person.last_name }} from an OSM member / personal file export.
+  </p>
+
+  <p>
+    <strong>Camp:</strong> {{ camp.name }}<br>
+    <strong>Person:</strong> {{ person.first_name }} {{ person.last_name }}<br>
+    <strong>Type:</strong> {{ person.person_type }}<br>
+    <strong>Home Section:</strong> {{ home_section.name if home_section else "Not set" }}
+  </p>
+</section>
+
+<section class="card">
+  <h3>Planned Import Behaviour</h3>
+
+  <p>
+    OSM member exports are normally downloaded by section, not one person at a time.
+    The future importer should allow a section export to be uploaded, then match one row to this person.
+  </p>
+
+  <p>The importer should update only the fields we actually need for camp:</p>
+
+  <ul>
+    <li>phone and email contact details</li>
+    <li>primary contact details</li>
+    <li>emergency contact details</li>
+    <li>allergies and allergy action notes</li>
+    <li>medication</li>
+    <li>medical notes</li>
+    <li>dietary requirements</li>
+  </ul>
+
+  <p>The importer should not import unnecessary data by default, such as home address, school or Gift Aid fields.</p>
+
+  <p class="warning">
+    Upload and matching are not active yet. This is the entry point for the next importer stage.
+  </p>
+
+  <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Back to Person</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/edit">Edit Manually</a>
+</section>
+{% endblock %}
