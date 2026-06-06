@@ -78,9 +78,14 @@
   </p>
 
   {% if preview_rows %}
+    <form method="post" action="/camps/{{ camp.id }}/people/osm-member-import/apply">
+      <input type="hidden" name="section_id" value="{{ selected_section.id }}">
+      <input type="hidden" name="default_person_type" value="{{ default_person_type }}">
+
     <table>
       <thead>
         <tr>
+          <th>Apply</th>
           <th>Sheet</th>
           <th>Row</th>
           <th>Name</th>
@@ -96,6 +101,9 @@
       <tbody>
         {% for row in preview_rows %}
           <tr>
+            <td>
+              <input type="checkbox" name="selected_payload" value="{{ row.payload }}" checked>
+            </td>
             <td>{{ row.sheet_name }}</td>
             <td>{{ row.excel_row }}</td>
             <td><strong>{{ row.display_name }}</strong></td>
@@ -134,9 +142,32 @@
       </tbody>
     </table>
 
-    <p class="warning">
-      Apply is not enabled yet. This is the safe preview stage.
-    </p>
+      <label>
+        <input type="checkbox" name="overwrite_existing" value="yes">
+        Replace existing non-blank fields with OSM values
+      </label>
+
+      <label>
+        <input type="checkbox" name="replace_provisional" value="yes" checked>
+        Use unmatched rows to replace provisional placeholders first
+      </label>
+
+      <label>
+        <input type="checkbox" name="create_missing" value="yes" checked>
+        Create new people for unmatched rows if no provisional placeholder is available
+      </label>
+
+      <p class="muted">
+        Default behaviour: matched people are updated, unmatched rows replace provisional placeholders first,
+        and any remaining unmatched rows are created as new people.
+        Existing non-blank manual fields are protected unless “replace existing” is ticked.
+      </p>
+
+      <div class="form-actions">
+        <button type="submit">Apply Selected Rows</button>
+        <a class="button secondary" href="/camps/{{ camp.id }}/people">Cancel</a>
+      </div>
+    </form>
   {% else %}
     <p class="warning">No usable member rows were found in this export.</p>
   {% endif %}

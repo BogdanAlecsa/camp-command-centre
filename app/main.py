@@ -275,6 +275,56 @@ def field_is_blank(value):
     return value is None or str(value).strip() == ""
 
 
+
+def apply_osm_member_candidate_to_person(person: Person, data: dict, overwrite_existing: bool = False, update_identity: bool = False):
+    def incoming_value(field_name):
+        return clean_osm_cell(data.get(field_name))
+
+    def current_value(field_name):
+        return clean_osm_cell(getattr(person, field_name, ""))
+
+    def apply_field(field_name):
+        incoming = incoming_value(field_name)
+        existing = current_value(field_name)
+
+        if incoming and (overwrite_existing or not existing):
+            setattr(person, field_name, incoming)
+
+    if update_identity:
+        if incoming_value("first_name"):
+            person.first_name = incoming_value("first_name")
+
+        if incoming_value("last_name"):
+            person.last_name = incoming_value("last_name")
+
+        person.is_provisional = False
+
+        if person.role_notes and "Provisional attendee placeholder" in person.role_notes:
+            person.role_notes = None
+
+    for field_name in [
+        "email",
+        "phone",
+        "section_unit",
+        "primary_contact_name",
+        "primary_contact_relationship",
+        "primary_contact_phone",
+        "primary_contact_email",
+        "emergency_contact_name",
+        "emergency_contact_relationship",
+        "emergency_contact_phone",
+        "emergency_contact_email",
+        "allergies",
+        "allergy_action",
+        "medication",
+        "medical_notes",
+        "dietary_requirements",
+    ]:
+        apply_field(field_name)
+
+    person.information_source = "OSM Member File"
+
+
 def get_missing_profile_fields(person: Person):
     missing = []
 
@@ -351,6 +401,7 @@ def ensure_optional_schema_columns():
             ("activity", "badge_notes", "TEXT"),
             ("person", "home_section_id", "INTEGER"),
             ("person", "information_source", "TEXT"),
+            ("person", "section_unit", "TEXT"),
             ("person", "dietary_requirements", "TEXT"),
             ("person", "medical_notes", "TEXT"),
             ("person", "medication", "TEXT"),
@@ -1407,11 +1458,16 @@ async def preview_osm_member_import(
             unmatched_count += 1
             warning = "No match found"
 
+        apply_payload = dict(candidate)
+        apply_payload["matched_person_id"] = matched_person.id if matched_person else None
+        apply_payload["suggested_person_type"] = candidate.get("suggested_person_type") or default_person_type
+
         preview_rows.append(
             {
                 **candidate,
                 "matched_person": matched_person,
                 "warning": warning,
+                "payload": json.dumps(apply_payload),
             }
         )
 
@@ -1430,6 +1486,140 @@ async def preview_osm_member_import(
             "unmatched_count": unmatched_count,
             "error": None,
         },
+    )
+
+
+@app.post("/camps/{camp_id}/people/osm-member-import/apply")
+async def apply_osm_member_import(
+    request: Request,
+    camp_id: int,
+    section_id: int = Form(...),
+    default_person_type: str = Form("Young Person"),
+    overwrite_existing: str | None = Form(None),
+    replace_provisional: str | None = Form(None),
+    create_missing: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Section not found."},
+            status_code=404,
+        )
+
+    form = await request.form()
+    selected_payloads = form.getlist("selected_payload")
+
+    should_overwrite = overwrite_existing == "yes"
+
+    updated = 0
+    replaced = 0
+    created = 0
+    skipped = 0
+
+    for payload_text in selected_payloads:
+        data = json.loads(payload_text)
+
+        person = None
+        matched_person_id = data.get("matched_person_id")
+
+        if matched_person_id:
+            person = (
+                db.query(Person)
+                .filter(
+                    Person.id == int(matched_person_id),
+                    Person.camp_id == camp.id,
+                    Person.home_section_id == section.id,
+                )
+                .first()
+            )
+
+        if person is not None:
+            apply_osm_member_candidate_to_person(
+                person,
+                data,
+                overwrite_existing=should_overwrite,
+                update_identity=False,
+            )
+            updated += 1
+            continue
+
+        if replace_provisional == "yes":
+            person = (
+                db.query(Person)
+                .filter(
+                    Person.camp_id == camp.id,
+                    Person.home_section_id == section.id,
+                    Person.is_provisional == True,
+                )
+                .order_by(Person.id)
+                .first()
+            )
+
+            if person is not None:
+                person.person_type = data.get("suggested_person_type") or default_person_type
+                person.attendance_status = person.attendance_status or "Expected"
+
+                apply_osm_member_candidate_to_person(
+                    person,
+                    data,
+                    overwrite_existing=True,
+                    update_identity=True,
+                )
+
+                replaced += 1
+                continue
+
+        if create_missing == "yes":
+            first_name = clean_osm_cell(data.get("first_name")) or "Unknown"
+            last_name = clean_osm_cell(data.get("last_name")) or "Unknown"
+
+            person = Person(
+                camp_id=camp.id,
+                first_name=first_name,
+                last_name=last_name,
+                person_type=data.get("suggested_person_type") or default_person_type,
+                home_section_id=section.id,
+                is_provisional=False,
+                attendance_status="Unknown",
+                information_source="OSM Member File",
+            )
+
+            db.add(person)
+            db.flush()
+
+            apply_osm_member_candidate_to_person(
+                person,
+                data,
+                overwrite_existing=True,
+                update_identity=False,
+            )
+
+            created += 1
+            continue
+
+        skipped += 1
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/people?member_import_updated={updated}&member_import_replaced={replaced}&member_import_created={created}&member_import_skipped={skipped}",
+        status_code=303,
     )
 
 
@@ -2272,6 +2462,7 @@ async def update_person(
     last_name: str = Form(...),
     person_type: str = Form(...),
     home_section_id: str = Form(""),
+    section_unit: str = Form(""),
     attendance_status: str = Form("Expected"),
     information_source: str = Form("Manual Entry"),
     is_provisional: str | None = Form(None),
@@ -2338,6 +2529,7 @@ async def update_person(
     person.last_name = last_name.strip()
     person.person_type = person_type
     person.home_section_id = int(home_section_id) if home_section_id else None
+    person.section_unit = section_unit.strip() or None
     person.attendance_status = attendance_status.strip() or None
     person.information_source = information_source.strip() or None
     person.is_provisional = is_provisional == "yes"

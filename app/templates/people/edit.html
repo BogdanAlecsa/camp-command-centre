@@ -42,6 +42,9 @@
       {% endfor %}
     </select>
 
+    <label for="section_unit">Section Unit / Six / Patrol</label>
+    <input id="section_unit" name="section_unit" value="{{ person.section_unit or '' }}">
+
     <label for="attendance_status">Attendance Status</label>
     <select id="attendance_status" name="attendance_status">
       {% for option in ["Expected", "Provisional", "Confirmed", "Not Attending", "Withdrawn", "Unknown"] %}

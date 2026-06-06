@@ -28,6 +28,7 @@
     <p><strong>Camp:</strong> {{ camp.name }}</p>
     <p><strong>Type:</strong> {{ person.person_type }}</p>
     <p><strong>Home Section:</strong> {{ home_section.name if home_section else "Not set" }}</p>
+    <p><strong>Section Unit:</strong> {{ person.section_unit or "Not set" }}</p>
     <p><strong>Attendance Status:</strong> {{ person.attendance_status or "Not set" }}</p>
     <p><strong>Information Source:</strong> {{ person.information_source or "Not set" }}</p>
     <p><strong>Provisional:</strong> {{ "Yes" if person.is_provisional else "No" }}</p>

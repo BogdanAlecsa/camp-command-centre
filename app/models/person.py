@@ -32,6 +32,7 @@ class Person(Base):
     is_provisional: Mapped[bool] = mapped_column(Integer, nullable=False, default=False)
     attendance_status: Mapped[str | None] = mapped_column(String(80), nullable=True)
     information_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    section_unit: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
