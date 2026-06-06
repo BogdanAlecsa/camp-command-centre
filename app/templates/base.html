@@ -17,6 +17,8 @@
       --warn: #b54708;
       --border: #d0d5dd;
       --good: #027a48;
+      --layout-max: 1560px;
+      --layout-gutter: 1.25rem;
     }
 
     * {
@@ -33,7 +35,7 @@
     header {
       background: var(--brand);
       color: white;
-      padding: 1rem 1.5rem;
+      padding: 1rem max(var(--layout-gutter), calc((100vw - var(--layout-max)) / 2 + var(--layout-gutter)));
     }
 
     header h1 {
@@ -44,7 +46,7 @@
     nav {
       background: #ffffff;
       border-bottom: 1px solid var(--border);
-      padding: .75rem 1.5rem;
+      padding: .75rem max(var(--layout-gutter), calc((100vw - var(--layout-max)) / 2 + var(--layout-gutter)));
     }
 
     nav a {
@@ -55,9 +57,9 @@
     }
 
     main {
-      max-width: 1180px;
+      width: min(var(--layout-max), calc(100% - (var(--layout-gutter) * 2)));
       margin: 0 auto;
-      padding: 1.5rem;
+      padding: 1.5rem 0;
     }
 
     .muted {
@@ -231,6 +233,34 @@
 
     th {
       background: #f2f4f7;
+    }
+
+    .card {
+      overflow-x: auto;
+    }
+
+    .card table {
+      min-width: 760px;
+    }
+
+    .card .compact-table {
+      min-width: 680px;
+    }
+
+    @media (max-width: 800px) {
+      :root {
+        --layout-gutter: .75rem;
+      }
+
+      main {
+        padding: 1rem 0;
+      }
+
+      header,
+      nav {
+        padding-left: var(--layout-gutter);
+        padding-right: var(--layout-gutter);
+      }
     }
 
     label {
