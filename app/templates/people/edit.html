@@ -63,6 +63,51 @@
     <label for="phone">Phone</label>
     <input id="phone" name="phone" value="{{ person.phone or '' }}">
 
+    <h3>Primary Contact</h3>
+
+    <label for="primary_contact_name">Primary Contact Name</label>
+    <input id="primary_contact_name" name="primary_contact_name" value="{{ person.primary_contact_name or '' }}">
+
+    <label for="primary_contact_relationship">Primary Contact Relationship</label>
+    <input id="primary_contact_relationship" name="primary_contact_relationship" value="{{ person.primary_contact_relationship or '' }}">
+
+    <label for="primary_contact_phone">Primary Contact Phone</label>
+    <input id="primary_contact_phone" name="primary_contact_phone" value="{{ person.primary_contact_phone or '' }}">
+
+    <label for="primary_contact_email">Primary Contact Email</label>
+    <input id="primary_contact_email" name="primary_contact_email" type="email" value="{{ person.primary_contact_email or '' }}">
+
+    <h3>Emergency Contact</h3>
+
+    <label for="emergency_contact_name">Emergency Contact Name</label>
+    <input id="emergency_contact_name" name="emergency_contact_name" value="{{ person.emergency_contact_name or '' }}">
+
+    <label for="emergency_contact_relationship">Emergency Contact Relationship</label>
+    <input id="emergency_contact_relationship" name="emergency_contact_relationship" value="{{ person.emergency_contact_relationship or '' }}">
+
+    <label for="emergency_contact_phone">Emergency Contact Phone</label>
+    <input id="emergency_contact_phone" name="emergency_contact_phone" value="{{ person.emergency_contact_phone or '' }}">
+
+    <label for="emergency_contact_email">Emergency Contact Email</label>
+    <input id="emergency_contact_email" name="emergency_contact_email" type="email" value="{{ person.emergency_contact_email or '' }}">
+
+    <h3>Health, Medical and Dietary</h3>
+
+    <label for="allergies">Allergies</label>
+    <textarea id="allergies" name="allergies">{{ person.allergies or '' }}</textarea>
+
+    <label for="allergy_action">Allergy Action / Severity Notes</label>
+    <textarea id="allergy_action" name="allergy_action">{{ person.allergy_action or '' }}</textarea>
+
+    <label for="medication">Medication</label>
+    <textarea id="medication" name="medication">{{ person.medication or '' }}</textarea>
+
+    <label for="medical_notes">Medical Notes</label>
+    <textarea id="medical_notes" name="medical_notes">{{ person.medical_notes or '' }}</textarea>
+
+    <label for="dietary_requirements">Dietary Requirements</label>
+    <textarea id="dietary_requirements" name="dietary_requirements">{{ person.dietary_requirements or '' }}</textarea>
+
     <label for="role_notes">Notes</label>
     <textarea id="role_notes" name="role_notes">{{ person.role_notes or '' }}</textarea>
 

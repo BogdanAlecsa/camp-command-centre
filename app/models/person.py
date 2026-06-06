@@ -35,6 +35,23 @@ class Person(Base):
 
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    primary_contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    primary_contact_relationship: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    primary_contact_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    primary_contact_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    emergency_contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    emergency_contact_relationship: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    emergency_contact_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    emergency_contact_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    allergies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    allergy_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    medication: Mapped[str | None] = mapped_column(Text, nullable=True)
+    medical_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dietary_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     role_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

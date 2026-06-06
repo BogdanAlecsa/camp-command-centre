@@ -89,6 +89,19 @@ def ensure_optional_schema_columns():
             ("activity", "badge_notes", "TEXT"),
             ("person", "home_section_id", "INTEGER"),
             ("person", "information_source", "TEXT"),
+            ("person", "dietary_requirements", "TEXT"),
+            ("person", "medical_notes", "TEXT"),
+            ("person", "medication", "TEXT"),
+            ("person", "allergy_action", "TEXT"),
+            ("person", "allergies", "TEXT"),
+            ("person", "emergency_contact_email", "TEXT"),
+            ("person", "emergency_contact_phone", "TEXT"),
+            ("person", "emergency_contact_relationship", "TEXT"),
+            ("person", "emergency_contact_name", "TEXT"),
+            ("person", "primary_contact_email", "TEXT"),
+            ("person", "primary_contact_phone", "TEXT"),
+            ("person", "primary_contact_relationship", "TEXT"),
+            ("person", "primary_contact_name", "TEXT"),
             ("person", "attendance_status", "TEXT"),
             ("person", "is_provisional", "INTEGER DEFAULT 0"),
         ]
@@ -1382,6 +1395,19 @@ async def update_person(
     is_provisional: str | None = Form(None),
     email: str = Form(""),
     phone: str = Form(""),
+    primary_contact_name: str = Form(""),
+    primary_contact_relationship: str = Form(""),
+    primary_contact_phone: str = Form(""),
+    primary_contact_email: str = Form(""),
+    emergency_contact_name: str = Form(""),
+    emergency_contact_relationship: str = Form(""),
+    emergency_contact_phone: str = Form(""),
+    emergency_contact_email: str = Form(""),
+    allergies: str = Form(""),
+    allergy_action: str = Form(""),
+    medication: str = Form(""),
+    medical_notes: str = Form(""),
+    dietary_requirements: str = Form(""),
     role_notes: str = Form(""),
     db: Session = Depends(get_db),
 ):
@@ -1435,6 +1461,23 @@ async def update_person(
     person.is_provisional = is_provisional == "yes"
     person.email = email.strip() or None
     person.phone = phone.strip() or None
+
+    person.primary_contact_name = primary_contact_name.strip() or None
+    person.primary_contact_relationship = primary_contact_relationship.strip() or None
+    person.primary_contact_phone = primary_contact_phone.strip() or None
+    person.primary_contact_email = primary_contact_email.strip() or None
+
+    person.emergency_contact_name = emergency_contact_name.strip() or None
+    person.emergency_contact_relationship = emergency_contact_relationship.strip() or None
+    person.emergency_contact_phone = emergency_contact_phone.strip() or None
+    person.emergency_contact_email = emergency_contact_email.strip() or None
+
+    person.allergies = allergies.strip() or None
+    person.allergy_action = allergy_action.strip() or None
+    person.medication = medication.strip() or None
+    person.medical_notes = medical_notes.strip() or None
+    person.dietary_requirements = dietary_requirements.strip() or None
+
     person.role_notes = role_notes.strip() or None
 
     db.commit()

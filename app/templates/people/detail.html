@@ -34,6 +34,31 @@
 </div>
 
 <section class="card">
+  <h3>Primary Contact</h3>
+  <p><strong>Name:</strong> {{ person.primary_contact_name or "Not set" }}</p>
+  <p><strong>Relationship:</strong> {{ person.primary_contact_relationship or "Not set" }}</p>
+  <p><strong>Phone:</strong> {{ person.primary_contact_phone or "Not set" }}</p>
+  <p><strong>Email:</strong> {{ person.primary_contact_email or "Not set" }}</p>
+</section>
+
+<section class="card">
+  <h3>Emergency Contact</h3>
+  <p><strong>Name:</strong> {{ person.emergency_contact_name or "Not set" }}</p>
+  <p><strong>Relationship:</strong> {{ person.emergency_contact_relationship or "Not set" }}</p>
+  <p><strong>Phone:</strong> {{ person.emergency_contact_phone or "Not set" }}</p>
+  <p><strong>Email:</strong> {{ person.emergency_contact_email or "Not set" }}</p>
+</section>
+
+<section class="card">
+  <h3>Health, Medical and Dietary</h3>
+  <p><strong>Allergies:</strong> {{ person.allergies or "Not set" }}</p>
+  <p><strong>Allergy Action:</strong> {{ person.allergy_action or "Not set" }}</p>
+  <p><strong>Medication:</strong> {{ person.medication or "Not set" }}</p>
+  <p><strong>Medical Notes:</strong> {{ person.medical_notes or "Not set" }}</p>
+  <p><strong>Dietary Requirements:</strong> {{ person.dietary_requirements or "Not set" }}</p>
+</section>
+
+<section class="card">
   <h3>Teams</h3>
 
   {% if team_rows %}
