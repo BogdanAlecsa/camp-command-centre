@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Bulk Import People from OSM Member Export</h2>
+  <p class="muted">
+    Upload an OSM member / personal file export for one section. This preview shows which rows match existing people and which would need creating.
+  </p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Upload Member Export</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/people/osm-member-import" enctype="multipart/form-data">
+    <label for="section_id">Target Section</label>
+    <select id="section_id" name="section_id" required>
+      {% for section in sections %}
+        <option value="{{ section.id }}" {% if selected_section_id is defined and selected_section_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="default_person_type">Default Person Type for New People</label>
+    <select id="default_person_type" name="default_person_type">
+      {% for option in ["Young Person", "Leader", "Helper", "Young Leader", "Visitor"] %}
+        <option value="{{ option }}" {% if default_person_type is defined and default_person_type == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="osm_file">OSM member export (.xlsx)</label>
+    <input id="osm_file" name="osm_file" type="file" accept=".xlsx" required>
+
+    <p id="selected-file-message" class="muted">No file selected yet.</p>
+
+    <p class="muted">
+      This keeps only camp-relevant fields: names, phone/email, primary contact, emergency contact, allergies, medication, medical notes and dietary requirements.
+    </p>
+
+    <div class="form-actions">
+      <button id="preview-member-button" type="submit" disabled>Choose a file first</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/people">Back to People</a>
+    </div>
+  </form>
+
+  <script>
+    const memberFileInput = document.getElementById("osm_file");
+    const selectedFileMessage = document.getElementById("selected-file-message");
+    const previewButton = document.getElementById("preview-member-button");
+
+    if (memberFileInput && selectedFileMessage && previewButton) {
+      memberFileInput.addEventListener("change", function () {
+        if (memberFileInput.files && memberFileInput.files.length > 0) {
+          const fileName = memberFileInput.files[0].name;
+          selectedFileMessage.textContent = "Selected file: " + fileName + ". Click Preview to check rows before applying anything.";
+          previewButton.disabled = false;
+          previewButton.textContent = "Preview member export";
+        } else {
+          selectedFileMessage.textContent = "No file selected yet.";
+          previewButton.disabled = true;
+          previewButton.textContent = "Choose a file first";
+        }
+      });
+    }
+  </script>
+</section>
+
+{% if preview_rows is defined %}
+<section class="card">
+  <h3>Preview Member Import</h3>
+
+  <p class="muted">
+    File: {{ filename }}<br>
+    Target section: {{ selected_section.name }}<br>
+    Matched: {{ matched_count }} · Unmatched: {{ unmatched_count }}
+  </p>
+
+  {% if preview_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Sheet</th>
+          <th>Row</th>
+          <th>Name</th>
+          <th>Matched Person</th>
+          <th>Primary Contact</th>
+          <th>Emergency Contact</th>
+          <th>Health / Dietary Snapshot</th>
+          <th>Warning</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in preview_rows %}
+          <tr>
+            <td>{{ row.sheet_name }}</td>
+            <td>{{ row.excel_row }}</td>
+            <td><strong>{{ row.display_name }}</strong></td>
+            <td>
+              {% if row.matched_person %}
+                {{ row.matched_person.first_name }} {{ row.matched_person.last_name }}
+              {% else %}
+                <span class="muted">No existing match</span>
+              {% endif %}
+            </td>
+            <td>
+              {{ row.primary_contact_name or "" }}<br>
+              <span class="muted">{{ row.primary_contact_phone or row.primary_contact_email or "" }}</span>
+            </td>
+            <td>
+              {{ row.emergency_contact_name or "" }}<br>
+              <span class="muted">{{ row.emergency_contact_phone or row.emergency_contact_email or "" }}</span>
+            </td>
+            <td>
+              {% if row.allergies %}<strong>Allergies:</strong> {{ row.allergies }}<br>{% endif %}
+              {% if row.medication %}<strong>Medication:</strong> {{ row.medication }}<br>{% endif %}
+              {% if row.medical_notes %}<strong>Medical:</strong> {{ row.medical_notes }}<br>{% endif %}
+              {% if row.dietary_requirements %}<strong>Dietary:</strong> {{ row.dietary_requirements }}{% endif %}
+            </td>
+            <td>
+              {% if row.warning %}
+                <span class="warning">{{ row.warning }}</span>
+              {% else %}
+                <span class="good">Matched</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p class="warning">
+      Apply is not enabled yet. This is the safe preview stage.
+    </p>
+  {% else %}
+    <p class="warning">No usable member rows were found in this export.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

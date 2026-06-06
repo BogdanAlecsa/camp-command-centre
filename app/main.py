@@ -1254,6 +1254,164 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
     )
 
 
+@app.get("/camps/{camp_id}/people/osm-member-import", response_class=HTMLResponse)
+async def osm_member_import_form(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    return templates.TemplateResponse(
+        "people/osm_member_import.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sections": sections,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/osm-member-import", response_class=HTMLResponse)
+async def preview_osm_member_import(
+    request: Request,
+    camp_id: int,
+    section_id: int = Form(...),
+    default_person_type: str = Form("Young Person"),
+    osm_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "people/osm_member_import.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": "Please choose a valid section.",
+            },
+            status_code=400,
+        )
+
+    filename = osm_file.filename or ""
+
+    if not filename.lower().endswith(".xlsx"):
+        return templates.TemplateResponse(
+            "people/osm_member_import.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": "Please upload an OSM member export in .xlsx format.",
+            },
+            status_code=400,
+        )
+
+    try:
+        candidates = parse_osm_member_export(await osm_file.read())
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "people/osm_member_import.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": f"Could not read this OSM member export: {exc}",
+            },
+            status_code=400,
+        )
+
+    people_in_section = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.home_section_id == section.id)
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+    lookup = {}
+    for person in people_in_section:
+        key = (
+            normalise_person_match_value(person.first_name),
+            normalise_person_match_value(person.last_name),
+        )
+        lookup.setdefault(key, []).append(person)
+
+    preview_rows = []
+    matched_count = 0
+    unmatched_count = 0
+
+    for candidate in candidates:
+        key = (
+            normalise_person_match_value(candidate.get("first_name")),
+            normalise_person_match_value(candidate.get("last_name")),
+        )
+
+        matches = lookup.get(key, [])
+        matched_person = matches[0] if len(matches) == 1 else None
+
+        if matched_person:
+            matched_count += 1
+            warning = ""
+        elif len(matches) > 1:
+            unmatched_count += 1
+            warning = "Multiple matches found"
+        else:
+            unmatched_count += 1
+            warning = "No match found"
+
+        preview_rows.append(
+            {
+                **candidate,
+                "matched_person": matched_person,
+                "warning": warning,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "people/osm_member_import.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sections": sections,
+            "selected_section": section,
+            "selected_section_id": section.id,
+            "default_person_type": default_person_type,
+            "filename": filename,
+            "preview_rows": preview_rows,
+            "matched_count": matched_count,
+            "unmatched_count": unmatched_count,
+            "error": None,
+        },
+    )
+
+
 @app.get("/camps/{camp_id}/people/osm-attendance-update", response_class=HTMLResponse)
 async def osm_attendance_update_form(
     request: Request,
