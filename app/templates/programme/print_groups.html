@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>YP Programmes - {{ camp.name }}</title>
+
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      color: #111827;
+      font-size: 10pt;
+      line-height: 1.35;
+      margin: 0;
+      background: white;
+    }
+
+    .screen-actions {
+      margin: 1rem 0;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    .screen-actions a,
+    .screen-actions button {
+      display: inline-block;
+      margin-right: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid #94a3b8;
+      border-radius: 0.4rem;
+      background: white;
+      color: #0f172a;
+      text-decoration: none;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .schedule {
+      break-after: page;
+    }
+
+    .schedule:last-child {
+      break-after: auto;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem 0;
+      font-size: 20pt;
+    }
+
+    h2 {
+      margin: 1rem 0 0.35rem 0;
+      padding-bottom: 0.2rem;
+      border-bottom: 1px solid #cbd5e1;
+      font-size: 13pt;
+    }
+
+    h3 {
+      margin: 0.8rem 0 0.35rem 0;
+      font-size: 11pt;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    .header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.4rem;
+      margin: 0.75rem 0 1rem 0;
+      padding: 0.6rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.35rem 0 0.8rem 0;
+    }
+
+    th,
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 0.3rem 0.38rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e2e8f0;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    tr {
+      break-inside: avoid;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.12rem 0.35rem;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      font-size: 8.5pt;
+      white-space: nowrap;
+    }
+
+    .whole-camp-row {
+      background: #f8fafc;
+    }
+
+    .group-row {
+      background: #ffffff;
+    }
+
+    .small {
+      font-size: 8.8pt;
+    }
+
+    @media print {
+      .screen-actions {
+        display: none;
+      }
+
+      body {
+        font-size: 9.2pt;
+      }
+
+      h1 {
+        font-size: 18pt;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen-actions">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    <a href="/camps/{{ camp.id }}/programme">Back to Programme</a>
+  </div>
+
+  {% if schedules %}
+    {% for schedule in schedules %}
+      <section class="schedule">
+        <header>
+          <h1>{{ schedule.team.name }} Programme</h1>
+          <p class="muted">{{ camp.name }}</p>
+
+          <div class="header-grid">
+            <div><strong>Group</strong><br>{{ schedule.team.name }}</div>
+            <div><strong>Camp dates</strong><br>{{ camp.start_date }} to {{ camp.end_date }}</div>
+            <div><strong>Venue</strong><br>{{ camp.venue_name or "Not set" }}</div>
+          </div>
+        </header>
+
+        {% if schedule.sessions %}
+          {% for session_date, day_sessions in schedule.sessions_by_date.items() %}
+            <h2>{{ session_date.strftime("%A %-d %B %Y") }}</h2>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Time</th>
+                  <th style="width: 35%;">Session</th>
+                  <th style="width: 14%;">For</th>
+                  <th style="width: 18%;">Location</th>
+                  <th style="width: 18%;">Lead / Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for session in day_sessions %}
+                  <tr class="{% if session.participant_team_id %}group-row{% else %}whole-camp-row{% endif %}">
+                    <td>
+                      <strong>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</strong>
+                    </td>
+
+                    <td>
+                      <strong>{{ session.title }}</strong>
+
+                      {% if session.activity_id %}
+                        <br><span class="muted small">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}</span>
+                      {% endif %}
+
+                      {% if session.rotation_group %}
+                        <br>
+                        <span class="badge">
+                          {{ session.rotation_group }}{% if session.rotation_slot_number %}, slot {{ session.rotation_slot_number }}{% endif %}
+                        </span>
+                      {% endif %}
+
+                      {% if session.activity_id %}
+                        {% set risk_status = risk_statuses.get(session.activity_id, "Not Started") %}
+                        <br><span class="muted small">RA: {{ risk_status }}</span>
+                      {% endif %}
+                    </td>
+
+                    <td>
+                      {% if session.participant_team_id %}
+                        {{ team_names.get(session.participant_team_id, "Unknown team") }}
+                      {% else %}
+                        Whole camp
+                      {% endif %}
+                    </td>
+
+                    <td>{{ session.location or "Not set" }}</td>
+
+                    <td>
+                      {% if session.lead_person_id %}
+                        {{ person_names.get(session.lead_person_id, "Unknown person") }}
+                      {% else %}
+                        <span class="muted">Not set</span>
+                      {% endif %}
+
+                      {% if session.notes %}
+                        <br><span class="muted small">{{ session.notes }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endfor %}
+        {% else %}
+          <p>No programme sessions found for this group.</p>
+        {% endif %}
+      </section>
+    {% endfor %}
+  {% else %}
+    <h1>Group Programmes</h1>
+    <p>No young people groups, patrols or activity groups were found for this camp.</p>
+  {% endif %}
+</body>
+</html>

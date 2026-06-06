@@ -7,9 +7,18 @@
     Build the camp timetable using activities, meals, travel, whole-camp blocks, group sessions and rotation slots.
   </p>
 
-  <a class="button" href="/camps/{{ camp.id }}/programme/new">Add Programme Session</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/activities">Activities</a>
+  <div class="programme-actions">
+    <div class="programme-actions-row">
+      <a class="button" href="/camps/{{ camp.id }}/programme/new">Add Programme Session</a>
+      <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/full" target="_blank" rel="noopener noreferrer">Print Full Programme</a>
+      <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/groups" target="_blank" rel="noopener noreferrer">Print YP Programme</a>
+      <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/leader" target="_blank" rel="noopener noreferrer">Print Operational Programme</a>
+    </div>
+    <div class="programme-actions-row">
+      <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+      <a class="button secondary" href="/camps/{{ camp.id }}/activities">Activities</a>
+    </div>
+  </div>
 </section>
 
 {% if sessions %}

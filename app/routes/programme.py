@@ -14,6 +14,7 @@ from app.models import (
     Person,
     ProgrammeSession,
     Team,
+    TeamMembership,
 )
 
 router = APIRouter()
@@ -622,3 +623,447 @@ async def update_programme_session(
     db.commit()
 
     return RedirectResponse(url=f"/camps/{camp.id}/programme/{session.id}", status_code=303)
+
+
+@router.get("/camps/{camp_id}/programme/print/full", response_class=HTMLResponse)
+async def print_full_programme(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sessions = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.camp_id == camp.id)
+        .order_by(
+            ProgrammeSession.session_date,
+            ProgrammeSession.start_time,
+            ProgrammeSession.participant_team_id,
+            ProgrammeSession.title,
+        )
+        .all()
+    )
+
+    sessions_by_date = {}
+
+    for session in sessions:
+        sessions_by_date.setdefault(session.session_date, []).append(session)
+
+    rotation_summaries_by_date = build_rotation_summaries(sessions_by_date)
+
+    (
+        activities,
+        teams,
+        people,
+        activity_names,
+        team_names,
+        person_names,
+        risk_statuses,
+    ) = get_programme_lookup_maps(db, camp)
+
+    return templates.TemplateResponse(
+        "programme/print_full.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sessions": sessions,
+            "sessions_by_date": sessions_by_date,
+            "rotation_summaries_by_date": rotation_summaries_by_date,
+            "activity_names": activity_names,
+            "team_names": team_names,
+            "person_names": person_names,
+            "risk_statuses": risk_statuses,
+        },
+    )
+
+
+@router.get("/camps/{camp_id}/programme/print/groups", response_class=HTMLResponse)
+async def print_group_programmes(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    all_sessions = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.camp_id == camp.id)
+        .order_by(
+            ProgrammeSession.session_date,
+            ProgrammeSession.start_time,
+            ProgrammeSession.participant_team_id,
+            ProgrammeSession.title,
+        )
+        .all()
+    )
+
+    participant_team_types = [
+        "Patrol/Six",
+        "Activity Group",
+        "Tent Group",
+    ]
+
+    teams = (
+        db.query(Team)
+        .join(TeamMembership, TeamMembership.team_id == Team.id)
+        .join(Person, Person.id == TeamMembership.person_id)
+        .filter(
+            Team.camp_id == camp.id,
+            Team.team_type.in_(participant_team_types),
+            Person.person_type == "Young Person",
+        )
+        .distinct()
+        .order_by(Team.team_type, Team.name)
+        .all()
+    )
+
+    (
+        activities,
+        all_teams,
+        people,
+        activity_names,
+        team_names,
+        person_names,
+        risk_statuses,
+    ) = get_programme_lookup_maps(db, camp)
+
+    schedules = []
+
+    for team in teams:
+        team_sessions = [
+            session
+            for session in all_sessions
+            if session.participant_team_id is None
+            or session.participant_team_id == team.id
+        ]
+
+        sessions_by_date = {}
+
+        for session in team_sessions:
+            sessions_by_date.setdefault(session.session_date, []).append(session)
+
+        schedules.append(
+            {
+                "team": team,
+                "sessions": team_sessions,
+                "sessions_by_date": sessions_by_date,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "programme/print_groups.html",
+        {
+            "request": request,
+            "camp": camp,
+            "schedules": schedules,
+            "activity_names": activity_names,
+            "team_names": team_names,
+            "person_names": person_names,
+            "risk_statuses": risk_statuses,
+        },
+    )
+
+
+
+@router.get("/camps/{camp_id}/programme/print/activity-leaders", response_class=HTMLResponse)
+async def print_activity_leader_schedules(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sessions = (
+        db.query(ProgrammeSession)
+        .filter(
+            ProgrammeSession.camp_id == camp.id,
+            ProgrammeSession.activity_id.isnot(None),
+        )
+        .order_by(
+            ProgrammeSession.session_date,
+            ProgrammeSession.start_time,
+            ProgrammeSession.rotation_group,
+            ProgrammeSession.activity_id,
+            ProgrammeSession.participant_team_id,
+            ProgrammeSession.title,
+        )
+        .all()
+    )
+
+    (
+        activities,
+        teams,
+        people,
+        activity_names,
+        team_names,
+        person_names,
+        risk_statuses,
+    ) = get_programme_lookup_maps(db, camp)
+
+    schedules_by_key = {}
+
+    for session in sessions:
+        schedule_kind = "rotation" if session.rotation_group else "single"
+
+        key = (
+            schedule_kind,
+            session.activity_id,
+            session.rotation_group or "",
+            session.location or "",
+            session.lead_person_id or 0,
+        )
+
+        schedule = schedules_by_key.get(key)
+
+        if schedule is None:
+            schedule = {
+                "schedule_kind": schedule_kind,
+                "activity_id": session.activity_id,
+                "activity_name": activity_names.get(session.activity_id, session.title),
+                "rotation_group": session.rotation_group,
+                "location": session.location,
+                "lead_person_id": session.lead_person_id,
+                "lead_name": person_names.get(session.lead_person_id, "Unassigned lead")
+                if session.lead_person_id
+                else "Unassigned lead",
+                "sessions": [],
+            }
+            schedules_by_key[key] = schedule
+
+        schedule["sessions"].append(session)
+
+    schedules = list(schedules_by_key.values())
+
+    for schedule in schedules:
+        schedule["sessions"] = sorted(
+            schedule["sessions"],
+            key=lambda item: (
+                item.session_date,
+                item.start_time,
+                item.rotation_slot_number or 0,
+                item.participant_team_id or 0,
+                item.title,
+            ),
+        )
+
+        schedule["start_time"] = min(item.start_time for item in schedule["sessions"])
+        schedule["end_time"] = max(item.end_time for item in schedule["sessions"])
+        schedule["start_date"] = min(item.session_date for item in schedule["sessions"])
+        schedule["end_date"] = max(item.session_date for item in schedule["sessions"])
+
+    schedules = sorted(
+        schedules,
+        key=lambda item: (
+            item["start_date"],
+            item["start_time"],
+            item["activity_name"],
+            item["rotation_group"] or "",
+        ),
+    )
+
+    return templates.TemplateResponse(
+        "programme/print_activity_leaders.html",
+        {
+            "request": request,
+            "camp": camp,
+            "schedules": schedules,
+            "activity_names": activity_names,
+            "team_names": team_names,
+            "person_names": person_names,
+            "risk_statuses": risk_statuses,
+        },
+    )
+
+
+
+@router.get("/camps/{camp_id}/programme/print/leader", response_class=HTMLResponse)
+async def print_leader_programme(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sessions = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.camp_id == camp.id)
+        .order_by(
+            ProgrammeSession.session_date,
+            ProgrammeSession.start_time,
+            ProgrammeSession.rotation_group,
+            ProgrammeSession.rotation_slot_number,
+            ProgrammeSession.participant_team_id,
+            ProgrammeSession.title,
+        )
+        .all()
+    )
+
+    (
+        activities,
+        teams,
+        people,
+        activity_names,
+        team_names,
+        person_names,
+        risk_statuses,
+    ) = get_programme_lookup_maps(db, camp)
+
+    sessions_by_date = {}
+    for session in sessions:
+        sessions_by_date.setdefault(session.session_date, []).append(session)
+
+    days = []
+
+    for session_date, day_sessions in sessions_by_date.items():
+        normal_sessions = []
+        rotation_groups = {}
+
+        for session in day_sessions:
+            if session.rotation_group:
+                rotation = rotation_groups.setdefault(
+                    session.rotation_group,
+                    {
+                        "name": session.rotation_group,
+                        "start_time": session.start_time,
+                        "end_time": session.end_time,
+                        "bases": {},
+                    },
+                )
+
+                if session.start_time < rotation["start_time"]:
+                    rotation["start_time"] = session.start_time
+                if session.end_time > rotation["end_time"]:
+                    rotation["end_time"] = session.end_time
+
+                base_key = (
+                    session.activity_id or 0,
+                    session.location or "",
+                    session.lead_person_id or 0,
+                )
+
+                base = rotation["bases"].setdefault(
+                    base_key,
+                    {
+                        "activity_id": session.activity_id,
+                        "activity_name": activity_names.get(session.activity_id, session.title),
+                        "location": session.location,
+                        "lead_name": person_names.get(session.lead_person_id, "Unassigned lead")
+                        if session.lead_person_id
+                        else "Unassigned lead",
+                        "slots": [],
+                    },
+                )
+
+                base["slots"].append(session)
+            else:
+                normal_sessions.append(session)
+
+        rotation_blocks = []
+
+        for rotation_name, rotation in rotation_groups.items():
+            bases = list(rotation["bases"].values())
+
+            for base in bases:
+                base["slots"] = sorted(
+                    base["slots"],
+                    key=lambda s: (
+                        s.rotation_slot_number or 0,
+                        s.start_time,
+                        s.participant_team_id or 0,
+                    ),
+                )
+
+            bases = sorted(
+                bases,
+                key=lambda b: (
+                    b["activity_name"],
+                    b["location"] or "",
+                    b["lead_name"],
+                ),
+            )
+
+            rotation_blocks.append(
+                {
+                    "block_type": "rotation",
+                    "name": rotation_name,
+                    "start_time": rotation["start_time"],
+                    "end_time": rotation["end_time"],
+                    "bases": bases,
+                }
+            )
+
+        rotation_blocks = sorted(
+            rotation_blocks,
+            key=lambda item: (item["start_time"], item["name"])
+        )
+
+        blocks = []
+
+        for session in normal_sessions:
+            blocks.append(
+                {
+                    "block_type": "session",
+                    "start_time": session.start_time,
+                    "end_time": session.end_time,
+                    "session": session,
+                }
+            )
+
+        blocks.extend(rotation_blocks)
+
+        blocks = sorted(
+            blocks,
+            key=lambda item: (
+                item["start_time"],
+                1 if item["block_type"] == "rotation" else 0,
+            ),
+        )
+
+        days.append(
+            {
+                "session_date": session_date,
+                "blocks": blocks,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "programme/print_leader.html",
+        {
+            "request": request,
+            "camp": camp,
+            "days": days,
+            "activity_names": activity_names,
+            "team_names": team_names,
+            "person_names": person_names,
+            "risk_statuses": risk_statuses,
+        },
+    )

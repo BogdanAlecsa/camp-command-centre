@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Activity Base Schedules - {{ camp.name }}</title>
+
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      color: #111827;
+      font-size: 10pt;
+      line-height: 1.35;
+      margin: 0;
+      background: white;
+    }
+
+    .screen-actions {
+      margin: 1rem 0;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    .screen-actions a,
+    .screen-actions button {
+      display: inline-block;
+      margin-right: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid #94a3b8;
+      border-radius: 0.4rem;
+      background: white;
+      color: #0f172a;
+      text-decoration: none;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .schedule {
+      break-after: page;
+    }
+
+    .schedule:last-child {
+      break-after: auto;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem 0;
+      font-size: 20pt;
+    }
+
+    h2 {
+      margin: 0.9rem 0 0.35rem 0;
+      font-size: 14pt;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    .hint {
+      margin: 0.5rem 0 0.8rem 0;
+      padding: 0.55rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    .header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.4rem;
+      margin: 0.75rem 0 1rem 0;
+      padding: 0.6rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    .base-card {
+      padding: 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-left: 6px solid #94a3b8;
+      border-radius: 0.6rem;
+      background: #ffffff;
+      break-inside: avoid;
+    }
+
+    .rotation-card {
+      background: #f8fafc;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.45rem;
+      margin: 0.6rem 0;
+    }
+
+    .meta-grid div {
+      padding: 0.4rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.4rem;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.45rem 0 0.2rem 0;
+    }
+
+    th,
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 0.32rem 0.4rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e2e8f0;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    tr {
+      break-inside: avoid;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.12rem 0.35rem;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      font-size: 8.5pt;
+      white-space: nowrap;
+    }
+
+    .small {
+      font-size: 8.8pt;
+    }
+
+    @media print {
+      .screen-actions {
+        display: none;
+      }
+
+      body {
+        font-size: 9.2pt;
+      }
+
+      h1 {
+        font-size: 18pt;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen-actions">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    <a href="/camps/{{ camp.id }}/programme">Back to Programme</a>
+  </div>
+
+  {% if schedules %}
+    {% for schedule in schedules %}
+      <section class="schedule">
+        <header>
+          <h1>Activity / Base Schedule</h1>
+          <p class="muted">{{ camp.name }}</p>
+
+          <div class="header-grid">
+            <div><strong>Activity / Base</strong><br>{{ schedule.activity_name }}</div>
+            <div><strong>Camp dates</strong><br>{{ camp.start_date }} to {{ camp.end_date }}</div>
+            <div><strong>Venue</strong><br>{{ camp.venue_name or "Not set" }}</div>
+          </div>
+        </header>
+
+        <article class="base-card {% if schedule.schedule_kind == 'rotation' %}rotation-card{% endif %}">
+          <h2>{{ schedule.activity_name }}</h2>
+
+          {% if schedule.schedule_kind == "rotation" %}
+            <p class="hint">
+              <strong>Rotation base sheet.</strong>
+              This page is for the adult/team running this activity base. Groups arrive at the slots shown below.
+            </p>
+          {% else %}
+            <p class="hint">
+              <strong>Activity session sheet.</strong>
+              This page shows when this activity is being run, who it is for, and who is leading it.
+            </p>
+          {% endif %}
+
+          <div class="meta-grid">
+            <div>
+              <strong>Date</strong><br>
+              {% if schedule.start_date == schedule.end_date %}
+                {{ schedule.start_date.strftime("%A %-d %B %Y") }}
+              {% else %}
+                {{ schedule.start_date }} to {{ schedule.end_date }}
+              {% endif %}
+            </div>
+
+            <div>
+              <strong>Time</strong><br>
+              {{ schedule.start_time.strftime("%H:%M") }}–{{ schedule.end_time.strftime("%H:%M") }}
+            </div>
+
+            <div>
+              <strong>Location</strong><br>
+              {{ schedule.location or "Not set" }}
+            </div>
+
+            <div>
+              <strong>Lead</strong><br>
+              {{ schedule.lead_name }}
+            </div>
+
+            <div>
+              <strong>Risk Assessment</strong><br>
+              {% set risk_status = risk_statuses.get(schedule.activity_id, "Not Started") %}
+              <span class="badge">{{ risk_status }}</span>
+            </div>
+
+            <div>
+              <strong>Type</strong><br>
+              {% if schedule.schedule_kind == "rotation" %}
+                Rotation base
+              {% else %}
+                Activity session
+              {% endif %}
+            </div>
+          </div>
+
+          {% if schedule.schedule_kind == "rotation" %}
+            <p>
+              <strong>Rotation:</strong> {{ schedule.rotation_group }}
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 16%;">Slot</th>
+                  <th style="width: 20%;">Time</th>
+                  <th style="width: 24%;">Group arriving</th>
+                  <th style="width: 40%;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for session in schedule.sessions %}
+                  <tr>
+                    <td>
+                      {% if session.rotation_slot_number %}
+                        Slot {{ session.rotation_slot_number }}
+                      {% else %}
+                        Slot
+                      {% endif %}
+                    </td>
+                    <td>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</td>
+                    <td>
+                      {% if session.participant_team_id %}
+                        {{ team_names.get(session.participant_team_id, "Unknown team") }}
+                      {% else %}
+                        Whole camp
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if session.notes %}
+                        {{ session.notes }}
+                      {% else %}
+                        <span class="muted">No notes.</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 18%;">Date</th>
+                  <th style="width: 18%;">Time</th>
+                  <th style="width: 22%;">Participants</th>
+                  <th style="width: 18%;">Location</th>
+                  <th style="width: 24%;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for session in schedule.sessions %}
+                  <tr>
+                    <td>{{ session.session_date.strftime("%A %-d %B") }}</td>
+                    <td>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</td>
+                    <td>
+                      {% if session.participant_team_id %}
+                        {{ team_names.get(session.participant_team_id, "Unknown team") }}
+                      {% else %}
+                        Whole camp
+                      {% endif %}
+                    </td>
+                    <td>{{ session.location or "Not set" }}</td>
+                    <td>
+                      {% if session.notes %}
+                        {{ session.notes }}
+                      {% else %}
+                        <span class="muted">No notes.</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+        </article>
+      </section>
+    {% endfor %}
+  {% else %}
+    <h1>Activity / Base Schedules</h1>
+    <p>No activity-linked programme sessions were found.</p>
+  {% endif %}
+</body>
+</html>

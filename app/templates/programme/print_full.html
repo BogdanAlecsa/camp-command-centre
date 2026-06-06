@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Full Programme / Camp Board - {{ camp.name }}</title>
+
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      color: #111827;
+      font-size: 10pt;
+      line-height: 1.35;
+      margin: 0;
+      background: white;
+    }
+
+    .screen-actions {
+      margin: 1rem 0;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    .screen-actions a,
+    .screen-actions button {
+      display: inline-block;
+      margin-right: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid #94a3b8;
+      border-radius: 0.4rem;
+      background: white;
+      color: #0f172a;
+      text-decoration: none;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem 0;
+      font-size: 20pt;
+    }
+
+    h2 {
+      margin: 1rem 0 0.4rem 0;
+      padding-bottom: 0.2rem;
+      border-bottom: 1px solid #cbd5e1;
+      font-size: 14pt;
+    }
+
+    h3 {
+      margin: 0.8rem 0 0.35rem 0;
+      font-size: 11pt;
+    }
+
+    .muted {
+      color: #64748b;
+    }
+
+    .header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 0.4rem;
+      margin: 0.75rem 0 1rem 0;
+      padding: 0.6rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+    }
+
+    .header-grid div {
+      break-inside: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.35rem 0 0.8rem 0;
+    }
+
+    th,
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 0.28rem 0.35rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e2e8f0;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    tr {
+      break-inside: avoid;
+    }
+
+    .day-section {
+      break-inside: avoid-page;
+      margin-top: 0.7rem;
+    }
+
+    .rotation-summary {
+      margin: 0.4rem 0 0.8rem 0;
+      padding: 0.5rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      background: #f8fafc;
+      break-inside: avoid;
+    }
+
+    .rotation-slot {
+      margin-top: 0.45rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.12rem 0.35rem;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      font-size: 8.5pt;
+      white-space: nowrap;
+    }
+
+    .small {
+      font-size: 8.8pt;
+    }
+
+    @media print {
+      .screen-actions {
+        display: none;
+      }
+
+      body {
+        font-size: 9pt;
+      }
+
+      h1 {
+        font-size: 18pt;
+      }
+
+      h2 {
+        font-size: 13pt;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen-actions">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    <a href="/camps/{{ camp.id }}/programme">Back to Programme</a>
+  </div>
+
+  <header>
+    <h1>Full Programme / Camp Board</h1>
+    <p class="muted">{{ camp.name }}</p>
+
+    <div class="header-grid">
+      <div><strong>Camp type</strong><br>{{ camp.camp_type or "Not set" }}</div>
+      <div><strong>Dates</strong><br>{{ camp.start_date }} to {{ camp.end_date }}</div>
+      <div><strong>Venue</strong><br>{{ camp.venue_name or "Not set" }}</div>
+      <div><strong>Status</strong><br>{{ camp.status or "Not set" }}</div>
+    </div>
+  </header>
+
+  {% if sessions %}
+    {% for session_date, day_sessions in sessions_by_date.items() %}
+      <section class="day-section">
+        <h2>{{ session_date.strftime("%A %-d %B %Y") }}</h2>
+
+        {% set rotation_summaries = rotation_summaries_by_date.get(session_date, []) %}
+        {% if rotation_summaries %}
+          <div class="rotation-summary">
+            <h3>Rotation Summary</h3>
+
+            {% for rotation in rotation_summaries %}
+              <p><strong>{{ rotation.rotation_name }}</strong></p>
+
+              {% for slot in rotation.slots %}
+                <div class="rotation-slot">
+                  <strong>
+                    {% if slot.slot_number %}
+                      Slot {{ slot.slot_number }} —
+                    {% endif %}
+                    {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
+                  </strong>
+
+                  <table class="small">
+                    <thead>
+                      <tr>
+                        <th>Group</th>
+                        <th>Activity / Session</th>
+                        <th>Location</th>
+                        <th>Lead</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for rotation_session in slot.sessions %}
+                        <tr>
+                          <td>
+                            {% if rotation_session.participant_team_id %}
+                              {{ team_names.get(rotation_session.participant_team_id, "Unknown team") }}
+                            {% else %}
+                              Whole camp
+                            {% endif %}
+                          </td>
+                          <td>{{ rotation_session.title }}</td>
+                          <td>{{ rotation_session.location or "Not set" }}</td>
+                          <td>
+                            {% if rotation_session.lead_person_id %}
+                              {{ person_names.get(rotation_session.lead_person_id, "Unknown person") }}
+                            {% else %}
+                              Not set
+                            {% endif %}
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endfor %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 12%;">Time</th>
+              <th style="width: 26%;">Session</th>
+              <th style="width: 12%;">Type</th>
+              <th style="width: 13%;">Group</th>
+              <th style="width: 14%;">Location</th>
+              <th style="width: 13%;">Lead</th>
+              <th style="width: 10%;">RA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for session in day_sessions %}
+              <tr>
+                <td><strong>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</strong></td>
+                <td>
+                  <strong>{{ session.title }}</strong>
+                  {% if session.activity_id %}
+                    <br><span class="muted small">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}</span>
+                  {% endif %}
+                  {% if session.rotation_group %}
+                    <br><span class="muted small">{{ session.rotation_group }}{% if session.rotation_slot_number %}, slot {{ session.rotation_slot_number }}{% endif %}</span>
+                  {% endif %}
+                  {% if session.notes %}
+                    <br><span class="muted small">{{ session.notes }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ session.session_type }}</td>
+                <td>
+                  {% if session.participant_team_id %}
+                    {{ team_names.get(session.participant_team_id, "Unknown team") }}
+                  {% else %}
+                    Whole camp
+                  {% endif %}
+                </td>
+                <td>{{ session.location or "Not set" }}</td>
+                <td>
+                  {% if session.lead_person_id %}
+                    {{ person_names.get(session.lead_person_id, "Unknown person") }}
+                  {% else %}
+                    Not set
+                  {% endif %}
+                </td>
+                <td>
+                  {% if session.activity_id %}
+                    {% set risk_status = risk_statuses.get(session.activity_id, "Not Started") %}
+                    <span class="badge">{{ risk_status }}</span>
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% endfor %}
+  {% else %}
+    <p>No programme sessions have been added yet.</p>
+  {% endif %}
+</body>
+</html>
