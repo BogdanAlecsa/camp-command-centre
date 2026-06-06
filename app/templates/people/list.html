@@ -4,10 +4,12 @@
 <section class="card">
   <h2>People — {{ camp.name }}</h2>
   <p class="muted">
-    Manage young people, leaders, helpers, parents/guardians and visitors for this camp. People are grouped by home section.
+    Manage young people, leaders, helpers, parents/guardians and visitors for this camp.
+    People are grouped by home section.
   </p>
 
   <a class="button" href="/camps/{{ camp.id }}/people/new">Add Person</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/people/provisional">Create Provisional People</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
 </section>
@@ -18,6 +20,7 @@
       <tr>
         <th>Name</th>
         <th>Type</th>
+        <th>Status</th>
         <th>Email</th>
         <th>Phone</th>
         <th>Tasks</th>
@@ -30,7 +33,13 @@
         {% set task_count = person_task_counts.get(person.id, 0) %}
         <tr>
           <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
-          <td>{{ person.person_type }}</td>
+          <td>
+            {{ person.person_type }}
+            {% if person.is_provisional %}
+              <span class="badge">Provisional</span>
+            {% endif %}
+          </td>
+          <td>{{ person.attendance_status or "" }}</td>
           <td>{{ person.email or "" }}</td>
           <td>{{ person.phone or "" }}</td>
           <td>
@@ -51,32 +60,47 @@
 {% endmacro %}
 
 {% if people %}
-  {% for section in sections %}
-    {% set section_people = people_by_section.get(section.id, []) %}
-    {% if section_people %}
-      <section class="card">
-        <h3>{{ section.name }}</h3>
-        <p class="muted">
-          {{ section_people|length }} person{% if section_people|length != 1 %}s{% endif %}
-          · {{ section.section_type }}
-          {% if not section.is_active %} · inactive{% endif %}
-        </p>
+  <section class="card">
+    <h3>People by Section</h3>
+    <p class="muted">
+      Open or close each section to focus on one group at a time.
+    </p>
 
-        {{ people_table(section_people) }}
-      </section>
+    {% for section in sections %}
+      {% set section_people = people_by_section.get(section.id, []) %}
+      {% if section_people %}
+        <details class="people-section-details" open>
+          <summary>
+            <strong>{{ section.name }}</strong>
+            <span class="muted">
+              — {{ section_people|length }} person{% if section_people|length != 1 %}s{% endif %}
+              · {{ section.section_type }}
+              {% if not section.is_active %} · inactive{% endif %}
+            </span>
+          </summary>
+
+          <div class="details-body">
+            {{ people_table(section_people) }}
+          </div>
+        </details>
+      {% endif %}
+    {% endfor %}
+
+    {% if people_without_section %}
+      <details class="people-section-details" open>
+        <summary>
+          <strong>No section set</strong>
+          <span class="muted">
+            — {{ people_without_section|length }} person{% if people_without_section|length != 1 %}s{% endif %}
+          </span>
+        </summary>
+
+        <div class="details-body">
+          {{ people_table(people_without_section) }}
+        </div>
+      </details>
     {% endif %}
-  {% endfor %}
-
-  {% if people_without_section %}
-    <section class="card">
-      <h3>No section set</h3>
-      <p class="muted">
-        {{ people_without_section|length }} person{% if people_without_section|length != 1 %}s{% endif %} not yet assigned to a home section.
-      </p>
-
-      {{ people_table(people_without_section) }}
-    </section>
-  {% endif %}
+  </section>
 {% else %}
   <section class="card">
     <p>No people have been added to this camp yet.</p>

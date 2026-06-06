@@ -88,6 +88,9 @@ def ensure_optional_schema_columns():
         optional_columns = [
             ("activity", "badge_notes", "TEXT"),
             ("person", "home_section_id", "INTEGER"),
+            ("person", "information_source", "TEXT"),
+            ("person", "attendance_status", "TEXT"),
+            ("person", "is_provisional", "INTEGER DEFAULT 0"),
         ]
 
         for table_name, column_name, column_type in optional_columns:
@@ -991,6 +994,128 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
     )
 
 
+@app.get("/camps/{camp_id}/people/provisional", response_class=HTMLResponse)
+async def provisional_people_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    return templates.TemplateResponse(
+        "people/provisional.html",
+        {
+            "request": request,
+            "camp": camp,
+            "sections": sections,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/provisional")
+async def create_provisional_people(
+    request: Request,
+    camp_id: int,
+    section_id: int = Form(...),
+    count: int = Form(...),
+    prefix: str = Form("YP"),
+    person_type: str = Form("Young Person"),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sections = get_active_sections(db, camp)
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return templates.TemplateResponse(
+            "people/provisional.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": "Please choose a valid section.",
+            },
+            status_code=400,
+        )
+
+    if count < 1 or count > 100:
+        return templates.TemplateResponse(
+            "people/provisional.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": sections,
+                "error": "Please choose between 1 and 100 provisional people.",
+            },
+            status_code=400,
+        )
+
+    clean_prefix = (prefix or "YP").strip().upper()
+
+    existing_people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.home_section_id == section.id)
+        .all()
+    )
+
+    used_numbers = set()
+    for person in existing_people:
+        if person.first_name == section.name and person.last_name.upper().startswith(clean_prefix):
+            suffix = person.last_name[len(clean_prefix):]
+            if suffix.isdigit():
+                used_numbers.add(int(suffix))
+
+    created = 0
+    next_number = 1
+
+    while created < count:
+        while next_number in used_numbers:
+            next_number += 1
+
+        label = f"{clean_prefix}{next_number:02d}"
+
+        db.add(
+            Person(
+                camp_id=camp.id,
+                first_name=section.name,
+                last_name=label,
+                person_type=person_type,
+                home_section_id=section.id,
+                is_provisional=True,
+                attendance_status="Provisional",
+                information_source="Provisional",
+                role_notes="Provisional attendee placeholder. Replace with real attendee details when known.",
+            )
+        )
+
+        used_numbers.add(next_number)
+        created += 1
+        next_number += 1
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people", status_code=303)
+
+
 @app.get("/camps/{camp_id}/people/new", response_class=HTMLResponse)
 async def new_person_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)
@@ -1026,6 +1151,9 @@ async def create_person(
     last_name: str = Form(...),
     person_type: str = Form(...),
     home_section_id: str = Form(""),
+    attendance_status: str = Form("Expected"),
+    information_source: str = Form("Manual Entry"),
+    is_provisional: str | None = Form(None),
     email: str = Form(""),
     phone: str = Form(""),
     role_notes: str = Form(""),
@@ -1063,6 +1191,9 @@ async def create_person(
         last_name=last_name.strip(),
         person_type=person_type,
         home_section_id=selected_home_section_id,
+        is_provisional=False,
+        attendance_status="Expected",
+        information_source="Manual Entry",
         email=email.strip() or None,
         phone=phone.strip() or None,
         role_notes=role_notes.strip() or None,
@@ -1185,6 +1316,9 @@ async def update_person(
     person.last_name = last_name.strip()
     person.person_type = person_type
     person.home_section_id = int(home_section_id) if home_section_id else None
+    person.attendance_status = attendance_status.strip() or None
+    person.information_source = information_source.strip() or None
+    person.is_provisional = is_provisional == "yes"
     person.email = email.strip() or None
     person.phone = phone.strip() or None
     person.role_notes = role_notes.strip() or None

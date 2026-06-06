@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Create Provisional People — {{ camp.name }}</h2>
+  <p class="muted">
+    Use this when you know roughly how many young people are coming, but do not yet have the final named attendee list.
+    These placeholders can be allocated to teams, tents and activities, then replaced with real names later.
+  </p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/people/provisional">
+    <label for="section_id">Section</label>
+    <select id="section_id" name="section_id" required>
+      {% for section in sections %}
+        <option value="{{ section.id }}">{{ section.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="count">How many provisional people?</label>
+    <input id="count" name="count" type="number" min="1" max="100" value="10" required>
+
+    <label for="prefix">Label Prefix</label>
+    <input id="prefix" name="prefix" value="YP">
+
+    <label for="person_type">Person Type</label>
+    <select id="person_type" name="person_type">
+      <option selected>Young Person</option>
+      <option>Young Leader</option>
+      <option>Leader</option>
+      <option>Helper</option>
+      <option>Visitor</option>
+    </select>
+
+    <p class="muted">
+      Example output for Cubs with prefix YP: Cubs YP01, Cubs YP02, Cubs YP03.
+    </p>
+
+    <div class="form-actions">
+      <button type="submit">Create Provisional People</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/people">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

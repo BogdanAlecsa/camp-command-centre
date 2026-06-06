@@ -38,6 +38,25 @@
       {% endfor %}
     </select>
 
+    <label for="attendance_status">Attendance Status</label>
+    <select id="attendance_status" name="attendance_status">
+      {% for option in ["Expected", "Provisional", "Confirmed", "Not Attending", "Withdrawn", "Unknown"] %}
+        <option value="{{ option }}" {% if person.attendance_status == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="information_source">Information Source</label>
+    <select id="information_source" name="information_source">
+      {% for option in ["Manual Entry", "Provisional", "OSM Attendee List", "OSM Member File", "Camp Form", "Leader Update"] %}
+        <option value="{{ option }}" {% if person.information_source == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+
+    <label>
+      <input type="checkbox" name="is_provisional" value="yes" {% if person.is_provisional %}checked{% endif %}>
+      Provisional placeholder
+    </label>
+
     <label for="email">Email</label>
     <input id="email" name="email" type="email" value="{{ person.email or '' }}">
 
