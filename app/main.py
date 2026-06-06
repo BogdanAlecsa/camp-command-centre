@@ -954,6 +954,9 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
         .all()
     )
 
+    sections = get_active_sections(db, camp)
+    section_lookup = {section.id: section for section in sections}
+
     person_task_counts = {
         person.id: count_tasks_for_person(db, camp, person)
         for person in people
@@ -966,6 +969,7 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             "camp": camp,
             "people": people,
             "person_task_counts": person_task_counts,
+            "section_lookup": section_lookup,
         },
     )
 
@@ -984,11 +988,14 @@ async def new_person_form(request: Request, camp_id: int, db: Session = Depends(
             status_code=404,
         )
 
+    sections = get_active_sections(db, camp)
+
     return templates.TemplateResponse(
         "people/new.html",
         {
             "request": request,
             "camp": camp,
+            "sections": sections,
             "error": None,
         },
     )
@@ -1001,6 +1008,7 @@ async def create_person(
     first_name: str = Form(...),
     last_name: str = Form(...),
     person_type: str = Form(...),
+    home_section_id: str = Form(""),
     email: str = Form(""),
     phone: str = Form(""),
     role_notes: str = Form(""),
@@ -1024,16 +1032,20 @@ async def create_person(
             {
                 "request": request,
                 "camp": camp,
+                "sections": get_active_sections(db, camp),
                 "error": "First name and last name are required.",
             },
             status_code=400,
         )
+
+    selected_home_section_id = int(home_section_id) if home_section_id else None
 
     person = Person(
         camp_id=camp.id,
         first_name=first_name.strip(),
         last_name=last_name.strip(),
         person_type=person_type,
+        home_section_id=selected_home_section_id,
         email=email.strip() or None,
         phone=phone.strip() or None,
         role_notes=role_notes.strip() or None,
@@ -1083,12 +1095,15 @@ async def edit_person_form(
             status_code=404,
         )
 
+    sections = get_active_sections(db, camp)
+
     return templates.TemplateResponse(
         "people/edit.html",
         {
             "request": request,
             "camp": camp,
             "person": person,
+            "sections": sections,
             "error": None,
         },
     )
@@ -1102,6 +1117,7 @@ async def update_person(
     first_name: str = Form(...),
     last_name: str = Form(...),
     person_type: str = Form(...),
+    home_section_id: str = Form(""),
     email: str = Form(""),
     phone: str = Form(""),
     role_notes: str = Form(""),
@@ -1142,6 +1158,7 @@ async def update_person(
                 "request": request,
                 "camp": camp,
                 "person": person,
+                "sections": get_active_sections(db, camp),
                 "error": "First name and last name are required.",
             },
             status_code=400,
@@ -1150,6 +1167,7 @@ async def update_person(
     person.first_name = first_name.strip()
     person.last_name = last_name.strip()
     person.person_type = person_type
+    person.home_section_id = int(home_section_id) if home_section_id else None
     person.email = email.strip() or None
     person.phone = phone.strip() or None
     person.role_notes = role_notes.strip() or None
@@ -1192,6 +1210,14 @@ async def person_detail(
                 "message": "Person not found.",
             },
             status_code=404,
+        )
+
+    home_section = None
+    if person.home_section_id:
+        home_section = (
+            db.query(Section)
+            .filter(Section.id == person.home_section_id, Section.camp_id == camp.id)
+            .first()
         )
 
     team_rows = (
@@ -1240,6 +1266,7 @@ async def person_detail(
             "camp": camp,
             "person": person,
             "team_rows": team_rows,
+            "home_section": home_section,
             "direct_task_rows": direct_task_rows,
             "team_task_rows": team_task_rows,
         },

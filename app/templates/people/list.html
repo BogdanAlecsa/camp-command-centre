@@ -18,6 +18,7 @@
         <tr>
           <th>Name</th>
           <th>Type</th>
+          <th>Home Section</th>
           <th>Email</th>
           <th>Phone</th>
           <th>Tasks</th>
@@ -31,6 +32,10 @@
           <tr>
             <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
             <td>{{ person.person_type }}</td>
+            <td>
+              {% set section = section_lookup.get(person.home_section_id) if person.home_section_id else none %}
+              {{ section.name if section else "" }}
+            </td>
             <td>{{ person.email or "" }}</td>
             <td>{{ person.phone or "" }}</td>
             <td>

@@ -30,6 +30,14 @@
       {% endfor %}
     </select>
 
+    <label for="home_section_id">Home Section</label>
+    <select id="home_section_id" name="home_section_id">
+      <option value="">Not set</option>
+      {% for section in sections %}
+        <option value="{{ section.id }}" {% if person.home_section_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+      {% endfor %}
+    </select>
+
     <label for="email">Email</label>
     <input id="email" name="email" type="email" value="{{ person.email or '' }}">
 

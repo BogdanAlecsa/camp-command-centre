@@ -26,6 +26,14 @@
       <option>Visitor</option>
     </select>
 
+    <label for="home_section_id">Home Section</label>
+    <select id="home_section_id" name="home_section_id">
+      <option value="">Not set</option>
+      {% for section in sections %}
+        <option value="{{ section.id }}">{{ section.name }}</option>
+      {% endfor %}
+    </select>
+
     <label for="email">Email</label>
     <input id="email" name="email" type="email">
 
