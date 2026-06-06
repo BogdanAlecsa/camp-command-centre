@@ -3,59 +3,84 @@
 {% block content %}
 <section class="card">
   <h2>People — {{ camp.name }}</h2>
-  <p class="muted">Manage young people, leaders, helpers, parents/guardians and visitors for this camp.</p>
+  <p class="muted">
+    Manage young people, leaders, helpers, parents/guardians and visitors for this camp. People are grouped by home section.
+  </p>
 
   <a class="button" href="/camps/{{ camp.id }}/people/new">Add Person</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
 </section>
 
-<section class="card">
-  <h3>People List</h3>
-
-  {% if people %}
-    <table>
-      <thead>
+{% macro people_table(section_people) %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Tasks</th>
+        <th>Printable</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in section_people %}
+        {% set task_count = person_task_counts.get(person.id, 0) %}
         <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Home Section</th>
-          <th>Email</th>
-          <th>Phone</th>
-          <th>Tasks</th>
-          <th>Printable</th>
-          <th></th>
+          <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
+          <td>{{ person.person_type }}</td>
+          <td>{{ person.email or "" }}</td>
+          <td>{{ person.phone or "" }}</td>
+          <td>
+            <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?assignee=person:{{ person.id }}" target="_blank" rel="noopener noreferrer">
+              {{ task_count }} task{% if task_count != 1 %}s{% endif %}
+            </a>
+          </td>
+          <td>
+            <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
+              Print
+            </a>
+          </td>
+          <td><a class="button small secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Open</a></td>
         </tr>
-      </thead>
-      <tbody>
-        {% for person in people %}
-          {% set task_count = person_task_counts.get(person.id, 0) %}
-          <tr>
-            <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
-            <td>{{ person.person_type }}</td>
-            <td>
-              {% set section = section_lookup.get(person.home_section_id) if person.home_section_id else none %}
-              {{ section.name if section else "" }}
-            </td>
-            <td>{{ person.email or "" }}</td>
-            <td>{{ person.phone or "" }}</td>
-            <td>
-              <a class="button small task-count-button {% if task_count == 0 %}secondary{% endif %}" href="/camps/{{ camp.id }}/tasks?assignee=person:{{ person.id }}" target="_blank" rel="noopener noreferrer">
-                {{ task_count }} task{% if task_count != 1 %}s{% endif %}
-              </a>
-            </td>
-            <td>
-              <a class="button small secondary" href="/camps/{{ camp.id }}/task-sheets/person/{{ person.id }}" target="_blank" rel="noopener noreferrer">
-                Print
-              </a>
-            </td>
-            <td><a class="button small secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Open</a></td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% if people %}
+  {% for section in sections %}
+    {% set section_people = people_by_section.get(section.id, []) %}
+    {% if section_people %}
+      <section class="card">
+        <h3>{{ section.name }}</h3>
+        <p class="muted">
+          {{ section_people|length }} person{% if section_people|length != 1 %}s{% endif %}
+          · {{ section.section_type }}
+          {% if not section.is_active %} · inactive{% endif %}
+        </p>
+
+        {{ people_table(section_people) }}
+      </section>
+    {% endif %}
+  {% endfor %}
+
+  {% if people_without_section %}
+    <section class="card">
+      <h3>No section set</h3>
+      <p class="muted">
+        {{ people_without_section|length }} person{% if people_without_section|length != 1 %}s{% endif %} not yet assigned to a home section.
+      </p>
+
+      {{ people_table(people_without_section) }}
+    </section>
+  {% endif %}
+{% else %}
+  <section class="card">
     <p>No people have been added to this camp yet.</p>
     <p><a class="button" href="/camps/{{ camp.id }}/people/new">Add the first person</a></p>
-  {% endif %}
-</section>
+  </section>
+{% endif %}
 {% endblock %}

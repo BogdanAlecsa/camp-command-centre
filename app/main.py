@@ -954,8 +954,22 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
         .all()
     )
 
-    sections = get_active_sections(db, camp)
+    sections = (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id)
+        .order_by(Section.sort_order, Section.name)
+        .all()
+    )
     section_lookup = {section.id: section for section in sections}
+
+    people_by_section = {section.id: [] for section in sections}
+    people_without_section = []
+
+    for person in people:
+        if person.home_section_id in people_by_section:
+            people_by_section[person.home_section_id].append(person)
+        else:
+            people_without_section.append(person)
 
     person_task_counts = {
         person.id: count_tasks_for_person(db, camp, person)
@@ -968,6 +982,9 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             "request": request,
             "camp": camp,
             "people": people,
+            "sections": sections,
+            "people_by_section": people_by_section,
+            "people_without_section": people_without_section,
             "person_task_counts": person_task_counts,
             "section_lookup": section_lookup,
         },
