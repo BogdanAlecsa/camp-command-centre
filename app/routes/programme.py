@@ -114,6 +114,56 @@ def get_programme_lookup_maps(db: Session, camp: Camp):
     return activities, teams, people, activity_names, team_names, person_names, risk_statuses
 
 
+def build_rotation_summaries(sessions_by_date: dict):
+    summaries_by_date = {}
+
+    for session_date, day_sessions in sessions_by_date.items():
+        rotation_groups = {}
+
+        for session in day_sessions:
+            if not session.rotation_group:
+                continue
+
+            rotation = rotation_groups.setdefault(session.rotation_group, {})
+            slot_number = session.rotation_slot_number or 0
+            rotation.setdefault(slot_number, []).append(session)
+
+        day_summaries = []
+
+        for rotation_name, slots in rotation_groups.items():
+            slot_summaries = []
+
+            for slot_number, slot_sessions in sorted(slots.items()):
+                sorted_sessions = sorted(
+                    slot_sessions,
+                    key=lambda item: (
+                        item.start_time,
+                        item.participant_team_id or 0,
+                        item.title,
+                    ),
+                )
+
+                slot_summaries.append(
+                    {
+                        "slot_number": slot_number if slot_number else None,
+                        "start_time": sorted_sessions[0].start_time,
+                        "end_time": sorted_sessions[0].end_time,
+                        "sessions": sorted_sessions,
+                    }
+                )
+
+            day_summaries.append(
+                {
+                    "rotation_name": rotation_name,
+                    "slots": slot_summaries,
+                }
+            )
+
+        summaries_by_date[session_date] = day_summaries
+
+    return summaries_by_date
+
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -151,6 +201,13 @@ async def camp_programme_list(
         .all()
     )
 
+    sessions_by_date = {}
+
+    for session in sessions:
+        sessions_by_date.setdefault(session.session_date, []).append(session)
+
+    rotation_summaries_by_date = build_rotation_summaries(sessions_by_date)
+
     (
         activities,
         teams,
@@ -167,6 +224,8 @@ async def camp_programme_list(
             "request": request,
             "camp": camp,
             "sessions": sessions,
+            "sessions_by_date": sessions_by_date,
+            "rotation_summaries_by_date": rotation_summaries_by_date,
             "activity_names": activity_names,
             "team_names": team_names,
             "person_names": person_names,

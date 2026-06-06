@@ -466,8 +466,12 @@ def main():
             (date(2026, 8, 8), time(10, 30), time(11, 30), "Otter Patrol — Backwoods Cooking Taster", "Group Rotation", "Backwoods Cooking Taster", "Otter Patrol", "Cooking area", "Cara Jenkins", "Rotation slot 2.", "Saturday morning bases", 2),
             (date(2026, 8, 8), time(10, 30), time(11, 30), "Falcon Patrol — Pioneering Skills Bases", "Group Rotation", "Pioneering Skills Bases", "Falcon Patrol", "Activity field", "Emma Shaw", "Rotation slot 2.", "Saturday morning bases", 2),
 
-            (date(2026, 8, 8), time(12, 0), time(13, 0), "Lunch", "Meal", None, None, "Kitchen shelter", "Cara Jenkins", "Whole-camp lunch.", None, None),
-            (date(2026, 8, 8), time(14, 0), time(15, 30), "Wide Game: Lost Expedition", "Whole Camp", "Wide Game: Lost Expedition", None, "Main field and woodland boundary", "Ben Taylor", "Whole-camp afternoon activity.", None, None),
+            (date(2026, 8, 8), time(11, 45), time(12, 45), "Fox Patrol — Backwoods Cooking Taster", "Group Rotation", "Backwoods Cooking Taster", "Fox Patrol", "Cooking area", "Cara Jenkins", "Rotation slot 3.", "Saturday morning bases", 3),
+            (date(2026, 8, 8), time(11, 45), time(12, 45), "Otter Patrol — Pioneering Skills Bases", "Group Rotation", "Pioneering Skills Bases", "Otter Patrol", "Activity field", "Emma Shaw", "Rotation slot 3.", "Saturday morning bases", 3),
+            (date(2026, 8, 8), time(11, 45), time(12, 45), "Falcon Patrol — Woodland Navigation Trail", "Group Rotation", "Woodland Navigation Trail", "Falcon Patrol", "Woodland trail", "Felix Brown", "Rotation slot 3.", "Saturday morning bases", 3),
+
+            (date(2026, 8, 8), time(13, 0), time(14, 0), "Lunch", "Meal", None, None, "Kitchen shelter", "Cara Jenkins", "Whole-camp lunch.", None, None),
+            (date(2026, 8, 8), time(14, 30), time(16, 0), "Wide Game: Lost Expedition", "Whole Camp", "Wide Game: Lost Expedition", None, "Main field and woodland boundary", "Ben Taylor", "Whole-camp afternoon activity.", None, None),
             (date(2026, 8, 8), time(19, 0), time(19, 45), "Reflection Circle", "Whole Camp", "Reflection Circle", None, "Campfire circle", "Alice Morgan", "Evening reflection.", None, None),
 
             (date(2026, 8, 9), time(8, 0), time(8, 45), "Breakfast", "Meal", None, None, "Kitchen shelter", "Cara Jenkins", "Whole-camp breakfast.", None, None),

@@ -1572,10 +1572,6 @@ async def remove_team_member(
     return RedirectResponse(url=f"/camps/{camp_id}/teams/{team_id}", status_code=303)
 
 
-@app.get("/programme", response_class=HTMLResponse)
-async def programme_page(request: Request):
-    return templates.TemplateResponse("programme.html", {"request": request})
-
 
 @app.get("/tasks", response_class=HTMLResponse)
 async def tasks_page(request: Request, db: Session = Depends(get_db)):
@@ -3607,19 +3603,6 @@ async def category_task_sheet(
     )
 
 
-
-@app.get("/programme", response_class=HTMLResponse)
-async def programme_page(request: Request, db: Session = Depends(get_db)):
-    camp = get_latest_camp(db)
-
-    if camp is None:
-        return templates.TemplateResponse(
-            "not_found.html",
-            {"request": request, "message": "No camp found. Create a camp first."},
-            status_code=404,
-        )
-
-    return RedirectResponse(url=f"/camps/{camp.id}/activities", status_code=303)
 
 
 @app.get("/camps/{camp_id}/activities", response_class=HTMLResponse)
