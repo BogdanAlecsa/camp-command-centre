@@ -739,6 +739,172 @@
   background: #f9fafb;
 }
 
+
+/* Wide-screen table usability */
+.programme-table {
+  table-layout: fixed;
+}
+
+.programme-table th,
+.programme-table td {
+  padding: .55rem .6rem;
+  vertical-align: top;
+}
+
+.programme-table th:nth-child(1) { width: 8.5rem; }
+.programme-table th:nth-child(2) { width: 23%; }
+.programme-table th:nth-child(3) { width: 8.5rem; }
+.programme-table th:nth-child(4) { width: 10rem; }
+.programme-table th:nth-child(5) { width: 10rem; }
+.programme-table th:nth-child(6) { width: 11rem; }
+.programme-table th:nth-child(7) { width: 15rem; }
+.programme-table th:nth-child(8) { width: 8rem; }
+.programme-table th:nth-child(9) { width: 9rem; }
+.programme-table th:nth-child(10) { width: 8.5rem; }
+
+.programme-table td:last-child,
+.programme-table th:last-child {
+  white-space: nowrap;
+}
+
+.programme-table td:last-child .button,
+.programme-table td:last-child button {
+  margin-right: .25rem;
+  margin-bottom: .25rem;
+}
+
+.programme-table .button.small,
+.programme-table button.small {
+  padding: .35rem .5rem;
+  font-size: .82rem;
+}
+
+/* Keep wide tables usable on screen without affecting print templates */
+@media screen {
+  .card {
+    overflow-x: auto;
+  }
+
+  .programme-table,
+  .compact-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .programme-table thead th,
+  .compact-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    box-shadow: 0 1px 0 var(--border);
+  }
+}
+
+/* Smaller screens: keep the table usable with horizontal scroll */
+@media (max-width: 900px) {
+  .programme-table {
+    min-width: 1150px;
+  }
+
+  .compact-table {
+    min-width: 900px;
+  }
+
+  .programme-table th,
+  .programme-table td,
+  .compact-table th,
+  .compact-table td {
+    padding: .42rem .48rem;
+    font-size: .86rem;
+  }
+
+  .programme-actions-row {
+    gap: .35rem;
+  }
+
+  .programme-actions-row .button {
+    padding: .48rem .65rem;
+    font-size: .88rem;
+  }
+}
+
+
+/* Programme table correction after wide-layout pass */
+.programme-table {
+  table-layout: auto !important;
+  min-width: 1280px;
+}
+
+.programme-table th,
+.programme-table td {
+  padding: .5rem .55rem;
+  vertical-align: top;
+}
+
+.programme-table th:nth-child(1),
+.programme-table td:nth-child(1) {
+  width: 7.5rem;
+  white-space: nowrap;
+}
+
+.programme-table th:nth-child(2),
+.programme-table td:nth-child(2) {
+  min-width: 220px;
+  width: 24%;
+}
+
+.programme-table th:nth-child(3),
+.programme-table td:nth-child(3) {
+  width: 8rem;
+  white-space: nowrap;
+}
+
+.programme-table th:nth-child(4),
+.programme-table td:nth-child(4) {
+  width: 8.5rem;
+}
+
+.programme-table th:nth-child(5),
+.programme-table td:nth-child(5) {
+  width: 11rem;
+}
+
+.programme-table th:nth-child(6),
+.programme-table td:nth-child(6) {
+  width: 9.5rem;
+}
+
+.programme-table th:nth-child(7),
+.programme-table td:nth-child(7) {
+  width: 15rem;
+}
+
+.programme-table th:nth-child(8),
+.programme-table td:nth-child(8) {
+  width: 7.5rem;
+  white-space: nowrap;
+}
+
+.programme-table th:nth-child(9),
+.programme-table td:nth-child(9) {
+  width: 7rem;
+}
+
+.programme-table th:nth-child(10),
+.programme-table td:nth-child(10) {
+  width: 6.5rem;
+  white-space: nowrap;
+}
+
+.programme-table td:nth-child(2) strong {
+  display: block;
+  margin-bottom: .15rem;
+}
+
+.programme-table .muted {
+  line-height: 1.25;
+}
+
 </style>
 </head>
 
