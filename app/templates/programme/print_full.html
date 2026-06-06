@@ -370,6 +370,13 @@
                             {% else %}
                               Not set
                             {% endif %}
+                            {% set staff_items = session_staff_by_session_id.get(rotation_session.id, []) %}
+                            {% if staff_items %}
+                              <div class="muted"><strong>Staff:</strong></div>
+                              {% for item in staff_items %}
+                                <div class="muted">{{ item.display_name }} ({{ item.role }})</div>
+                              {% endfor %}
+                            {% endif %}
                           </td>
                         </tr>
                       {% endfor %}
@@ -423,6 +430,13 @@
                     {{ person_names.get(session.lead_person_id, "Unknown person") }}
                   {% else %}
                     Not set
+                  {% endif %}
+                  {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                  {% if staff_items %}
+                    <div class="muted"><strong>Staff:</strong></div>
+                    {% for item in staff_items %}
+                      <div class="muted">{{ item.display_name }} ({{ item.role }})</div>
+                    {% endfor %}
                   {% endif %}
                 </td>
                 <td>

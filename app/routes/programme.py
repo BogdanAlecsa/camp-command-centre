@@ -234,6 +234,46 @@ def get_available_session_staff_people(db: Session, camp: Camp):
         .all()
     )
 
+def get_session_staff_lookup(db: Session, camp: Camp, sessions):
+    session_ids = [session.id for session in sessions]
+
+    lookup = {session_id: [] for session_id in session_ids}
+
+    if not session_ids:
+        return lookup
+
+    staff_rows = (
+        db.query(ProgrammeSessionStaff, Person)
+        .join(Person, Person.id == ProgrammeSessionStaff.person_id)
+        .filter(
+            ProgrammeSessionStaff.camp_id == camp.id,
+            ProgrammeSessionStaff.programme_session_id.in_(session_ids),
+            Person.camp_id == camp.id,
+        )
+        .order_by(
+            ProgrammeSessionStaff.programme_session_id,
+            ProgrammeSessionStaff.role,
+            Person.last_name,
+            Person.first_name,
+        )
+        .all()
+    )
+
+    for staff, person in staff_rows:
+        lookup.setdefault(staff.programme_session_id, []).append(
+            {
+                "staff_id": staff.id,
+                "person_id": person.id,
+                "display_name": person_display_name(person),
+                "person_type": person.person_type,
+                "role": staff.role,
+                "notes": staff.notes,
+            }
+        )
+
+    return lookup
+
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -300,9 +340,7 @@ async def camp_programme_list(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
-            "session_staff": get_session_staff(db, camp, session),
-            "available_staff_people": get_available_session_staff_people(db, camp),
-            "staff_roles": PROGRAMME_STAFF_ROLES,
+            "session_staff_by_session_id": get_session_staff_lookup(db, camp, sessions),
         },
     )
 
@@ -762,6 +800,7 @@ async def print_full_programme(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_staff_by_session_id": get_session_staff_lookup(db, camp, sessions),
         },
     )
 
@@ -903,6 +942,8 @@ async def print_activity_leader_schedules(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    session_staff_by_session_id = get_session_staff_lookup(db, camp, sessions)
+
     schedules_by_key = {}
 
     for session in sessions:
@@ -954,6 +995,20 @@ async def print_activity_leader_schedules(
         schedule["start_date"] = min(item.session_date for item in schedule["sessions"])
         schedule["end_date"] = max(item.session_date for item in schedule["sessions"])
 
+        staff_summary = []
+        seen_staff = set()
+
+        for item in schedule["sessions"]:
+            for staff_item in session_staff_by_session_id.get(item.id, []):
+                key = (staff_item["person_id"], staff_item["role"])
+                if key in seen_staff:
+                    continue
+
+                seen_staff.add(key)
+                staff_summary.append(staff_item)
+
+        schedule["staff_summary"] = staff_summary
+
     schedules = sorted(
         schedules,
         key=lambda item: (
@@ -974,6 +1029,7 @@ async def print_activity_leader_schedules(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_staff_by_session_id": session_staff_by_session_id,
         },
     )
 
@@ -1146,6 +1202,7 @@ async def print_leader_programme(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_staff_by_session_id": get_session_staff_lookup(db, camp, sessions),
         },
     )
 

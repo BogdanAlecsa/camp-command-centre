@@ -335,6 +335,14 @@
                   {% else %}
                     Not set
                   {% endif %}
+
+                  {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                  {% if staff_items %}
+                    <br><span class="muted"><strong>Staff:</strong></span>
+                    {% for item in staff_items %}
+                      <br><span class="muted">{{ item.display_name }} ({{ item.role }})</span>
+                    {% endfor %}
+                  {% endif %}
                 </td>
                 <td>
                   {% if session.activity_id %}
@@ -399,6 +407,14 @@
                           {% endif %}
                           <br>
                           <span class="muted">{{ slot_session.start_time.strftime("%H:%M") }}–{{ slot_session.end_time.strftime("%H:%M") }}</span>
+
+                          {% set staff_items = session_staff_by_session_id.get(slot_session.id, []) %}
+                          {% if staff_items %}
+                            <br><span class="muted"><strong>Staff:</strong></span>
+                            {% for item in staff_items %}
+                              <br><span class="muted">{{ item.display_name }} ({{ item.role }})</span>
+                            {% endfor %}
+                          {% endif %}
                         {% else %}
                           <span class="muted">—</span>
                         {% endif %}

@@ -301,6 +301,17 @@
             </div>
 
             <div>
+              <strong>Assigned Staff</strong><br>
+              {% if schedule.staff_summary %}
+                {% for item in schedule.staff_summary %}
+                  {{ item.display_name }} <span class="muted">({{ item.role }})</span>{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+              {% else %}
+                <span class="muted">None recorded</span>
+              {% endif %}
+            </div>
+
+            <div>
               <strong>Risk Assessment</strong><br>
               {% set risk_status = risk_statuses.get(schedule.activity_id, "Not Started") %}
               <span class="badge">{{ risk_status }}</span>
@@ -349,6 +360,15 @@
                       {% endif %}
                     </td>
                     <td>
+                      {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                      {% if staff_items %}
+                        <div><strong>Staff:</strong></div>
+                        {% for item in staff_items %}
+                          <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
+                        {% endfor %}
+                        <br>
+                      {% endif %}
+
                       {% if session.notes %}
                         {{ session.notes }}
                       {% else %}
@@ -384,6 +404,15 @@
                     </td>
                     <td>{{ session.location or "Not set" }}</td>
                     <td>
+                      {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                      {% if staff_items %}
+                        <div><strong>Staff:</strong></div>
+                        {% for item in staff_items %}
+                          <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
+                        {% endfor %}
+                        <br>
+                      {% endif %}
+
                       {% if session.notes %}
                         {{ session.notes }}
                       {% else %}

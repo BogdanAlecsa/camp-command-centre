@@ -13,6 +13,7 @@
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/full" target="_blank" rel="noopener noreferrer">Print Full Programme</a>
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/groups" target="_blank" rel="noopener noreferrer">Print YP Programme</a>
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/leader" target="_blank" rel="noopener noreferrer">Print Operational Programme</a>
+      <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/leader-board" target="_blank" rel="noopener noreferrer">Print Leader Board</a>
     </div>
     <div class="programme-actions-row">
       <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
@@ -51,6 +52,7 @@
                         <th>Activity / Session</th>
                         <th>Location</th>
                         <th>Lead</th>
+                        <th>Staff</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -70,6 +72,16 @@
                               {{ person_names.get(rotation_session.lead_person_id, "Unknown person") }}
                             {% else %}
                               <span class="muted">Not set</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% set staff_items = session_staff_by_session_id.get(rotation_session.id, []) %}
+                            {% if staff_items %}
+                              {% for item in staff_items %}
+                                <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
+                              {% endfor %}
+                            {% else %}
+                              <span class="muted">None</span>
                             {% endif %}
                           </td>
                         </tr>
@@ -92,6 +104,7 @@
             <th>Group</th>
             <th>Location</th>
             <th>Lead</th>
+            <th>Staff</th>
             <th>RA</th>
             <th>Rotation</th>
             <th></th>
@@ -131,6 +144,17 @@
                   {{ person_names.get(session.lead_person_id, "Unknown person") }}
                 {% else %}
                   <span class="muted">Not set</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                {% if staff_items %}
+                  {% for item in staff_items %}
+                    <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
+                  {% endfor %}
+                {% else %}
+                  <span class="muted">None</span>
                 {% endif %}
               </td>
 
