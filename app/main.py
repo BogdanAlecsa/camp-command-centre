@@ -1,7 +1,10 @@
 from datetime import date
+from io import BytesIO
+import json
+import re
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text as sqlalchemy_text
@@ -60,6 +63,191 @@ def person_display_name(person: Person | None):
     return f"{person.first_name} {person.last_name}"
 
 
+
+
+def normalise_osm_label(value):
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def clean_osm_cell(value):
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def find_osm_value(row_data, group_terms=None, field_terms=None):
+    group_terms = [normalise_osm_label(term) for term in (group_terms or [])]
+    field_terms = [normalise_osm_label(term) for term in (field_terms or [])]
+
+    for cell in row_data:
+        group = normalise_osm_label(cell.get("group", ""))
+        field = normalise_osm_label(cell.get("field", ""))
+        value = clean_osm_cell(cell.get("value", ""))
+
+        if not value:
+            continue
+
+        group_match = True
+        field_match = True
+
+        if group_terms:
+            group_match = any(term in group for term in group_terms)
+
+        if field_terms:
+            field_match = any(term in field for term in field_terms)
+
+        if group_match and field_match:
+            return value
+
+    return ""
+
+
+def combine_names(first_name, last_name):
+    parts = [part for part in [clean_osm_cell(first_name), clean_osm_cell(last_name)] if part]
+    return " ".join(parts)
+
+
+def extract_osm_candidate(row_data, sheet_name, excel_row):
+    member_first_name = (
+        find_osm_value(row_data, ["member"], ["first name"])
+        or find_osm_value(row_data, [], ["first name"])
+    )
+    member_last_name = (
+        find_osm_value(row_data, ["member"], ["last name"])
+        or find_osm_value(row_data, ["member"], ["surname"])
+        or find_osm_value(row_data, [], ["last name"])
+        or find_osm_value(row_data, [], ["surname"])
+    )
+
+    primary_first = find_osm_value(row_data, ["primary contact 1"], ["first name"])
+    primary_last = (
+        find_osm_value(row_data, ["primary contact 1"], ["last name"])
+        or find_osm_value(row_data, ["primary contact 1"], ["surname"])
+    )
+
+    emergency_first = find_osm_value(row_data, ["emergency contact"], ["first name"])
+    emergency_last = (
+        find_osm_value(row_data, ["emergency contact"], ["last name"])
+        or find_osm_value(row_data, ["emergency contact"], ["surname"])
+    )
+
+    allergies = (
+        find_osm_value(row_data, ["essential information"], ["allerg"])
+        or find_osm_value(row_data, ["additional information"], ["allerg"])
+    )
+
+    medication = (
+        find_osm_value(row_data, ["essential information"], ["medication"])
+        or find_osm_value(row_data, ["additional information"], ["medication"])
+    )
+
+    medical_notes = (
+        find_osm_value(row_data, ["essential information"], ["medical"])
+        or find_osm_value(row_data, ["additional information"], ["medical"])
+    )
+
+    dietary_requirements = (
+        find_osm_value(row_data, ["essential information"], ["dietary"])
+        or find_osm_value(row_data, ["additional information"], ["dietary"])
+    )
+
+    candidate = {
+        "sheet_name": sheet_name,
+        "excel_row": excel_row,
+        "first_name": member_first_name,
+        "last_name": member_last_name,
+        "email": find_osm_value(row_data, ["member"], ["email"]),
+        "phone": (
+            find_osm_value(row_data, ["member"], ["mobile"])
+            or find_osm_value(row_data, ["member"], ["phone"])
+        ),
+        "primary_contact_name": combine_names(primary_first, primary_last),
+        "primary_contact_relationship": find_osm_value(row_data, ["primary contact 1"], ["relationship"]),
+        "primary_contact_phone": (
+            find_osm_value(row_data, ["primary contact 1"], ["mobile"])
+            or find_osm_value(row_data, ["primary contact 1"], ["phone"])
+        ),
+        "primary_contact_email": find_osm_value(row_data, ["primary contact 1"], ["email"]),
+        "emergency_contact_name": combine_names(emergency_first, emergency_last),
+        "emergency_contact_relationship": find_osm_value(row_data, ["emergency contact"], ["relationship"]),
+        "emergency_contact_phone": (
+            find_osm_value(row_data, ["emergency contact"], ["mobile"])
+            or find_osm_value(row_data, ["emergency contact"], ["phone"])
+        ),
+        "emergency_contact_email": find_osm_value(row_data, ["emergency contact"], ["email"]),
+        "allergies": allergies,
+        "allergy_action": "",
+        "medication": medication,
+        "medical_notes": medical_notes,
+        "dietary_requirements": dietary_requirements,
+        "information_source": "OSM Member File",
+    }
+
+    candidate["display_name"] = combine_names(candidate["first_name"], candidate["last_name"]) or f"{sheet_name} row {excel_row}"
+    candidate["payload"] = json.dumps(candidate)
+
+    return candidate
+
+
+def parse_osm_member_export(file_bytes):
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(BytesIO(file_bytes), data_only=True)
+    candidates = []
+
+    for sheet_name in workbook.sheetnames:
+        worksheet = workbook[sheet_name]
+
+        if worksheet.max_row < 3:
+            continue
+
+        groups = []
+        # OSM exports often leave the first identity columns with a blank
+        # group heading. Treat those leading blank-group fields as Member.
+        last_group = "Member"
+
+        for col in range(1, worksheet.max_column + 1):
+            group_value = clean_osm_cell(worksheet.cell(row=1, column=col).value)
+            field_value = clean_osm_cell(worksheet.cell(row=2, column=col).value)
+
+            if group_value:
+                last_group = group_value
+
+            groups.append(
+                {
+                    "group": last_group,
+                    "field": field_value,
+                    "column": col,
+                }
+            )
+
+        for row_number in range(3, worksheet.max_row + 1):
+            row_data = []
+            has_value = False
+
+            for header in groups:
+                value = clean_osm_cell(worksheet.cell(row=row_number, column=header["column"]).value)
+
+                if value:
+                    has_value = True
+
+                row_data.append(
+                    {
+                        "group": header["group"],
+                        "field": header["field"],
+                        "value": value,
+                    }
+                )
+
+            if not has_value:
+                continue
+
+            candidate = extract_osm_candidate(row_data, sheet_name, row_number)
+
+            if candidate["first_name"] or candidate["last_name"]:
+                candidates.append(candidate)
+
+    return candidates
 
 def field_is_blank(value):
     return value is None or str(value).strip() == ""
@@ -1325,6 +1513,173 @@ async def osm_update_person_form(
             "home_section": home_section,
         },
     )
+
+
+@app.post("/camps/{camp_id}/people/{person_id}/osm-update", response_class=HTMLResponse)
+async def preview_osm_update_person(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    osm_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Person not found."},
+            status_code=404,
+        )
+
+    home_section = None
+    if person.home_section_id:
+        home_section = (
+            db.query(Section)
+            .filter(Section.id == person.home_section_id, Section.camp_id == camp.id)
+            .first()
+        )
+
+    filename = osm_file.filename or ""
+
+    if not filename.lower().endswith(".xlsx"):
+        return templates.TemplateResponse(
+            "people/osm_update.html",
+            {
+                "request": request,
+                "camp": camp,
+                "person": person,
+                "home_section": home_section,
+                "error": "Please upload an OSM Excel export in .xlsx format.",
+                "candidates": [],
+            },
+            status_code=400,
+        )
+
+    file_bytes = await osm_file.read()
+
+    try:
+        candidates = parse_osm_member_export(file_bytes)
+    except Exception as exc:
+        return templates.TemplateResponse(
+            "people/osm_update.html",
+            {
+                "request": request,
+                "camp": camp,
+                "person": person,
+                "home_section": home_section,
+                "error": f"Could not read this OSM export: {exc}",
+                "candidates": [],
+            },
+            status_code=400,
+        )
+
+    return templates.TemplateResponse(
+        "people/osm_update.html",
+        {
+            "request": request,
+            "camp": camp,
+            "person": person,
+            "home_section": home_section,
+            "error": None,
+            "candidates": candidates,
+            "filename": filename,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/people/{person_id}/osm-update/apply")
+async def apply_osm_update_person(
+    request: Request,
+    camp_id: int,
+    person_id: int,
+    selected_payload: str = Form(...),
+    update_identity: str | None = Form(None),
+    overwrite_existing: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Person not found."},
+            status_code=404,
+        )
+
+    data = json.loads(selected_payload)
+    should_overwrite = overwrite_existing == "yes"
+
+    def apply_text_field(attribute_name):
+        incoming = clean_osm_cell(data.get(attribute_name))
+        existing = clean_osm_cell(getattr(person, attribute_name, ""))
+
+        if incoming and (should_overwrite or not existing):
+            setattr(person, attribute_name, incoming)
+
+    if update_identity == "yes":
+        if clean_osm_cell(data.get("first_name")):
+            person.first_name = clean_osm_cell(data.get("first_name"))
+
+        if clean_osm_cell(data.get("last_name")):
+            person.last_name = clean_osm_cell(data.get("last_name"))
+
+        person.is_provisional = False
+        person.attendance_status = "Expected"
+
+        if person.role_notes and "Provisional attendee placeholder" in person.role_notes:
+            person.role_notes = None
+
+    for field_name in [
+        "email",
+        "phone",
+        "primary_contact_name",
+        "primary_contact_relationship",
+        "primary_contact_phone",
+        "primary_contact_email",
+        "emergency_contact_name",
+        "emergency_contact_relationship",
+        "emergency_contact_phone",
+        "emergency_contact_email",
+        "allergies",
+        "allergy_action",
+        "medication",
+        "medical_notes",
+        "dietary_requirements",
+    ]:
+        apply_text_field(field_name)
+
+    person.information_source = "OSM Member File"
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/people/{person.id}", status_code=303)
 
 
 @app.get("/camps/{camp_id}/people/{person_id}/replace-provisional", response_class=HTMLResponse)

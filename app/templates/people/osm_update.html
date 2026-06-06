@@ -4,7 +4,7 @@
 <section class="card">
   <h2>Update from OSM Export</h2>
   <p class="muted">
-    This screen will be used to update {{ person.first_name }} {{ person.last_name }} from an OSM member / personal file export.
+    Upload an OSM member / personal file export, choose the matching row, and apply the camp-relevant fields.
   </p>
 
   <p>
@@ -13,35 +13,134 @@
     <strong>Type:</strong> {{ person.person_type }}<br>
     <strong>Home Section:</strong> {{ home_section.name if home_section else "Not set" }}
   </p>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
 </section>
 
 <section class="card">
-  <h3>Planned Import Behaviour</h3>
+  <h3>Upload OSM Export</h3>
 
-  <p>
-    OSM member exports are normally downloaded by section, not one person at a time.
-    The future importer should allow a section export to be uploaded, then match one row to this person.
+  <form method="post" action="/camps/{{ camp.id }}/people/{{ person.id }}/osm-update" enctype="multipart/form-data">
+    <label for="osm_file">OSM member export (.xlsx)</label>
+    <input id="osm_file" name="osm_file" type="file" accept=".xlsx" required>
+
+    <p id="selected-file-message" class="muted">
+      No file selected yet.
+    </p>
+
+    <p class="muted">
+      The importer reads the OSM two-row grouped header format and keeps only contact, emergency, allergy, medication, medical and dietary fields.
+    </p>
+
+    <div class="form-actions">
+      <button id="preview-osm-button" type="submit" disabled>Choose a file first</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Back to Person</a>
+    </div>
+  </form>
+
+  <script>
+    const osmFileInput = document.getElementById("osm_file");
+    const selectedFileMessage = document.getElementById("selected-file-message");
+    const previewButton = document.getElementById("preview-osm-button");
+
+    if (osmFileInput && selectedFileMessage && previewButton) {
+      osmFileInput.addEventListener("change", function () {
+        if (osmFileInput.files && osmFileInput.files.length > 0) {
+          const fileName = osmFileInput.files[0].name;
+          selectedFileMessage.textContent = "Selected file: " + fileName + ". Click Preview to check the rows before applying anything.";
+          previewButton.disabled = false;
+          previewButton.textContent = "Preview selected OSM export";
+        } else {
+          selectedFileMessage.textContent = "No file selected yet.";
+          previewButton.disabled = true;
+          previewButton.textContent = "Choose a file first";
+        }
+      });
+    }
+  </script>
+</section>
+
+{% if candidates is defined %}
+  <section class="card">
+    <h3>Choose Matching Row</h3>
+
+    {% if filename %}
+      <p class="muted">File: {{ filename }}</p>
+    {% endif %}
+
+    {% if candidates %}
+      <form method="post" action="/camps/{{ camp.id }}/people/{{ person.id }}/osm-update/apply">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Sheet</th>
+              <th>Row</th>
+              <th>Name</th>
+              <th>Primary Contact</th>
+              <th>Emergency Contact</th>
+              <th>Health / Dietary Snapshot</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for candidate in candidates %}
+              <tr>
+                <td>
+                  <input type="radio" name="selected_payload" value="{{ candidate.payload }}" {% if loop.first %}checked{% endif %}>
+                </td>
+                <td>{{ candidate.sheet_name }}</td>
+                <td>{{ candidate.excel_row }}</td>
+                <td><strong>{{ candidate.display_name }}</strong></td>
+                <td>
+                  {{ candidate.primary_contact_name or "" }}<br>
+                  <span class="muted">{{ candidate.primary_contact_phone or candidate.primary_contact_email or "" }}</span>
+                </td>
+                <td>
+                  {{ candidate.emergency_contact_name or "" }}<br>
+                  <span class="muted">{{ candidate.emergency_contact_phone or candidate.emergency_contact_email or "" }}</span>
+                </td>
+                <td>
+                  {% if candidate.allergies %}<strong>Allergies:</strong> {{ candidate.allergies }}<br>{% endif %}
+                  {% if candidate.medication %}<strong>Medication:</strong> {{ candidate.medication }}<br>{% endif %}
+                  {% if candidate.medical_notes %}<strong>Medical:</strong> {{ candidate.medical_notes }}<br>{% endif %}
+                  {% if candidate.dietary_requirements %}<strong>Dietary:</strong> {{ candidate.dietary_requirements }}{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <label>
+          <input type="checkbox" name="update_identity" value="yes" {% if person.is_provisional %}checked{% endif %}>
+          Update this person’s name from the selected OSM row
+        </label>
+
+        <label>
+          <input type="checkbox" name="overwrite_existing" value="yes">
+          Replace existing non-blank fields with OSM values
+        </label>
+
+        <p class="muted">
+          If “replace existing” is not ticked, OSM values will only fill blank fields. This protects manual corrections.
+        </p>
+
+        <div class="form-actions">
+          <button type="submit">Apply Selected Row</button>
+          <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Cancel</a>
+        </div>
+      </form>
+    {% else %}
+      <p class="warning">No usable member rows were found in this export.</p>
+    {% endif %}
+  </section>
+{% endif %}
+
+<section class="card">
+  <h3>Ignored by Default</h3>
+  <p class="muted">
+    This importer does not import addresses, postcode, school, Gift Aid or other OSM admin fields by default.
   </p>
-
-  <p>The importer should update only the fields we actually need for camp:</p>
-
-  <ul>
-    <li>phone and email contact details</li>
-    <li>primary contact details</li>
-    <li>emergency contact details</li>
-    <li>allergies and allergy action notes</li>
-    <li>medication</li>
-    <li>medical notes</li>
-    <li>dietary requirements</li>
-  </ul>
-
-  <p>The importer should not import unnecessary data by default, such as home address, school or Gift Aid fields.</p>
-
-  <p class="warning">
-    Upload and matching are not active yet. This is the entry point for the next importer stage.
-  </p>
-
-  <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}">Back to Person</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/edit">Edit Manually</a>
 </section>
 {% endblock %}
