@@ -14,6 +14,7 @@ from app.models import (
     Camp,
     Person,
     ProgrammeSession,
+    ProgrammeSessionStaff,
     Team,
     TeamMembership,
 )
@@ -34,6 +35,17 @@ def programme_type_class(session_type: str | None):
 
 
 templates.env.globals["programme_type_class"] = programme_type_class
+
+
+PROGRAMME_STAFF_ROLES = [
+    "Lead",
+    "Supporting Adult",
+    "Parent Helper",
+    "Young Leader",
+    "First Aider",
+    "Observer",
+    "Other",
+]
 
 
 PROGRAMME_SESSION_TYPES = [
@@ -179,6 +191,49 @@ def build_rotation_summaries(sessions_by_date: dict):
     return summaries_by_date
 
 
+
+def get_session_staff(db: Session, camp: Camp, session: ProgrammeSession):
+    staff_rows = (
+        db.query(ProgrammeSessionStaff, Person)
+        .join(Person, Person.id == ProgrammeSessionStaff.person_id)
+        .filter(
+            ProgrammeSessionStaff.camp_id == camp.id,
+            ProgrammeSessionStaff.programme_session_id == session.id,
+            Person.camp_id == camp.id,
+        )
+        .order_by(ProgrammeSessionStaff.role, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    return [
+        {
+            "staff": staff,
+            "person": person,
+            "display_name": person_display_name(person),
+        }
+        for staff, person in staff_rows
+    ]
+
+
+def get_available_session_staff_people(db: Session, camp: Camp):
+    return (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            Person.person_type.in_(
+                [
+                    "Leader",
+                    "Helper",
+                    "Young Leader",
+                    "Parent/Guardian",
+                    "Visitor",
+                ]
+            ),
+        )
+        .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -245,6 +300,9 @@ async def camp_programme_list(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_staff": get_session_staff(db, camp, session),
+            "available_staff_people": get_available_session_staff_people(db, camp),
+            "staff_roles": PROGRAMME_STAFF_ROLES,
         },
     )
 
@@ -443,6 +501,9 @@ async def programme_session_detail(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_staff": get_session_staff(db, camp, session),
+            "available_staff_people": get_available_session_staff_people(db, camp),
+            "staff_roles": PROGRAMME_STAFF_ROLES,
         },
     )
 
@@ -497,6 +558,9 @@ async def edit_programme_session_form(
 
     activities, teams, people = get_programme_form_options(db, camp)
 
+    session_staff = get_session_staff(db, camp, session)
+    available_staff_people = get_available_session_staff_people(db, camp)
+
     return templates.TemplateResponse(
         "programme/edit.html",
         {
@@ -508,6 +572,9 @@ async def edit_programme_session_form(
             "people": people,
             "session_types": PROGRAMME_SESSION_TYPES,
             "error": None,
+            "session_staff": session_staff,
+            "available_staff_people": available_staff_people,
+            "staff_roles": PROGRAMME_STAFF_ROLES,
         },
     )
 
@@ -1081,3 +1148,390 @@ async def print_leader_programme(
             "risk_statuses": risk_statuses,
         },
     )
+
+
+
+
+
+@router.get("/camps/{camp_id}/programme/print/leader-board", response_class=HTMLResponse)
+async def print_leader_location_board(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    from collections import defaultdict
+    from datetime import time as day_time
+
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    sessions = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.camp_id == camp.id)
+        .order_by(
+            ProgrammeSession.session_date,
+            ProgrammeSession.start_time,
+            ProgrammeSession.end_time,
+            ProgrammeSession.title,
+        )
+        .all()
+    )
+
+    (
+        activities,
+        teams,
+        people,
+        activity_names,
+        team_names,
+        person_names,
+        risk_statuses,
+    ) = get_programme_lookup_maps(db, camp)
+
+    session_ids = [session.id for session in sessions]
+
+    lead_person_ids = {
+        session.lead_person_id
+        for session in sessions
+        if session.lead_person_id is not None
+    }
+
+    people_by_id = {}
+
+    if lead_person_ids:
+        for person in (
+            db.query(Person)
+            .filter(Person.camp_id == camp.id, Person.id.in_(lead_person_ids))
+            .all()
+        ):
+            people_by_id[person.id] = person
+
+    session_staff_lookup = defaultdict(list)
+
+    if session_ids:
+        staff_rows = (
+            db.query(ProgrammeSessionStaff, Person)
+            .join(Person, Person.id == ProgrammeSessionStaff.person_id)
+            .filter(
+                ProgrammeSessionStaff.camp_id == camp.id,
+                ProgrammeSessionStaff.programme_session_id.in_(session_ids),
+                Person.camp_id == camp.id,
+            )
+            .order_by(
+                ProgrammeSessionStaff.programme_session_id,
+                ProgrammeSessionStaff.role,
+                Person.last_name,
+                Person.first_name,
+            )
+            .all()
+        )
+
+        for staff, person in staff_rows:
+            people_by_id[person.id] = person
+            session_staff_lookup[staff.programme_session_id].append(
+                {
+                    "person_id": person.id,
+                    "role": staff.role or "Supporting Adult",
+                }
+            )
+
+    def role_sort_key(role: str):
+        order = {
+            "Lead": 0,
+            "Supporting Adult": 1,
+            "Parent Helper": 2,
+            "Young Leader": 3,
+            "First Aider": 4,
+            "Observer": 5,
+            "Other": 6,
+        }
+        return order.get(role, 99)
+
+    def session_assignments(session: ProgrammeSession):
+        assigned = {}
+
+        if session.lead_person_id is not None and session.lead_person_id in people_by_id:
+            assigned.setdefault(session.lead_person_id, set()).add("Lead Person")
+
+        for item in session_staff_lookup.get(session.id, []):
+            assigned.setdefault(item["person_id"], set()).add(item["role"])
+
+        return [
+            {
+                "person_id": person_id,
+                "roles": sorted(roles, key=role_sort_key),
+            }
+            for person_id, roles in assigned.items()
+        ]
+
+    assignments_by_session_id = {
+        session.id: session_assignments(session)
+        for session in sessions
+    }
+
+    assigned_person_ids = sorted(
+        {
+            assignment["person_id"]
+            for assignments in assignments_by_session_id.values()
+            for assignment in assignments
+        }
+    )
+
+    board_people = []
+
+    for person_id in assigned_person_ids:
+        person = people_by_id.get(person_id)
+
+        if person is None:
+            continue
+
+        board_people.append(
+            {
+                "id": person.id,
+                "name": person_display_name(person),
+                "person_type": person.person_type,
+            }
+        )
+
+    board_people.sort(key=lambda item: item["name"])
+
+    sessions_by_date = defaultdict(list)
+
+    for session in sessions:
+        sessions_by_date[session.session_date].append(session)
+
+    def overlaps(session, slot):
+        return session.start_time < slot["end_time"] and session.end_time > slot["start_time"]
+
+    days = []
+
+    for session_date, day_sessions in sorted(sessions_by_date.items()):
+        time_slots = []
+
+        for session in day_sessions:
+            slot_exists = any(
+                slot["start_time"] == session.start_time
+                and slot["end_time"] == session.end_time
+                for slot in time_slots
+            )
+
+            if not slot_exists:
+                time_slots.append(
+                    {
+                        "start_time": session.start_time,
+                        "end_time": session.end_time,
+                    }
+                )
+
+        time_slots = sorted(time_slots, key=lambda slot: (slot["start_time"], slot["end_time"]))
+
+        periods = [
+            {
+                "label": "Morning / AM",
+                "columns": [
+                    slot for slot in time_slots
+                    if slot["start_time"] < day_time(12, 0)
+                ],
+            },
+            {
+                "label": "Afternoon & Evening / PM",
+                "columns": [
+                    slot for slot in time_slots
+                    if slot["start_time"] >= day_time(12, 0)
+                ],
+            },
+        ]
+
+        chunks = []
+
+        for period in periods:
+            columns = period["columns"]
+
+            if not columns:
+                continue
+
+            rows = []
+
+            for person in board_people:
+                cells = []
+
+                for column in columns:
+                    cell_items = []
+
+                    for session in day_sessions:
+                        if not overlaps(session, column):
+                            continue
+
+                        matching_assignments = [
+                            assignment
+                            for assignment in assignments_by_session_id.get(session.id, [])
+                            if assignment["person_id"] == person["id"]
+                        ]
+
+                        for assignment in matching_assignments:
+                            cell_items.append(
+                                {
+                                    "session": session,
+                                    "roles": ", ".join(assignment["roles"]),
+                                }
+                            )
+
+                    cells.append(cell_items)
+
+                if any(cells):
+                    rows.append(
+                        {
+                            "name": person["name"],
+                            "person_type": person["person_type"],
+                            "cells": cells,
+                        }
+                    )
+
+            unassigned_cells = []
+
+            for column in columns:
+                cell_items = []
+
+                for session in day_sessions:
+                    if not overlaps(session, column):
+                        continue
+
+                    if not assignments_by_session_id.get(session.id):
+                        cell_items.append(
+                            {
+                                "session": session,
+                                "roles": "No staff assigned",
+                            }
+                        )
+
+                unassigned_cells.append(cell_items)
+
+            if any(unassigned_cells):
+                rows.append(
+                    {
+                        "name": "Unassigned",
+                        "person_type": "",
+                        "cells": unassigned_cells,
+                    }
+                )
+
+            if rows:
+                chunks.append(
+                    {
+                        "label": period["label"],
+                        "columns": columns,
+                        "rows": rows,
+                    }
+                )
+
+        days.append(
+            {
+                "session_date": session_date,
+                "chunks": chunks,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "programme/print_leader_board.html",
+        {
+            "request": request,
+            "camp": camp,
+            "days": days,
+            "team_names": team_names,
+        },
+    )
+
+
+@router.post("/camps/{camp_id}/programme/{session_id}/staff/add")
+async def add_programme_session_staff(
+    camp_id: int,
+    session_id: int,
+    person_id: int = Form(...),
+    role: str = Form("Supporting Adult"),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return RedirectResponse(url="/", status_code=303)
+
+    session = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.id == session_id, ProgrammeSession.camp_id == camp.id)
+        .first()
+    )
+
+    if session is None:
+        return RedirectResponse(url=f"/camps/{camp.id}/programme", status_code=303)
+
+    person = (
+        db.query(Person)
+        .filter(Person.id == person_id, Person.camp_id == camp.id)
+        .first()
+    )
+
+    if person is None:
+        return RedirectResponse(url=f"/camps/{camp.id}/programme/{session.id}", status_code=303)
+
+    clean_role = role.strip() or "Supporting Adult"
+
+    if clean_role not in PROGRAMME_STAFF_ROLES:
+        clean_role = "Other"
+
+    existing = (
+        db.query(ProgrammeSessionStaff)
+        .filter(
+            ProgrammeSessionStaff.camp_id == camp.id,
+            ProgrammeSessionStaff.programme_session_id == session.id,
+            ProgrammeSessionStaff.person_id == person.id,
+        )
+        .first()
+    )
+
+    if existing:
+        existing.role = clean_role
+        existing.notes = notes.strip() or None
+    else:
+        db.add(
+            ProgrammeSessionStaff(
+                camp_id=camp.id,
+                programme_session_id=session.id,
+                person_id=person.id,
+                role=clean_role,
+                notes=notes.strip() or None,
+            )
+        )
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/programme/{session.id}/edit", status_code=303)
+
+
+@router.post("/camps/{camp_id}/programme/{session_id}/staff/{staff_id}/delete")
+async def delete_programme_session_staff(
+    camp_id: int,
+    session_id: int,
+    staff_id: int,
+    db: Session = Depends(get_db),
+):
+    staff = (
+        db.query(ProgrammeSessionStaff)
+        .filter(
+            ProgrammeSessionStaff.id == staff_id,
+            ProgrammeSessionStaff.camp_id == camp_id,
+            ProgrammeSessionStaff.programme_session_id == session_id,
+        )
+        .first()
+    )
+
+    if staff is not None:
+        db.delete(staff)
+        db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp_id}/programme/{session_id}/edit", status_code=303)

@@ -79,4 +79,72 @@
     </div>
   </form>
 </section>
+
+<section class="card">
+  <h3>Session Staff</h3>
+  <p class="muted">
+    Lead Person is the main person responsible. Session Staff are the other adults or young leaders actually helping with this scheduled session.
+  </p>
+
+  {% set safe_session_staff = session_staff if session_staff is defined else [] %}
+  {% set safe_available_staff_people = available_staff_people if available_staff_people is defined else [] %}
+  {% set safe_staff_roles = staff_roles if staff_roles is defined else [] %}
+
+  {% if safe_session_staff %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Person Type</th>
+          <th>Role</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in safe_session_staff %}
+          <tr>
+            <td>{{ item.display_name }}</td>
+            <td>{{ item.person.person_type }}</td>
+            <td>{{ item.staff.role }}</td>
+            <td>{{ item.staff.notes or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/{{ item.staff.id }}/delete" onsubmit="return confirm('Remove this person from this session?');">
+                <button class="secondary" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No additional session staff have been assigned yet.</p>
+  {% endif %}
+
+  {% if safe_available_staff_people %}
+    <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/add">
+      <label for="person_id">Add Person</label>
+      <select id="person_id" name="person_id" required>
+        {% for person in safe_available_staff_people %}
+          <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="role">Role</label>
+      <select id="role" name="role">
+        {% for role in safe_staff_roles %}
+          <option value="{{ role }}">{{ role }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="notes">Notes</label>
+      <input id="notes" name="notes" placeholder="Optional">
+
+      <div class="form-actions">
+        <button type="submit">Add Session Staff</button>
+      </div>
+    </form>
+  {% endif %}
+</section>
+
 {% endblock %}

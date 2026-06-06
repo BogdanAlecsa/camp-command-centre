@@ -1,0 +1,335 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Leader Location Board - {{ camp.name }}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      color: #111827;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 4px;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin: 18px 0 8px;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 4px;
+    }
+
+    h3 {
+      font-size: 13px;
+      margin: 12px 0 6px;
+      color: #0f766e;
+    }
+
+    .subtitle {
+      color: #4b5563;
+      margin-bottom: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-bottom: 14px;
+      page-break-inside: auto;
+    }
+
+    th,
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 5px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e5e7eb;
+      font-size: 9px;
+    }
+
+    .person-col {
+      width: 18%;
+      font-weight: bold;
+      background: #f8fafc;
+    }
+
+    .person-type {
+      display: block;
+      font-weight: normal;
+      color: #64748b;
+      font-size: 8px;
+      margin-top: 2px;
+    }
+
+    .slot {
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .item {
+      border-radius: 4px;
+      padding: 4px;
+      margin-bottom: 4px;
+      background: #f8fafc;
+      border-left: 4px solid #64748b;
+    }
+
+    .title {
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .role {
+      font-size: 8px;
+      color: #0f766e;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .detail {
+      color: #475569;
+      font-size: 8px;
+    }
+
+    .empty {
+      color: #94a3b8;
+    }
+
+    .session-type-activity { border-left-color: #2563eb; }
+    .session-type-whole-camp { border-left-color: #7c3aed; }
+    .session-type-group-rotation { border-left-color: #ea580c; }
+    .session-type-meal { border-left-color: #16a34a; }
+    .session-type-travel { border-left-color: #0891b2; }
+    .session-type-setup-pack-down { border-left-color: #4b5563; }
+    .session-type-free-time { border-left-color: #65a30d; }
+    .session-type-leader-admin { border-left-color: #be123c; }
+    .session-type-other { border-left-color: #64748b; }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+  
+    h2, h3 {
+      break-after: avoid-page;
+      page-break-after: avoid;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    .board-period {
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+      margin-bottom: 14px;
+    }
+
+    .board-period h3 {
+      margin-top: 10px;
+    }
+
+  
+    .screen-actions {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 0;
+      margin-bottom: 10px;
+      background: white;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    .screen-actions button,
+    .screen-actions a {
+      display: inline-block;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 0;
+      background: #0f766e;
+      color: white;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .screen-actions a.secondary {
+      background: #334155;
+    }
+
+    @media print {
+      .screen-actions {
+        display: none;
+      }
+    }
+
+  
+    /* Standard programme printable buttons */
+    .screen-actions,
+    .print-actions,
+    .print-controls,
+    .no-print {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 10 !important;
+      display: flex !important;
+      gap: 8px !important;
+      align-items: center !important;
+      padding: 8px 0 !important;
+      margin-bottom: 10px !important;
+      background: white !important;
+      border-bottom: 1px solid #cbd5e1 !important;
+    }
+
+    .screen-actions button,
+    .screen-actions a,
+    .print-actions button,
+    .print-actions a,
+    .print-controls button,
+    .print-controls a,
+    .no-print button,
+    .no-print a {
+      display: inline-block !important;
+      padding: 7px 10px !important;
+      border-radius: 6px !important;
+      border: 0 !important;
+      background: #0f766e !important;
+      color: white !important;
+      text-decoration: none !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+      line-height: 1.2 !important;
+      cursor: pointer !important;
+      box-shadow: none !important;
+    }
+
+    .screen-actions a.secondary,
+    .print-actions a,
+    .print-controls a,
+    .no-print a {
+      background: #334155 !important;
+    }
+
+    @media print {
+      .screen-actions,
+      .print-actions,
+      .print-controls,
+      .no-print {
+        display: none !important;
+      }
+    }
+
+  
+    /* Final button colour correction */
+    .screen-actions > *:first-child,
+    .print-actions > *:first-child,
+    .print-controls > *:first-child,
+    .no-print > *:first-child {
+      background: #0f766e !important;
+      color: white !important;
+    }
+
+    .screen-actions > *:nth-child(2),
+    .print-actions > *:nth-child(2),
+    .print-controls > *:nth-child(2),
+    .no-print > *:nth-child(2) {
+      background: #334155 !important;
+      color: white !important;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="screen-actions">
+    <button type="button" onclick="window.print()">Print</button>
+    <a class="secondary" href="/camps/{{ camp.id }}/programme">Back to Programme</a>
+  </div>
+  <main class="leader-board-report">
+  <h1>Leader Location Board</h1>
+  <div class="subtitle">
+    {{ camp.name }}{% if camp.start_date and camp.end_date %} · {{ camp.start_date }} to {{ camp.end_date }}{% endif %}
+  </div>
+
+  {% if days %}
+    {% for day in days %}
+      <h2>{{ day.session_date.strftime("%A %d %B %Y") }}</h2>
+
+      {% if day.chunks %}
+        {% for chunk in day.chunks %}
+          <section class="board-period">
+          <h3>{{ chunk.label }}</h3>
+
+          <table>
+            <thead>
+              <tr>
+                <th class="person-col">Adult / Young Leader</th>
+                {% for column in chunk.columns %}
+                  <th class="slot">
+                    {{ column.start_time.strftime("%H:%M") }}–{{ column.end_time.strftime("%H:%M") }}
+                  </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in chunk.rows %}
+                <tr>
+                  <td class="person-col">
+                    {{ row.name }}
+                    {% if row.person_type %}
+                      <span class="person-type">{{ row.person_type }}</span>
+                    {% endif %}
+                  </td>
+
+                  {% for cell in row.cells %}
+                    <td>
+                      {% if cell %}
+                        {% for item in cell %}
+                          {% set session = item.session %}
+                          <div class="item {{ programme_type_class(session.session_type) }}">
+                            <div class="role">{{ item.roles }}</div>
+                            <div class="title">{{ session.title }}</div>
+                            <div class="detail">
+                              {{ session.session_type }}
+                              {% if session.location %} · {{ session.location }}{% endif %}
+                              {% if session.participant_team_id and team_names.get(session.participant_team_id) %}
+                                · {{ team_names.get(session.participant_team_id) }}
+                              {% endif %}
+                            </div>
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        <span class="empty">—</span>
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </section>
+        {% endfor %}
+      {% else %}
+        <p>No staffed programme sessions found for this day.</p>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <p>No programme sessions found.</p>
+  {% endif %}
+  </main>
+</body>
+</html>

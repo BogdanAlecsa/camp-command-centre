@@ -60,6 +60,73 @@
   </section>
 </div>
 
+
+<section class="card">
+  <h3>Session Staff</h3>
+  <p class="muted">
+    Add the adults or young leaders who are actually helping with this scheduled session.
+    These must be people already attached to this camp.
+  </p>
+
+  {% if session_staff %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Person Type</th>
+          <th>Role</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in session_staff %}
+          <tr>
+            <td>{{ item.display_name }}</td>
+            <td>{{ item.person.person_type }}</td>
+            <td>{{ item.staff.role }}</td>
+            <td>{{ item.staff.notes or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/{{ item.staff.id }}/delete" onsubmit="return confirm('Remove this person from this session?');">
+                <button class="secondary" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No additional session staff have been assigned yet.</p>
+  {% endif %}
+
+  {% if available_staff_people %}
+    <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/add">
+      <label for="person_id">Add Person</label>
+      <select id="person_id" name="person_id" required>
+        {% for person in available_staff_people %}
+          <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="role">Role</label>
+      <select id="role" name="role">
+        {% for role in staff_roles %}
+          <option value="{{ role }}">{{ role }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="notes">Notes</label>
+      <input id="notes" name="notes" placeholder="Optional">
+
+      <div class="form-actions">
+        <button type="submit">Add Session Staff</button>
+      </div>
+    </form>
+  {% else %}
+    <p class="warning">No adults, helpers or young leaders are available in the camp people list.</p>
+  {% endif %}
+</section>
+
 <section class="card">
   <h3>Rotation</h3>
 
