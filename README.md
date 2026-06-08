@@ -359,3 +359,12 @@ It is intended to become a guided planning and operations tool that helps leader
 Current rule:
 
 **Finish and stabilise the Phase 1 MVP before expanding into large deferred modules.**
+## Developer seed data
+
+To rebuild the sample Dream Camp data during development, run:
+
+    python scripts/reset_dream_camp.py
+
+This recreates the sample camp, then adds participating groups, sections and section assignments for the sample people.
+
+The generated data is fictional demo data only. Do not use real names, real contacts, OSM exports or previous chat examples in seed data.
