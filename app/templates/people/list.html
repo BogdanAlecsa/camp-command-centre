@@ -339,6 +339,36 @@
     }
   }
 
+
+  .bulk-drawer-message {
+    margin: 0 0 .85rem 0;
+    padding: .65rem .75rem;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  .bulk-drawer-message.good {
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  .bulk-drawer-message.warning {
+    border: 1px solid #fecaca;
+    background: #fff7f7;
+    color: #7f1d1d;
+  }
+
+  .delete-confirmation-panel {
+    display: none;
+    margin-top: .6rem;
+    padding: .65rem .75rem;
+    border: 1px solid #fecaca;
+    border-left: 5px solid #dc2626;
+    border-radius: 10px;
+    background: #fff7f7;
+  }
+
 </style>
 
 {% set member_import_updated = request.query_params.get("member_import_updated") %}
@@ -355,35 +385,8 @@
 {% endif %}
 
 {% set bulk_updated = request.query_params.get("bulk_updated") %}
+{% set bulk_deleted = request.query_params.get("bulk_deleted") %}
 {% set bulk_error = request.query_params.get("bulk_error") %}
-
-{% if bulk_updated %}
-<section class="card">
-  <h3>Bulk update complete</h3>
-  <p class="good">Updated {{ bulk_updated }} person{% if bulk_updated != "1" %}s{% endif %}.</p>
-</section>
-{% endif %}
-
-{% if bulk_error %}
-<section class="card">
-  <h3>Bulk update not applied</h3>
-  <p class="warning">
-    {% if bulk_error == "no_selection" %}
-      Please tick at least one person before applying a bulk change.
-    {% elif bulk_error == "invalid_section" %}
-      The selected section was not valid for this camp.
-    {% elif bulk_error == "invalid_person_type" %}
-      The selected person type was not valid.
-    {% elif bulk_error == "invalid_attendance_status" %}
-      The selected attendance status was not valid.
-    {% elif bulk_error == "invalid_provisional_status" %}
-      The selected provisional/confirmed option was not valid.
-    {% else %}
-      The bulk update could not be applied.
-    {% endif %}
-  </p>
-</section>
-{% endif %}
 
 <section class="card">
   <h2>People — {{ camp.name }}</h2>
@@ -496,8 +499,8 @@
 
 {% if people or sections %}
   <form method="post" action="/camps/{{ camp.id }}/people/bulk-edit">
-  <section class="card bulk-edit-sticky">
-    <details class="bulk-edit-drawer">
+  <section id="bulk-actions" class="card bulk-edit-sticky">
+    <details class="bulk-edit-drawer" {% if bulk_error or bulk_updated or bulk_deleted %}open{% endif %}>
       <summary>
         <div class="bulk-drawer-title-block">
           <span class="bulk-drawer-title">Bulk edit selected people</span>
@@ -506,6 +509,38 @@
         <span class="bulk-selected-count" id="bulk-selected-count">0 selected</span>
       </summary>
       <div class="bulk-edit-drawer-body">
+        {% if bulk_updated %}
+          <div class="bulk-drawer-message good">
+            Updated {{ bulk_updated }} person{% if bulk_updated != "1" %}s{% endif %}.
+          </div>
+        {% endif %}
+
+        {% if bulk_deleted %}
+          <div class="bulk-drawer-message warning">
+            Deleted {{ bulk_deleted }} person{% if bulk_deleted != "1" %}s{% endif %}. Team memberships and direct task assignments were also removed.
+          </div>
+        {% endif %}
+
+        {% if bulk_error %}
+          <div class="bulk-drawer-message warning">
+            {% if bulk_error == "no_selection" %}
+              Please tick at least one person before applying a bulk action.
+            {% elif bulk_error == "delete_not_confirmed" %}
+              Delete was not applied because the delete confirmation box was not ticked.
+            {% elif bulk_error == "invalid_section" %}
+              The selected section was not valid for this camp.
+            {% elif bulk_error == "invalid_person_type" %}
+              The selected person type was not valid.
+            {% elif bulk_error == "invalid_attendance_status" %}
+              The selected attendance status was not valid.
+            {% elif bulk_error == "invalid_provisional_status" %}
+              The selected provisional/confirmed option was not valid.
+            {% else %}
+              The bulk action could not be applied.
+            {% endif %}
+          </div>
+        {% endif %}
+
     <p class="bulk-help">
       Tick people below, choose one safe bulk action, then apply it. This is mainly for fixing wrong sections after imports or setup mistakes.
     </p>
@@ -520,6 +555,7 @@
             <option value="person_type">Change person type</option>
             <option value="attendance_status">Change attendance status</option>
             <option value="provisional_status">Mark provisional / confirmed</option>
+                <option value="delete">Delete selected people</option>
           </select>
         </div>
 
@@ -567,6 +603,14 @@
           <button type="submit">Apply to ticked people</button>
           <button type="button" class="secondary" onclick="setPeopleSelection(true)">Tick all</button>
           <button type="button" class="secondary" onclick="setPeopleSelection(false)">Clear ticks</button>
+              <div id="delete-confirmation-panel" class="delete-confirmation-panel">
+                <label>
+                  <input type="checkbox" name="confirm_delete_people" value="yes">
+                  Confirm delete action: delete selected people from this camp, remove their team memberships, and remove their direct task assignments.
+                </label>
+              </div>
+
+          
         </div>
       </div>
     </div>
@@ -688,6 +732,68 @@
   });
 
   document.addEventListener("DOMContentLoaded", updateBulkSelectedCount);
+</script>
+
+
+<script>
+  function updateDeleteConfirmationVisibility() {
+    const action = document.getElementById("bulk_action");
+    const panel = document.getElementById("delete-confirmation-panel");
+
+    if (!action || !panel) {
+      return;
+    }
+
+    const shouldShow = action.value === "delete";
+    panel.style.display = shouldShow ? "block" : "none";
+
+    if (!shouldShow) {
+      const checkbox = panel.querySelector('input[name="confirm_delete_people"]');
+      if (checkbox) {
+        checkbox.checked = false;
+      }
+    }
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target && event.target.id === "bulk_action") {
+      updateDeleteConfirmationVisibility();
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", updateDeleteConfirmationVisibility);
+</script>
+
+
+<script>
+  document.addEventListener("submit", function (event) {
+    const form = event.target;
+    if (form && form.action && form.action.includes("/people/bulk-edit")) {
+      sessionStorage.setItem("peopleBulkScrollY", String(window.scrollY));
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
+    const hasBulkResult =
+      params.has("bulk_updated") ||
+      params.has("bulk_deleted") ||
+      params.has("bulk_error");
+
+    if (!hasBulkResult) {
+      sessionStorage.removeItem("peopleBulkScrollY");
+      return;
+    }
+
+    const savedY = sessionStorage.getItem("peopleBulkScrollY");
+
+    if (savedY !== null) {
+      window.setTimeout(function () {
+        window.scrollTo(0, Number(savedY));
+        sessionStorage.removeItem("peopleBulkScrollY");
+      }, 50);
+    }
+  });
 </script>
 
 {% endblock %}

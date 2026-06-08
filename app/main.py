@@ -1738,6 +1738,7 @@ async def bulk_edit_people(
     bulk_person_type: str = Form(""),
     bulk_attendance_status: str = Form(""),
     bulk_provisional_status: str = Form(""),
+    confirm_delete_people: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
     camp = db.get(Camp, camp_id)
@@ -1753,7 +1754,7 @@ async def bulk_edit_people(
 
     if not person_ids:
         return RedirectResponse(
-            url=f"/camps/{camp.id}/people?bulk_error=no_selection",
+            url=f"/camps/{camp.id}/people?bulk_error=no_selection#bulk-actions",
             status_code=303,
         )
 
@@ -1765,7 +1766,7 @@ async def bulk_edit_people(
 
     if not people:
         return RedirectResponse(
-            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people",
+            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people#bulk-actions",
             status_code=303,
         )
 
@@ -1782,7 +1783,7 @@ async def bulk_edit_people(
             )
             if section is None:
                 return RedirectResponse(
-                    url=f"/camps/{camp.id}/people?bulk_error=invalid_section",
+                    url=f"/camps/{camp.id}/people?bulk_error=invalid_section#bulk-actions",
                     status_code=303,
                 )
 
@@ -1793,7 +1794,7 @@ async def bulk_edit_people(
     elif bulk_action == "person_type":
         if bulk_person_type not in PERSON_TYPES:
             return RedirectResponse(
-                url=f"/camps/{camp.id}/people?bulk_error=invalid_person_type",
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_person_type#bulk-actions",
                 status_code=303,
             )
 
@@ -1806,7 +1807,7 @@ async def bulk_edit_people(
 
         if bulk_attendance_status not in allowed_statuses:
             return RedirectResponse(
-                url=f"/camps/{camp.id}/people?bulk_error=invalid_attendance_status",
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_attendance_status#bulk-actions",
                 status_code=303,
             )
 
@@ -1817,7 +1818,7 @@ async def bulk_edit_people(
     elif bulk_action == "provisional_status":
         if bulk_provisional_status not in ["provisional", "confirmed"]:
             return RedirectResponse(
-                url=f"/camps/{camp.id}/people?bulk_error=invalid_provisional_status",
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_provisional_status#bulk-actions",
                 status_code=303,
             )
 
@@ -1825,16 +1826,62 @@ async def bulk_edit_people(
             person.is_provisional = bulk_provisional_status == "provisional"
             updated += 1
 
+    elif bulk_action == "delete":
+        if confirm_delete_people != "yes":
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=delete_not_confirmed#bulk-actions",
+                status_code=303,
+            )
+
+        real_person_ids = [person.id for person in people]
+
+        affected_task_ids = {
+            row.task_id
+            for row in db.query(TaskAssignment)
+            .filter(
+                TaskAssignment.camp_id == camp.id,
+                TaskAssignment.assigned_person_id.in_(real_person_ids),
+            )
+            .all()
+        }
+
+        db.query(TeamMembership).filter(
+            TeamMembership.camp_id == camp.id,
+            TeamMembership.person_id.in_(real_person_ids),
+        ).delete(synchronize_session=False)
+
+        db.query(TaskAssignment).filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.assigned_person_id.in_(real_person_ids),
+        ).delete(synchronize_session=False)
+
+        deleted_count = len(people)
+
+        for person in people:
+            db.delete(person)
+
+        db.flush()
+
+        for task in db.query(Task).filter(Task.camp_id == camp.id, Task.id.in_(affected_task_ids)).all():
+            update_task_status_from_assignments(db, task)
+
+        db.commit()
+
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_deleted={deleted_count}#bulk-actions",
+            status_code=303,
+        )
+
     else:
         return RedirectResponse(
-            url=f"/camps/{camp.id}/people?bulk_error=invalid_action",
+            url=f"/camps/{camp.id}/people?bulk_error=invalid_action#bulk-actions",
             status_code=303,
         )
 
     db.commit()
 
     return RedirectResponse(
-        url=f"/camps/{camp.id}/people?bulk_updated={updated}",
+        url=f"/camps/{camp.id}/people?bulk_updated={updated}#bulk-actions",
         status_code=303,
     )
 
@@ -1861,13 +1908,13 @@ async def bulk_delete_people(
 
     if not person_ids:
         return RedirectResponse(
-            url=f"/camps/{camp.id}/people?bulk_error=no_selection",
+            url=f"/camps/{camp.id}/people?bulk_error=no_selection#bulk-actions",
             status_code=303,
         )
 
     if confirm_delete_people != "yes":
         return RedirectResponse(
-            url=f"/camps/{camp.id}/people?bulk_error=delete_not_confirmed",
+            url=f"/camps/{camp.id}/people?bulk_error=delete_not_confirmed#bulk-actions",
             status_code=303,
         )
 
@@ -1879,7 +1926,7 @@ async def bulk_delete_people(
 
     if not people:
         return RedirectResponse(
-            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people",
+            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people#bulk-actions",
             status_code=303,
         )
 
@@ -1918,7 +1965,7 @@ async def bulk_delete_people(
     db.commit()
 
     return RedirectResponse(
-        url=f"/camps/{camp.id}/people?bulk_deleted={deleted_count}",
+        url=f"/camps/{camp.id}/people?bulk_deleted={deleted_count}#bulk-actions",
         status_code=303,
     )
 
