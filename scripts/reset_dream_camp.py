@@ -1,10 +1,18 @@
-from scripts.seed_dream_camp import main as seed_dream_camp
-from scripts.seed_groups_sections_for_dream_camp import main as seed_groups_sections
+from pathlib import Path
+import subprocess
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_script(script_name: str) -> None:
+    script_path = PROJECT_ROOT / "scripts" / script_name
+    subprocess.run([sys.executable, str(script_path)], check=True)
 
 
 def main() -> None:
-    seed_dream_camp()
-    seed_groups_sections()
+    run_script("seed_dream_camp.py")
+    run_script("seed_groups_sections_for_dream_camp.py")
     print("Dream Camp reset complete.")
 
 
