@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Add Participating Group — {{ camp.name }}</h2>
+
+  {% if error %}
+    <p class="warning">{{ error }}</p>
+  {% endif %}
+
+  <form method="post">
+    <label for="name">Group / Unit Name</label>
+    <input id="name" name="name" required placeholder="e.g. 1st Radford Semele, District Explorers">
+
+    <label for="group_type">Group Type</label>
+    <select id="group_type" name="group_type">
+      {% for group_type in group_types %}
+        <option value="{{ group_type }}">{{ group_type }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="contact_name">Contact Name</label>
+    <input id="contact_name" name="contact_name">
+
+    <label for="contact_email">Contact Email</label>
+    <input id="contact_email" name="contact_email" type="email">
+
+    <label for="contact_phone">Contact Phone</label>
+    <input id="contact_phone" name="contact_phone">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes"></textarea>
+
+    <div class="form-actions">
+      <button type="submit">Add Participating Group</button>
+      <a class="button secondary" href="/camps/{{ camp.id }}/participating-groups">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

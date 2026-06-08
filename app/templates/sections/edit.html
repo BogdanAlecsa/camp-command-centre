@@ -9,6 +9,13 @@
   {% endif %}
 
   <form method="post">
+    <label for="participating_group_id">Participating Group</label>
+    <select id="participating_group_id" name="participating_group_id" required>
+      {% for group in participating_groups %}
+        <option value="{{ group.id }}" {% if section.participating_group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+
     <label for="name">Section Name</label>
     <input id="name" name="name" required value="{{ section.name }}">
 

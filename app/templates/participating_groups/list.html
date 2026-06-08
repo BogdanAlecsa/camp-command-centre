@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Participating Groups — {{ camp.name }}</h2>
+  <p class="muted">
+    Participating groups are the Scout Groups, Explorer Units or visiting groups involved in this camp.
+    Sections belong to a participating group.
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/participating-groups/new">Add Participating Group</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+<section class="card">
+  {% if groups %}
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Sections</th>
+          <th>People</th>
+          <th>Contact</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in groups %}
+          <tr>
+            <td>{{ group.sort_order }}</td>
+            <td><strong>{{ group.name }}</strong></td>
+            <td>{{ group.group_type }}</td>
+            <td>
+              {% if group.is_active %}
+                <span class="badge risk-status risk-status-approved">Active</span>
+              {% else %}
+                <span class="badge risk-status risk-status-not-started">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ group_section_counts.get(group.id, 0) }}</td>
+            <td>{{ group_person_counts.get(group.id, 0) }}</td>
+            <td>
+              {{ group.contact_name or "" }}
+              {% if group.contact_email %}<br>{{ group.contact_email }}{% endif %}
+              {% if group.contact_phone %}<br>{{ group.contact_phone }}{% endif %}
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/participating-groups/{{ group.id }}/edit">Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No participating groups have been added yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

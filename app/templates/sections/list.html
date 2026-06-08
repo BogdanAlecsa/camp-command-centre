@@ -4,10 +4,12 @@
 <section class="card">
   <h2>Sections — {{ camp.name }}</h2>
   <p class="muted">
-    Sections are used to organise people by their home Scout section. OSM imports are section-based, so this is the foundation for future attendee imports.
+    Sections are used to organise people by their home Scout section.
+    Each section belongs to a participating group.
   </p>
 
   <a class="button" href="/camps/{{ camp.id }}/sections/new">Add Section</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/participating-groups">Participating Groups</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
 </section>
@@ -18,6 +20,7 @@
       <thead>
         <tr>
           <th>Order</th>
+          <th>Participating Group</th>
           <th>Name</th>
           <th>Type</th>
           <th>Status</th>
@@ -28,8 +31,10 @@
       </thead>
       <tbody>
         {% for section in sections %}
+          {% set group = participating_group_lookup.get(section.participating_group_id) %}
           <tr>
             <td>{{ section.sort_order }}</td>
+            <td>{{ group.name if group else "Not set" }}</td>
             <td><strong>{{ section.name }}</strong></td>
             <td>{{ section.section_type }}</td>
             <td>
