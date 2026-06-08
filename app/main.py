@@ -524,6 +524,16 @@ def get_active_sections(db: Session, camp: Camp):
 
 
 
+def get_participating_group_lookup(db: Session, camp: Camp):
+    return {
+        group.id: group
+        for group in db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .all()
+    }
+
+
+
 DEFAULT_TASK_CATEGORIES = [
     "Venue",
     "People & Forms",
@@ -1643,10 +1653,20 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             status_code=404,
         )
 
+    ensure_default_participating_group(db, camp)
+    ensure_default_sections(db, camp)
+
     people = (
         db.query(Person)
         .filter(Person.camp_id == camp.id)
         .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
         .all()
     )
 
@@ -1656,7 +1676,18 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
         .order_by(Section.sort_order, Section.name)
         .all()
     )
+
+    participating_group_lookup = {group.id: group for group in participating_groups}
     section_lookup = {section.id: section for section in sections}
+
+    sections_by_group = {group.id: [] for group in participating_groups}
+    sections_without_group = []
+
+    for section in sections:
+        if section.participating_group_id in sections_by_group:
+            sections_by_group[section.participating_group_id].append(section)
+        else:
+            sections_without_group.append(section)
 
     people_by_section = {section.id: [] for section in sections}
     people_without_section = []
@@ -1683,7 +1714,11 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             "request": request,
             "camp": camp,
             "people": people,
+            "participating_groups": participating_groups,
+            "participating_group_lookup": participating_group_lookup,
             "sections": sections,
+            "sections_by_group": sections_by_group,
+            "sections_without_group": sections_without_group,
             "people_by_section": people_by_section,
             "people_without_section": people_without_section,
             "person_task_counts": person_task_counts,
@@ -1716,6 +1751,7 @@ async def osm_member_import_form(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -1754,6 +1790,7 @@ async def preview_osm_member_import(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please choose a valid section.",
             },
             status_code=400,
@@ -1768,6 +1805,7 @@ async def preview_osm_member_import(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please upload an OSM member export in .xlsx format.",
             },
             status_code=400,
@@ -1782,6 +1820,7 @@ async def preview_osm_member_import(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": f"Could not read this OSM member export: {exc}",
             },
             status_code=400,
@@ -1844,6 +1883,7 @@ async def preview_osm_member_import(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "selected_section": section,
             "selected_section_id": section.id,
             "default_person_type": default_person_type,
@@ -2013,6 +2053,7 @@ async def osm_attendance_update_form(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -2051,6 +2092,7 @@ async def preview_osm_attendance_update(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please choose a valid section.",
             },
             status_code=400,
@@ -2065,6 +2107,7 @@ async def preview_osm_attendance_update(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please upload an OSM event export in .xlsx format.",
             },
             status_code=400,
@@ -2079,6 +2122,7 @@ async def preview_osm_attendance_update(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": f"Could not read this OSM event export: {exc}",
             },
             status_code=400,
@@ -2145,6 +2189,7 @@ async def preview_osm_attendance_update(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "selected_section": section,
             "selected_section_id": section.id,
             "default_person_type": default_person_type,
@@ -2250,6 +2295,7 @@ async def provisional_people_form(request: Request, camp_id: int, db: Session = 
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -2289,6 +2335,7 @@ async def create_provisional_people(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please choose a valid section.",
             },
             status_code=400,
@@ -2375,6 +2422,7 @@ async def new_person_form(request: Request, camp_id: int, db: Session = Depends(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -2698,6 +2746,7 @@ async def replace_provisional_person_form(
             "camp": camp,
             "person": person,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -2815,6 +2864,7 @@ async def edit_person_form(
             "camp": camp,
             "person": person,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )

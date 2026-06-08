@@ -19,7 +19,7 @@
     <label for="section_id">Target Section</label>
     <select id="section_id" name="section_id" required>
       {% for section in sections %}
-        <option value="{{ section.id }}" {% if selected_section_id is defined and selected_section_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+        <option value="{{ section.id }}" {% if selected_section_id is defined and selected_section_id == section.id %}selected{% endif %}>{% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
       {% endfor %}
     </select>
 
