@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
 from app.routes.programme import router as programme_router
-from app.models import Camp, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
+from app.models import Camp, ParticipatingGroup, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
 from app.services.osm_event_import import parse_osm_event_attendance_export, normalise_person_match_value
 
 app = FastAPI(title="Camp Command Centre")
@@ -30,6 +30,7 @@ def on_startup():
 
     with SessionLocal() as db:
         for camp in db.query(Camp).all():
+            ensure_default_participating_group(db, camp)
             ensure_default_sections(db, camp)
             ensure_default_task_phases(db, camp)
             ensure_default_task_categories(db, camp)
@@ -398,6 +399,7 @@ def ensure_optional_schema_columns():
                 )
 
         optional_columns = [
+            ("section", "participating_group_id", "INTEGER"),
             ("activity", "badge_notes", "TEXT"),
             ("person", "home_section_id", "INTEGER"),
             ("person", "information_source", "TEXT"),
@@ -434,6 +436,35 @@ def ensure_optional_schema_columns():
 
 
 
+DEFAULT_PARTICIPATING_GROUP_NAME = "Main Group"
+
+
+def ensure_default_participating_group(db: Session, camp: Camp):
+    existing_group = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .first()
+    )
+
+    if existing_group is not None:
+        return existing_group
+
+    group = ParticipatingGroup(
+        camp_id=camp.id,
+        name=DEFAULT_PARTICIPATING_GROUP_NAME,
+        group_type="Scout Group",
+        sort_order=1,
+        is_active=True,
+    )
+
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+
+    return group
+
+
 DEFAULT_SECTIONS = [
     ("Squirrels", "Squirrels"),
     ("Beavers", "Beavers"),
@@ -447,15 +478,32 @@ DEFAULT_SECTIONS = [
 
 
 def ensure_default_sections(db: Session, camp: Camp):
-    existing_count = db.query(Section).filter(Section.camp_id == camp.id).count()
+    default_group = ensure_default_participating_group(db, camp)
 
-    if existing_count > 0:
+    existing_sections = (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id)
+        .all()
+    )
+
+    if existing_sections:
+        changed = False
+
+        for section in existing_sections:
+            if section.participating_group_id is None:
+                section.participating_group_id = default_group.id
+                changed = True
+
+        if changed:
+            db.commit()
+
         return
 
     for index, (name, section_type) in enumerate(DEFAULT_SECTIONS, start=1):
         db.add(
             Section(
                 camp_id=camp.id,
+                participating_group_id=default_group.id,
                 name=name,
                 section_type=section_type,
                 sort_order=index,
@@ -917,6 +965,8 @@ async def create_camp(
     db.commit()
     db.refresh(camp)
 
+    ensure_default_participating_group(db, camp)
+    ensure_default_sections(db, camp)
     ensure_default_task_phases(db, camp)
     ensure_default_task_categories(db, camp)
     apply_default_task_phase_descriptions(db, camp)
