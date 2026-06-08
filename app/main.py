@@ -1062,6 +1062,112 @@ async def update_camp(
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
 
 
+
+
+
+@app.get("/camps/{camp_id}/delete", response_class=HTMLResponse)
+async def delete_camp_form(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "camps/delete.html",
+        {
+            "request": request,
+            "camp": camp,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/delete")
+async def delete_camp(
+    request: Request,
+    camp_id: int,
+    confirm_delete_camp: str | None = Form(None),
+    confirm_camp_name: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return RedirectResponse(url="/camps?camp_error=not_found", status_code=303)
+
+    if confirm_delete_camp != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/delete?camp_error=delete_box_not_ticked",
+            status_code=303,
+        )
+
+    if confirm_camp_name.strip() != camp.name:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/delete?camp_error=delete_name_mismatch",
+            status_code=303,
+        )
+
+    camp_name = camp.name
+
+    camp_ra_ids = [
+        row.id
+        for row in db.query(CampRiskAssessment)
+        .filter(CampRiskAssessment.camp_id == camp.id)
+        .all()
+    ]
+
+    activity_ra_ids = [
+        row.id
+        for row in db.query(ActivityRiskAssessment)
+        .filter(ActivityRiskAssessment.camp_id == camp.id)
+        .all()
+    ]
+
+    if camp_ra_ids:
+        db.query(CampRiskControl).filter(
+            CampRiskControl.risk_assessment_id.in_(camp_ra_ids)
+        ).delete(synchronize_session=False)
+
+    if activity_ra_ids:
+        db.query(ActivityRiskControl).filter(
+            ActivityRiskControl.risk_assessment_id.in_(activity_ra_ids)
+        ).delete(synchronize_session=False)
+
+    db.query(CampRiskAssessment).filter(CampRiskAssessment.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(ActivityRiskAssessment).filter(ActivityRiskAssessment.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(ProgrammeSession).filter(ProgrammeSession.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(TaskAssignment).filter(TaskAssignment.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(Task).filter(Task.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(TaskPhase).filter(TaskPhase.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(TaskCategory).filter(TaskCategory.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(TeamMembership).filter(TeamMembership.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(Team).filter(Team.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(Activity).filter(Activity.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(Person).filter(Person.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(Section).filter(Section.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(ParticipatingGroup).filter(ParticipatingGroup.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.delete(camp)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps?camp_deleted={camp_name}",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}", response_class=HTMLResponse)
 async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)

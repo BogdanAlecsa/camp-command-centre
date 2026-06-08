@@ -10,6 +10,7 @@
   <p>Status: <span class="badge">{{ camp.status }}</span></p>
 
   <a class="button" href="/camps/{{ camp.id }}/edit">Edit Camp</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/delete">Delete...</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/participating-groups">Participating Groups</a>
@@ -94,4 +95,5 @@
   <h3>Notes</h3>
   <p>{{ camp.notes or "No notes yet." }}</p>
 </section>
+
 {% endblock %}

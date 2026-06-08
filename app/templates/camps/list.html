@@ -1,6 +1,57 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+  .camp-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    align-items: center;
+  }
+
+  .camp-row-actions a {
+    display: inline-block;
+    padding: .32rem .55rem;
+    border-radius: 6px;
+    background: #334155;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: .82rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .camp-row-actions a.primary {
+    background: #0f766e;
+  }
+
+  .camp-row-actions a.danger {
+    background: #ffffff;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  .camp-row-actions a.danger:hover {
+    background: #fff7f7;
+  }
+</style>
+
+{% set camp_deleted = request.query_params.get("camp_deleted") %}
+{% set camp_error = request.query_params.get("camp_error") %}
+
+{% if camp_deleted %}
+<section class="card">
+  <p class="warning">Deleted camp: {{ camp_deleted }}</p>
+</section>
+{% endif %}
+
+{% if camp_error %}
+<section class="card">
+  <p class="warning">The camp could not be deleted.</p>
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Camps</h2>
   <p class="muted">Create, open and manage camps.</p>
@@ -30,7 +81,13 @@
             <td>{{ camp.camp_type }}</td>
             <td>{{ camp.venue_name }}</td>
             <td><span class="badge">{{ camp.status }}</span></td>
-            <td><a href="/camps/{{ camp.id }}">Open</a></td>
+            <td>
+              <div class="camp-row-actions">
+                <a class="primary" href="/camps/{{ camp.id }}">Open</a>
+                <a href="/camps/{{ camp.id }}/edit">Edit</a>
+                <a class="danger" href="/camps/{{ camp.id }}/delete">Delete...</a>
+              </div>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
