@@ -99,6 +99,45 @@
   .people-orphan-group {
     border-left-color: var(--warn);
   }
+
+  .osm-section-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin: .75rem .8rem;
+    padding: .75rem .85rem;
+    border: 1px solid #99f6e4;
+    border-left: 6px solid #0f766e;
+    border-radius: 10px;
+    background: #ecfdf5;
+  }
+
+  .osm-section-actions-title {
+    font-size: .98rem;
+    font-weight: bold;
+    color: #064e3b;
+  }
+
+  .osm-section-actions-help {
+    display: block;
+    margin-top: .15rem;
+    color: #475569;
+    font-size: .88rem;
+  }
+
+  .osm-section-actions-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+
+  .osm-section-actions-buttons .button {
+    font-size: .82rem;
+    padding: .45rem .65rem;
+  }
+
 </style>
 
 {% set member_import_updated = request.query_params.get("member_import_updated") %}
@@ -123,8 +162,6 @@
 
   <a class="button" href="/camps/{{ camp.id }}/people/new">Add Person</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people/provisional">Create Provisional People</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/people/osm-member-import">Bulk Import from OSM</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/people/osm-attendance-update">Update Attendance from OSM</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/participating-groups">Participating Groups</a>
   <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
@@ -197,6 +234,19 @@
         </span>
       </div>
     </summary>
+
+    <div class="osm-section-actions">
+      <div>
+        <span class="osm-section-actions-title">OSM tools for {{ section.name }}</span>
+        <span class="osm-section-actions-help">
+          Import or update only this section. This avoids mixing people from different groups or sections.
+        </span>
+      </div>
+      <div class="osm-section-actions-buttons">
+        <a class="button" href="/camps/{{ camp.id }}/people/osm-member-import?section_id={{ section.id }}">Import members</a>
+        <a class="button secondary" href="/camps/{{ camp.id }}/people/osm-attendance-update?section_id={{ section.id }}">Update attendance</a>
+      </div>
+    </div>
 
     {% if section_people %}
       <div class="people-table-wrap">

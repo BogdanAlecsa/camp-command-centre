@@ -1732,6 +1732,7 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
 async def osm_member_import_form(
     request: Request,
     camp_id: int,
+    section_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     camp = db.get(Camp, camp_id)
@@ -1745,6 +1746,14 @@ async def osm_member_import_form(
 
     sections = get_active_sections(db, camp)
 
+    selected_section = None
+    if section_id is not None:
+        selected_section = (
+            db.query(Section)
+            .filter(Section.id == section_id, Section.camp_id == camp.id)
+            .first()
+        )
+
     return templates.TemplateResponse(
         "people/osm_member_import.html",
         {
@@ -1752,7 +1761,9 @@ async def osm_member_import_form(
             "camp": camp,
             "sections": sections,
             "participating_group_lookup": get_participating_group_lookup(db, camp),
-            "error": None,
+            "selected_section": selected_section,
+            "selected_section_id": selected_section.id if selected_section else None,
+            "error": "Selected section was not found." if section_id is not None and selected_section is None else None,
         },
     )
 
@@ -2034,6 +2045,7 @@ async def apply_osm_member_import(
 async def osm_attendance_update_form(
     request: Request,
     camp_id: int,
+    section_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     camp = db.get(Camp, camp_id)
@@ -2047,6 +2059,14 @@ async def osm_attendance_update_form(
 
     sections = get_active_sections(db, camp)
 
+    selected_section = None
+    if section_id is not None:
+        selected_section = (
+            db.query(Section)
+            .filter(Section.id == section_id, Section.camp_id == camp.id)
+            .first()
+        )
+
     return templates.TemplateResponse(
         "people/osm_attendance_update.html",
         {
@@ -2054,7 +2074,9 @@ async def osm_attendance_update_form(
             "camp": camp,
             "sections": sections,
             "participating_group_lookup": get_participating_group_lookup(db, camp),
-            "error": None,
+            "selected_section": selected_section,
+            "selected_section_id": selected_section.id if selected_section else None,
+            "error": "Selected section was not found." if section_id is not None and selected_section is None else None,
         },
     )
 

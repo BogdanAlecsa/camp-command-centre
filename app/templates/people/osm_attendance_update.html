@@ -1,6 +1,47 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+  .target-section-card {
+    margin: 0 0 1rem 0;
+    padding: .9rem 1rem;
+    border: 1px solid #99f6e4;
+    border-left: 7px solid #0f766e;
+    border-radius: 12px;
+    background: #ecfdf5;
+  }
+
+  .target-section-label {
+    display: block;
+    margin-bottom: .25rem;
+    color: #065f46;
+    font-size: .85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .target-section-name {
+    display: block;
+    color: #064e3b;
+    font-size: 1.35rem;
+    font-weight: bold;
+    line-height: 1.25;
+  }
+
+  .target-section-help {
+    display: block;
+    margin-top: .3rem;
+    color: #475569;
+    font-size: .92rem;
+  }
+
+  .target-section-preview {
+    margin-top: .75rem;
+  }
+</style>
+
 <section class="card">
   <h2>Update Attendance from OSM Event Export</h2>
   <p class="muted">
@@ -16,12 +57,24 @@
   <h3>Upload Event Export</h3>
 
   <form method="post" action="/camps/{{ camp.id }}/people/osm-attendance-update" enctype="multipart/form-data">
-    <label for="section_id">Section</label>
-    <select id="section_id" name="section_id" required>
-      {% for section in sections %}
-        <option value="{{ section.id }}" {% if selected_section_id is defined and selected_section_id == section.id %}selected{% endif %}>{% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
-      {% endfor %}
-    </select>
+    {% if selected_section %}
+      {% set selected_group = participating_group_lookup.get(selected_section.participating_group_id) if participating_group_lookup is defined else None %}
+      <div class="target-section-card">
+        <span class="target-section-label">Target section</span>
+        <span class="target-section-name">{{ selected_group.name ~ " → " if selected_group else "" }}{{ selected_section.name }}</span>
+        <span class="target-section-help">
+          This OSM file will only be matched against this section.
+        </span>
+      </div>
+      <input type="hidden" id="section_id" name="section_id" value="{{ selected_section.id }}">
+    {% else %}
+      <label for="section_id">Section</label>
+      <select id="section_id" name="section_id" required>
+        {% for section in sections %}
+          <option value="{{ section.id }}" {% if selected_section_id is defined and selected_section_id == section.id %}selected{% endif %}>{% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
 
     <label for="default_person_type">Default Person Type for New Rows</label>
     <select id="default_person_type" name="default_person_type">
@@ -71,7 +124,18 @@
 
   <p class="muted">
     File: {{ filename }}<br>
-    Section: {{ selected_section.name }}<br>
+    {% set selected_group = participating_group_lookup.get(selected_section.participating_group_id) if participating_group_lookup is defined else None %}
+  </p>
+
+  <div class="target-section-card target-section-preview">
+    <span class="target-section-label">Preview target section</span>
+    <span class="target-section-name">{{ selected_group.name ~ " → " if selected_group else "" }}{{ selected_section.name }}</span>
+    <span class="target-section-help">
+      These attendance changes will be applied only to this section.
+    </span>
+  </div>
+
+  <p class="muted">
     Matched: {{ matched_count }} · Unmatched: {{ unmatched_count }}
   </p>
 
