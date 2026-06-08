@@ -31,9 +31,9 @@
     <label for="sort_order">Sort Order</label>
     <input id="sort_order" name="sort_order" type="number" value="{{ group.sort_order }}">
 
-    <label>
-      <input type="checkbox" name="is_active" value="yes" {% if group.is_active %}checked{% endif %}>
-      Active
+    <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: .5rem; margin: .75rem 0; font-weight: 700; width: auto;">
+      <input type="checkbox" name="is_active" value="yes" {% if group.is_active %}checked{% endif %} style="width: auto; margin: 0;">
+      <span>Active</span>
     </label>
 
     <label for="notes">Notes</label>

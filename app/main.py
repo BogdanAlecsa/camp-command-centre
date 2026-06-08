@@ -1242,6 +1242,146 @@ async def create_participating_group(
     return RedirectResponse(url=f"/camps/{camp.id}/participating-groups", status_code=303)
 
 
+
+@app.post("/camps/{camp_id}/participating-groups/{group_id}/delete")
+async def delete_participating_group(
+    request: Request,
+    camp_id: int,
+    group_id: int,
+    confirm_delete_group: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if group is None:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?group_error=not_found",
+            status_code=303,
+        )
+
+    if confirm_delete_group != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?group_error=delete_not_confirmed",
+            status_code=303,
+        )
+
+    section_count = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.participating_group_id == group.id,
+        )
+        .count()
+    )
+
+    if section_count > 0:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?group_error=group_not_empty",
+            status_code=303,
+        )
+
+    db.delete(group)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/participating-groups?group_deleted=1",
+        status_code=303,
+    )
+
+
+
+@app.post("/camps/{camp_id}/participating-groups/bulk-delete")
+async def bulk_delete_participating_groups(
+    request: Request,
+    camp_id: int,
+    selected_group_id: list[int] | None = Form(None),
+    confirm_delete_groups: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    group_ids = selected_group_id or []
+
+    if not group_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=no_selection#group-bulk-actions",
+            status_code=303,
+        )
+
+    if confirm_delete_groups != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=delete_not_confirmed#group-bulk-actions",
+            status_code=303,
+        )
+
+    groups = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.camp_id == camp.id,
+            ParticipatingGroup.id.in_(group_ids),
+        )
+        .all()
+    )
+
+    if not groups:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=no_valid_groups#group-bulk-actions",
+            status_code=303,
+        )
+
+    real_group_ids = [group.id for group in groups]
+
+    section_count = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.participating_group_id.in_(real_group_ids),
+        )
+        .count()
+    )
+
+    if section_count > 0:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=groups_not_empty#group-bulk-actions",
+            status_code=303,
+        )
+
+    deleted_count = len(groups)
+
+    for group in groups:
+        db.delete(group)
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/participating-groups?bulk_deleted={deleted_count}#group-bulk-actions",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}/participating-groups/{group_id}/edit", response_class=HTMLResponse)
 async def edit_participating_group_form(
     request: Request,
