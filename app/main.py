@@ -1839,6 +1839,90 @@ async def bulk_edit_people(
     )
 
 
+
+@app.post("/camps/{camp_id}/people/bulk-delete")
+async def bulk_delete_people(
+    request: Request,
+    camp_id: int,
+    selected_person_id: list[int] | None = Form(None),
+    confirm_delete_people: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person_ids = selected_person_id or []
+
+    if not person_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_selection",
+            status_code=303,
+        )
+
+    if confirm_delete_people != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=delete_not_confirmed",
+            status_code=303,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.id.in_(person_ids))
+        .all()
+    )
+
+    if not people:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people",
+            status_code=303,
+        )
+
+    real_person_ids = [person.id for person in people]
+
+    affected_task_ids = {
+        row.task_id
+        for row in db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.assigned_person_id.in_(real_person_ids),
+        )
+        .all()
+    }
+
+    db.query(TeamMembership).filter(
+        TeamMembership.camp_id == camp.id,
+        TeamMembership.person_id.in_(real_person_ids),
+    ).delete(synchronize_session=False)
+
+    db.query(TaskAssignment).filter(
+        TaskAssignment.camp_id == camp.id,
+        TaskAssignment.assigned_person_id.in_(real_person_ids),
+    ).delete(synchronize_session=False)
+
+    deleted_count = len(people)
+
+    for person in people:
+        db.delete(person)
+
+    db.flush()
+
+    for task in db.query(Task).filter(Task.camp_id == camp.id, Task.id.in_(affected_task_ids)).all():
+        update_task_status_from_assignments(db, task)
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/people?bulk_deleted={deleted_count}",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}/people/osm-member-import", response_class=HTMLResponse)
 async def osm_member_import_form(
     request: Request,
