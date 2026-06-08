@@ -2278,6 +2278,22 @@ async def bulk_edit_people(
             TaskAssignment.assigned_person_id.in_(real_person_ids),
         ).delete(synchronize_session=False)
 
+        db.query(Activity).filter(
+            Activity.camp_id == camp.id,
+            Activity.activity_lead_id.in_(real_person_ids),
+        ).update(
+            {Activity.activity_lead_id: None},
+            synchronize_session=False,
+        )
+
+        db.query(ProgrammeSession).filter(
+            ProgrammeSession.camp_id == camp.id,
+            ProgrammeSession.lead_person_id.in_(real_person_ids),
+        ).update(
+            {ProgrammeSession.lead_person_id: None},
+            synchronize_session=False,
+        )
+
         deleted_count = len(people)
 
         for person in people:

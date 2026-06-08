@@ -517,7 +517,7 @@
 
         {% if bulk_deleted %}
           <div class="bulk-drawer-message warning">
-            Deleted {{ bulk_deleted }} person{% if bulk_deleted != "1" %}s{% endif %}. Team memberships and direct task assignments were also removed.
+            Deleted {{ bulk_deleted }} person{% if bulk_deleted != "1" %}s{% endif %}. Tasks and activities were kept, but team memberships, direct task assignments, and activity/programme lead references were cleared.
           </div>
         {% endif %}
 
@@ -606,7 +606,7 @@
               <div id="delete-confirmation-panel" class="delete-confirmation-panel">
                 <label>
                   <input type="checkbox" name="confirm_delete_people" value="yes">
-                  Confirm delete action: delete selected people from this camp, remove their team memberships, and remove their direct task assignments.
+                  Confirm delete: remove selected people from this camp, remove their team memberships, remove their direct task assignments, and clear them from activity/programme lead roles. Tasks and activities are kept, but those people will no longer be assigned to them.
                 </label>
               </div>
 
