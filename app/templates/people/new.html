@@ -30,7 +30,7 @@
     <select id="home_section_id" name="home_section_id">
       <option value="">Not set</option>
       {% for section in sections %}
-        <option value="{{ section.id }}">{{ section.name }}</option>
+        <option value="{{ section.id }}">{% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
       {% endfor %}
     </select>
 

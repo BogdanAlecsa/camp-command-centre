@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class Section(Base):
-    __tablename__ = "section"
+class ParticipatingGroup(Base):
+    __tablename__ = "participating_group"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
@@ -18,15 +18,13 @@ class Section(Base):
         index=True,
     )
 
-    participating_group_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("participating_group.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    group_type: Mapped[str] = mapped_column(String(80), nullable=False, default="Scout Group")
 
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    section_type: Mapped[str] = mapped_column(String(80), nullable=False, default="Other")
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

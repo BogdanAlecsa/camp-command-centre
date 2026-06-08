@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
 from app.routes.programme import router as programme_router
-from app.models import Camp, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
+from app.models import Camp, ParticipatingGroup, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
 from app.services.osm_event_import import parse_osm_event_attendance_export, normalise_person_match_value
 
 app = FastAPI(title="Camp Command Centre")
@@ -30,6 +30,7 @@ def on_startup():
 
     with SessionLocal() as db:
         for camp in db.query(Camp).all():
+            ensure_default_participating_group(db, camp)
             ensure_default_sections(db, camp)
             ensure_default_task_phases(db, camp)
             ensure_default_task_categories(db, camp)
@@ -398,6 +399,7 @@ def ensure_optional_schema_columns():
                 )
 
         optional_columns = [
+            ("section", "participating_group_id", "INTEGER"),
             ("activity", "badge_notes", "TEXT"),
             ("person", "home_section_id", "INTEGER"),
             ("person", "information_source", "TEXT"),
@@ -434,6 +436,35 @@ def ensure_optional_schema_columns():
 
 
 
+DEFAULT_PARTICIPATING_GROUP_NAME = "Main Group"
+
+
+def ensure_default_participating_group(db: Session, camp: Camp):
+    existing_group = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .first()
+    )
+
+    if existing_group is not None:
+        return existing_group
+
+    group = ParticipatingGroup(
+        camp_id=camp.id,
+        name=DEFAULT_PARTICIPATING_GROUP_NAME,
+        group_type="Scout Group",
+        sort_order=1,
+        is_active=True,
+    )
+
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+
+    return group
+
+
 DEFAULT_SECTIONS = [
     ("Squirrels", "Squirrels"),
     ("Beavers", "Beavers"),
@@ -447,15 +478,32 @@ DEFAULT_SECTIONS = [
 
 
 def ensure_default_sections(db: Session, camp: Camp):
-    existing_count = db.query(Section).filter(Section.camp_id == camp.id).count()
+    default_group = ensure_default_participating_group(db, camp)
 
-    if existing_count > 0:
+    existing_sections = (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id)
+        .all()
+    )
+
+    if existing_sections:
+        changed = False
+
+        for section in existing_sections:
+            if section.participating_group_id is None:
+                section.participating_group_id = default_group.id
+                changed = True
+
+        if changed:
+            db.commit()
+
         return
 
     for index, (name, section_type) in enumerate(DEFAULT_SECTIONS, start=1):
         db.add(
             Section(
                 camp_id=camp.id,
+                participating_group_id=default_group.id,
                 name=name,
                 section_type=section_type,
                 sort_order=index,
@@ -473,6 +521,16 @@ def get_active_sections(db: Session, camp: Camp):
         .order_by(Section.sort_order, Section.name)
         .all()
     )
+
+
+
+def get_participating_group_lookup(db: Session, camp: Camp):
+    return {
+        group.id: group
+        for group in db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .all()
+    }
 
 
 
@@ -917,6 +975,8 @@ async def create_camp(
     db.commit()
     db.refresh(camp)
 
+    ensure_default_participating_group(db, camp)
+    ensure_default_sections(db, camp)
     ensure_default_task_phases(db, camp)
     ensure_default_task_categories(db, camp)
     apply_default_task_phase_descriptions(db, camp)
@@ -1002,6 +1062,112 @@ async def update_camp(
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
 
 
+
+
+
+@app.get("/camps/{camp_id}/delete", response_class=HTMLResponse)
+async def delete_camp_form(
+    request: Request,
+    camp_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "camps/delete.html",
+        {
+            "request": request,
+            "camp": camp,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/delete")
+async def delete_camp(
+    request: Request,
+    camp_id: int,
+    confirm_delete_camp: str | None = Form(None),
+    confirm_camp_name: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return RedirectResponse(url="/camps?camp_error=not_found", status_code=303)
+
+    if confirm_delete_camp != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/delete?camp_error=delete_box_not_ticked",
+            status_code=303,
+        )
+
+    if confirm_camp_name.strip() != camp.name:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/delete?camp_error=delete_name_mismatch",
+            status_code=303,
+        )
+
+    camp_name = camp.name
+
+    camp_ra_ids = [
+        row.id
+        for row in db.query(CampRiskAssessment)
+        .filter(CampRiskAssessment.camp_id == camp.id)
+        .all()
+    ]
+
+    activity_ra_ids = [
+        row.id
+        for row in db.query(ActivityRiskAssessment)
+        .filter(ActivityRiskAssessment.camp_id == camp.id)
+        .all()
+    ]
+
+    if camp_ra_ids:
+        db.query(CampRiskControl).filter(
+            CampRiskControl.risk_assessment_id.in_(camp_ra_ids)
+        ).delete(synchronize_session=False)
+
+    if activity_ra_ids:
+        db.query(ActivityRiskControl).filter(
+            ActivityRiskControl.risk_assessment_id.in_(activity_ra_ids)
+        ).delete(synchronize_session=False)
+
+    db.query(CampRiskAssessment).filter(CampRiskAssessment.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(ActivityRiskAssessment).filter(ActivityRiskAssessment.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(ProgrammeSession).filter(ProgrammeSession.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(TaskAssignment).filter(TaskAssignment.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(Task).filter(Task.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(TaskPhase).filter(TaskPhase.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(TaskCategory).filter(TaskCategory.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(TeamMembership).filter(TeamMembership.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(Team).filter(Team.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(Activity).filter(Activity.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.query(Person).filter(Person.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(Section).filter(Section.camp_id == camp.id).delete(synchronize_session=False)
+    db.query(ParticipatingGroup).filter(ParticipatingGroup.camp_id == camp.id).delete(synchronize_session=False)
+
+    db.delete(camp)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps?camp_deleted={camp_name}",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}", response_class=HTMLResponse)
 async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)
@@ -1037,6 +1203,398 @@ async def camp_detail(request: Request, camp_id: int, db: Session = Depends(get_
     )
 
 
+
+PARTICIPATING_GROUP_TYPES = [
+    "Scout Group",
+    "Explorer Unit",
+    "District",
+    "Visiting Group",
+    "Partner Organisation",
+    "Other",
+]
+
+
+@app.get("/camps/{camp_id}/participating-groups", response_class=HTMLResponse)
+async def participating_group_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    ensure_default_participating_group(db, camp)
+    ensure_default_sections(db, camp)
+
+    groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+
+    group_section_counts = {
+        group.id: db.query(Section)
+        .filter(Section.camp_id == camp.id, Section.participating_group_id == group.id)
+        .count()
+        for group in groups
+    }
+
+    group_person_counts = {
+        group.id: db.query(Person)
+        .join(Section, Person.home_section_id == Section.id)
+        .filter(
+            Person.camp_id == camp.id,
+            Section.camp_id == camp.id,
+            Section.participating_group_id == group.id,
+        )
+        .count()
+        for group in groups
+    }
+
+    return templates.TemplateResponse(
+        "participating_groups/list.html",
+        {
+            "request": request,
+            "camp": camp,
+            "groups": groups,
+            "group_section_counts": group_section_counts,
+            "group_person_counts": group_person_counts,
+        },
+    )
+
+
+@app.get("/camps/{camp_id}/participating-groups/new", response_class=HTMLResponse)
+async def new_participating_group_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "participating_groups/new.html",
+        {
+            "request": request,
+            "camp": camp,
+            "group_types": PARTICIPATING_GROUP_TYPES,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/participating-groups/new")
+async def create_participating_group(
+    request: Request,
+    camp_id: int,
+    name: str = Form(...),
+    group_type: str = Form("Scout Group"),
+    contact_name: str = Form(""),
+    contact_email: str = Form(""),
+    contact_phone: str = Form(""),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    clean_name = name.strip()
+
+    if not clean_name:
+        return templates.TemplateResponse(
+            "participating_groups/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "group_types": PARTICIPATING_GROUP_TYPES,
+                "error": "Participating group name is required.",
+            },
+            status_code=400,
+        )
+
+    next_order = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .count()
+        + 1
+    )
+
+    group = ParticipatingGroup(
+        camp_id=camp.id,
+        name=clean_name,
+        group_type=group_type,
+        contact_name=contact_name.strip() or None,
+        contact_email=contact_email.strip() or None,
+        contact_phone=contact_phone.strip() or None,
+        notes=notes.strip() or None,
+        sort_order=next_order,
+        is_active=True,
+    )
+
+    db.add(group)
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/participating-groups", status_code=303)
+
+
+
+@app.post("/camps/{camp_id}/participating-groups/{group_id}/delete")
+async def delete_participating_group(
+    request: Request,
+    camp_id: int,
+    group_id: int,
+    confirm_delete_group: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if group is None:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?group_error=not_found",
+            status_code=303,
+        )
+
+    if confirm_delete_group != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?group_error=delete_not_confirmed",
+            status_code=303,
+        )
+
+    section_count = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.participating_group_id == group.id,
+        )
+        .count()
+    )
+
+    if section_count > 0:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?group_error=group_not_empty",
+            status_code=303,
+        )
+
+    db.delete(group)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/participating-groups?group_deleted=1",
+        status_code=303,
+    )
+
+
+
+@app.post("/camps/{camp_id}/participating-groups/bulk-delete")
+async def bulk_delete_participating_groups(
+    request: Request,
+    camp_id: int,
+    selected_group_id: list[int] | None = Form(None),
+    confirm_delete_groups: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    group_ids = selected_group_id or []
+
+    if not group_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=no_selection#group-bulk-actions",
+            status_code=303,
+        )
+
+    if confirm_delete_groups != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=delete_not_confirmed#group-bulk-actions",
+            status_code=303,
+        )
+
+    groups = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.camp_id == camp.id,
+            ParticipatingGroup.id.in_(group_ids),
+        )
+        .all()
+    )
+
+    if not groups:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=no_valid_groups#group-bulk-actions",
+            status_code=303,
+        )
+
+    real_group_ids = [group.id for group in groups]
+
+    section_count = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.participating_group_id.in_(real_group_ids),
+        )
+        .count()
+    )
+
+    if section_count > 0:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/participating-groups?bulk_error=groups_not_empty#group-bulk-actions",
+            status_code=303,
+        )
+
+    deleted_count = len(groups)
+
+    for group in groups:
+        db.delete(group)
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/participating-groups?bulk_deleted={deleted_count}#group-bulk-actions",
+        status_code=303,
+    )
+
+
+@app.get("/camps/{camp_id}/participating-groups/{group_id}/edit", response_class=HTMLResponse)
+async def edit_participating_group_form(
+    request: Request,
+    camp_id: int,
+    group_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    group = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.id == group_id, ParticipatingGroup.camp_id == camp.id)
+        .first()
+    )
+
+    if group is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Participating group not found."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "participating_groups/edit.html",
+        {
+            "request": request,
+            "camp": camp,
+            "group": group,
+            "group_types": PARTICIPATING_GROUP_TYPES,
+            "error": None,
+        },
+    )
+
+
+@app.post("/camps/{camp_id}/participating-groups/{group_id}/edit")
+async def update_participating_group(
+    request: Request,
+    camp_id: int,
+    group_id: int,
+    name: str = Form(...),
+    group_type: str = Form("Scout Group"),
+    contact_name: str = Form(""),
+    contact_email: str = Form(""),
+    contact_phone: str = Form(""),
+    notes: str = Form(""),
+    sort_order: int = Form(0),
+    is_active: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    group = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.id == group_id, ParticipatingGroup.camp_id == camp.id)
+        .first()
+    )
+
+    if group is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Participating group not found."},
+            status_code=404,
+        )
+
+    clean_name = name.strip()
+
+    if not clean_name:
+        return templates.TemplateResponse(
+            "participating_groups/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "group": group,
+                "group_types": PARTICIPATING_GROUP_TYPES,
+                "error": "Participating group name is required.",
+            },
+            status_code=400,
+        )
+
+    group.name = clean_name
+    group.group_type = group_type
+    group.contact_name = contact_name.strip() or None
+    group.contact_email = contact_email.strip() or None
+    group.contact_phone = contact_phone.strip() or None
+    group.notes = notes.strip() or None
+    group.sort_order = sort_order
+    group.is_active = is_active == "yes"
+
+    db.commit()
+
+    return RedirectResponse(url=f"/camps/{camp.id}/participating-groups", status_code=303)
+
+
 @app.get("/camps/{camp_id}/sections", response_class=HTMLResponse)
 async def camp_section_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)
@@ -1048,7 +1606,16 @@ async def camp_section_list(request: Request, camp_id: int, db: Session = Depend
             status_code=404,
         )
 
+    ensure_default_participating_group(db, camp)
     ensure_default_sections(db, camp)
+
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+    participating_group_lookup = {group.id: group for group in participating_groups}
 
     sections = (
         db.query(Section)
@@ -1070,8 +1637,157 @@ async def camp_section_list(request: Request, camp_id: int, db: Session = Depend
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_groups": participating_groups,
+            "participating_group_lookup": participating_group_lookup,
             "section_person_counts": section_person_counts,
         },
+    )
+
+
+
+@app.post("/camps/{camp_id}/sections/bulk-move")
+async def bulk_move_sections(
+    request: Request,
+    camp_id: int,
+    selected_section_id: list[int] | None = Form(None),
+    target_participating_group_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section_ids = selected_section_id or []
+
+    if not section_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_selection#section-bulk-actions",
+            status_code=303,
+        )
+
+    target_group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == target_participating_group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if target_group is None:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=invalid_group#section-bulk-actions",
+            status_code=303,
+        )
+
+    sections = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.id.in_(section_ids),
+        )
+        .all()
+    )
+
+    if not sections:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_valid_sections#section-bulk-actions",
+            status_code=303,
+        )
+
+    moved = 0
+
+    for section in sections:
+        section.participating_group_id = target_group.id
+        moved += 1
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/sections?bulk_moved={moved}#section-bulk-actions",
+        status_code=303,
+    )
+
+
+
+@app.post("/camps/{camp_id}/sections/bulk-delete")
+async def bulk_delete_sections(
+    request: Request,
+    camp_id: int,
+    selected_section_id: list[int] | None = Form(None),
+    confirm_delete_sections: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section_ids = selected_section_id or []
+
+    if not section_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_selection#section-bulk-actions",
+            status_code=303,
+        )
+
+    if confirm_delete_sections != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=delete_not_confirmed#section-bulk-actions",
+            status_code=303,
+        )
+
+    sections = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.id.in_(section_ids),
+        )
+        .all()
+    )
+
+    if not sections:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_valid_sections#section-bulk-actions",
+            status_code=303,
+        )
+
+    section_ids_to_delete = [section.id for section in sections]
+
+    people_count = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            Person.home_section_id.in_(section_ids_to_delete),
+        )
+        .count()
+    )
+
+    if people_count > 0:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=sections_not_empty#section-bulk-actions",
+            status_code=303,
+        )
+
+    deleted_count = len(sections)
+
+    for section in sections:
+        db.delete(section)
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/sections?bulk_deleted={deleted_count}#section-bulk-actions",
+        status_code=303,
     )
 
 
@@ -1086,11 +1802,19 @@ async def new_section_form(request: Request, camp_id: int, db: Session = Depends
             status_code=404,
         )
 
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id, ParticipatingGroup.is_active == True)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+
     return templates.TemplateResponse(
         "sections/new.html",
         {
             "request": request,
             "camp": camp,
+            "participating_groups": participating_groups,
             "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
             "error": None,
         },
@@ -1102,6 +1826,7 @@ async def create_section(
     request: Request,
     camp_id: int,
     name: str = Form(...),
+    participating_group_id: int = Form(...),
     section_type: str = Form("Other"),
     notes: str = Form(""),
     db: Session = Depends(get_db),
@@ -1115,7 +1840,36 @@ async def create_section(
             status_code=404,
         )
 
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id, ParticipatingGroup.is_active == True)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+
+    selected_group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == participating_group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
     clean_name = name.strip()
+
+    if selected_group is None:
+        return templates.TemplateResponse(
+            "sections/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "participating_groups": participating_groups,
+                "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+                "error": "Please choose a valid participating group.",
+            },
+            status_code=400,
+        )
 
     if not clean_name:
         return templates.TemplateResponse(
@@ -1123,6 +1877,7 @@ async def create_section(
             {
                 "request": request,
                 "camp": camp,
+                "participating_groups": participating_groups,
                 "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
                 "error": "Section name is required.",
             },
@@ -1140,6 +1895,7 @@ async def create_section(
         camp_id=camp.id,
         name=clean_name,
         section_type=section_type,
+        participating_group_id=selected_group.id,
         notes=notes.strip() or None,
         sort_order=next_order,
         is_active=True,
@@ -1180,12 +1936,20 @@ async def edit_section_form(
             status_code=404,
         )
 
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id, ParticipatingGroup.is_active == True)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+
     return templates.TemplateResponse(
         "sections/edit.html",
         {
             "request": request,
             "camp": camp,
             "section": section,
+            "participating_groups": participating_groups,
             "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
             "error": None,
         },
@@ -1198,6 +1962,7 @@ async def update_section(
     camp_id: int,
     section_id: int,
     name: str = Form(...),
+    participating_group_id: int = Form(...),
     section_type: str = Form("Other"),
     notes: str = Form(""),
     sort_order: int = Form(0),
@@ -1226,6 +1991,39 @@ async def update_section(
             status_code=404,
         )
 
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.camp_id == camp.id,
+            ParticipatingGroup.is_active == True,
+        )
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+
+    selected_group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == participating_group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if selected_group is None:
+        return templates.TemplateResponse(
+            "sections/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "section": section,
+                "participating_groups": participating_groups,
+                "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+                "error": "Please choose a valid participating group.",
+            },
+            status_code=400,
+        )
+
     clean_name = name.strip()
 
     if not clean_name:
@@ -1235,6 +2033,7 @@ async def update_section(
                 "request": request,
                 "camp": camp,
                 "section": section,
+                "participating_groups": participating_groups,
                 "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
                 "error": "Section name is required.",
             },
@@ -1242,6 +2041,7 @@ async def update_section(
         )
 
     section.name = clean_name
+    section.participating_group_id = selected_group.id
     section.section_type = section_type
     section.notes = notes.strip() or None
     section.sort_order = sort_order
@@ -1276,10 +2076,20 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             status_code=404,
         )
 
+    ensure_default_participating_group(db, camp)
+    ensure_default_sections(db, camp)
+
     people = (
         db.query(Person)
         .filter(Person.camp_id == camp.id)
         .order_by(Person.person_type, Person.last_name, Person.first_name)
+        .all()
+    )
+
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
         .all()
     )
 
@@ -1289,7 +2099,18 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
         .order_by(Section.sort_order, Section.name)
         .all()
     )
+
+    participating_group_lookup = {group.id: group for group in participating_groups}
     section_lookup = {section.id: section for section in sections}
+
+    sections_by_group = {group.id: [] for group in participating_groups}
+    sections_without_group = []
+
+    for section in sections:
+        if section.participating_group_id in sections_by_group:
+            sections_by_group[section.participating_group_id].append(section)
+        else:
+            sections_without_group.append(section)
 
     people_by_section = {section.id: [] for section in sections}
     people_without_section = []
@@ -1316,7 +2137,11 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
             "request": request,
             "camp": camp,
             "people": people,
+            "participating_groups": participating_groups,
+            "participating_group_lookup": participating_group_lookup,
             "sections": sections,
+            "sections_by_group": sections_by_group,
+            "sections_without_group": sections_without_group,
             "people_by_section": people_by_section,
             "people_without_section": people_without_section,
             "person_task_counts": person_task_counts,
@@ -1326,10 +2151,269 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
     )
 
 
+@app.post("/camps/{camp_id}/people/bulk-edit")
+async def bulk_edit_people(
+    request: Request,
+    camp_id: int,
+    selected_person_id: list[int] | None = Form(None),
+    bulk_action: str = Form(""),
+    bulk_home_section_id: str = Form(""),
+    bulk_person_type: str = Form(""),
+    bulk_attendance_status: str = Form(""),
+    bulk_provisional_status: str = Form(""),
+    confirm_delete_people: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person_ids = selected_person_id or []
+
+    if not person_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_selection#bulk-actions",
+            status_code=303,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.id.in_(person_ids))
+        .all()
+    )
+
+    if not people:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people#bulk-actions",
+            status_code=303,
+        )
+
+    updated = 0
+
+    if bulk_action == "section":
+        selected_section_id = int(bulk_home_section_id) if bulk_home_section_id else None
+
+        if selected_section_id is not None:
+            section = (
+                db.query(Section)
+                .filter(Section.id == selected_section_id, Section.camp_id == camp.id)
+                .first()
+            )
+            if section is None:
+                return RedirectResponse(
+                    url=f"/camps/{camp.id}/people?bulk_error=invalid_section#bulk-actions",
+                    status_code=303,
+                )
+
+        for person in people:
+            person.home_section_id = selected_section_id
+            updated += 1
+
+    elif bulk_action == "person_type":
+        if bulk_person_type not in PERSON_TYPES:
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_person_type#bulk-actions",
+                status_code=303,
+            )
+
+        for person in people:
+            person.person_type = bulk_person_type
+            updated += 1
+
+    elif bulk_action == "attendance_status":
+        allowed_statuses = ["", "Invited", "Attending", "Not Attending", "Maybe", "Unknown"]
+
+        if bulk_attendance_status not in allowed_statuses:
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_attendance_status#bulk-actions",
+                status_code=303,
+            )
+
+        for person in people:
+            person.attendance_status = bulk_attendance_status or None
+            updated += 1
+
+    elif bulk_action == "provisional_status":
+        if bulk_provisional_status not in ["provisional", "confirmed"]:
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_provisional_status#bulk-actions",
+                status_code=303,
+            )
+
+        for person in people:
+            person.is_provisional = bulk_provisional_status == "provisional"
+            updated += 1
+
+    elif bulk_action == "delete":
+        if confirm_delete_people != "yes":
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=delete_not_confirmed#bulk-actions",
+                status_code=303,
+            )
+
+        real_person_ids = [person.id for person in people]
+
+        affected_task_ids = {
+            row.task_id
+            for row in db.query(TaskAssignment)
+            .filter(
+                TaskAssignment.camp_id == camp.id,
+                TaskAssignment.assigned_person_id.in_(real_person_ids),
+            )
+            .all()
+        }
+
+        db.query(TeamMembership).filter(
+            TeamMembership.camp_id == camp.id,
+            TeamMembership.person_id.in_(real_person_ids),
+        ).delete(synchronize_session=False)
+
+        db.query(TaskAssignment).filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.assigned_person_id.in_(real_person_ids),
+        ).delete(synchronize_session=False)
+
+        db.query(Activity).filter(
+            Activity.camp_id == camp.id,
+            Activity.activity_lead_id.in_(real_person_ids),
+        ).update(
+            {Activity.activity_lead_id: None},
+            synchronize_session=False,
+        )
+
+        db.query(ProgrammeSession).filter(
+            ProgrammeSession.camp_id == camp.id,
+            ProgrammeSession.lead_person_id.in_(real_person_ids),
+        ).update(
+            {ProgrammeSession.lead_person_id: None},
+            synchronize_session=False,
+        )
+
+        deleted_count = len(people)
+
+        for person in people:
+            db.delete(person)
+
+        db.flush()
+
+        for task in db.query(Task).filter(Task.camp_id == camp.id, Task.id.in_(affected_task_ids)).all():
+            update_task_status_from_assignments(db, task)
+
+        db.commit()
+
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_deleted={deleted_count}#bulk-actions",
+            status_code=303,
+        )
+
+    else:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=invalid_action#bulk-actions",
+            status_code=303,
+        )
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/people?bulk_updated={updated}#bulk-actions",
+        status_code=303,
+    )
+
+
+
+@app.post("/camps/{camp_id}/people/bulk-delete")
+async def bulk_delete_people(
+    request: Request,
+    camp_id: int,
+    selected_person_id: list[int] | None = Form(None),
+    confirm_delete_people: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person_ids = selected_person_id or []
+
+    if not person_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_selection#bulk-actions",
+            status_code=303,
+        )
+
+    if confirm_delete_people != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=delete_not_confirmed#bulk-actions",
+            status_code=303,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.id.in_(person_ids))
+        .all()
+    )
+
+    if not people:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people#bulk-actions",
+            status_code=303,
+        )
+
+    real_person_ids = [person.id for person in people]
+
+    affected_task_ids = {
+        row.task_id
+        for row in db.query(TaskAssignment)
+        .filter(
+            TaskAssignment.camp_id == camp.id,
+            TaskAssignment.assigned_person_id.in_(real_person_ids),
+        )
+        .all()
+    }
+
+    db.query(TeamMembership).filter(
+        TeamMembership.camp_id == camp.id,
+        TeamMembership.person_id.in_(real_person_ids),
+    ).delete(synchronize_session=False)
+
+    db.query(TaskAssignment).filter(
+        TaskAssignment.camp_id == camp.id,
+        TaskAssignment.assigned_person_id.in_(real_person_ids),
+    ).delete(synchronize_session=False)
+
+    deleted_count = len(people)
+
+    for person in people:
+        db.delete(person)
+
+    db.flush()
+
+    for task in db.query(Task).filter(Task.camp_id == camp.id, Task.id.in_(affected_task_ids)).all():
+        update_task_status_from_assignments(db, task)
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/people?bulk_deleted={deleted_count}#bulk-actions",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}/people/osm-member-import", response_class=HTMLResponse)
 async def osm_member_import_form(
     request: Request,
     camp_id: int,
+    section_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     camp = db.get(Camp, camp_id)
@@ -1343,13 +2427,24 @@ async def osm_member_import_form(
 
     sections = get_active_sections(db, camp)
 
+    selected_section = None
+    if section_id is not None:
+        selected_section = (
+            db.query(Section)
+            .filter(Section.id == section_id, Section.camp_id == camp.id)
+            .first()
+        )
+
     return templates.TemplateResponse(
         "people/osm_member_import.html",
         {
             "request": request,
             "camp": camp,
             "sections": sections,
-            "error": None,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
+            "selected_section": selected_section,
+            "selected_section_id": selected_section.id if selected_section else None,
+            "error": "Selected section was not found." if section_id is not None and selected_section is None else None,
         },
     )
 
@@ -1387,6 +2482,7 @@ async def preview_osm_member_import(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please choose a valid section.",
             },
             status_code=400,
@@ -1401,6 +2497,7 @@ async def preview_osm_member_import(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please upload an OSM member export in .xlsx format.",
             },
             status_code=400,
@@ -1415,6 +2512,7 @@ async def preview_osm_member_import(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": f"Could not read this OSM member export: {exc}",
             },
             status_code=400,
@@ -1477,6 +2575,7 @@ async def preview_osm_member_import(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "selected_section": section,
             "selected_section_id": section.id,
             "default_person_type": default_person_type,
@@ -1627,6 +2726,7 @@ async def apply_osm_member_import(
 async def osm_attendance_update_form(
     request: Request,
     camp_id: int,
+    section_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     camp = db.get(Camp, camp_id)
@@ -1640,13 +2740,24 @@ async def osm_attendance_update_form(
 
     sections = get_active_sections(db, camp)
 
+    selected_section = None
+    if section_id is not None:
+        selected_section = (
+            db.query(Section)
+            .filter(Section.id == section_id, Section.camp_id == camp.id)
+            .first()
+        )
+
     return templates.TemplateResponse(
         "people/osm_attendance_update.html",
         {
             "request": request,
             "camp": camp,
             "sections": sections,
-            "error": None,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
+            "selected_section": selected_section,
+            "selected_section_id": selected_section.id if selected_section else None,
+            "error": "Selected section was not found." if section_id is not None and selected_section is None else None,
         },
     )
 
@@ -1684,6 +2795,7 @@ async def preview_osm_attendance_update(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please choose a valid section.",
             },
             status_code=400,
@@ -1698,6 +2810,7 @@ async def preview_osm_attendance_update(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please upload an OSM event export in .xlsx format.",
             },
             status_code=400,
@@ -1712,6 +2825,7 @@ async def preview_osm_attendance_update(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": f"Could not read this OSM event export: {exc}",
             },
             status_code=400,
@@ -1778,6 +2892,7 @@ async def preview_osm_attendance_update(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "selected_section": section,
             "selected_section_id": section.id,
             "default_person_type": default_person_type,
@@ -1883,6 +2998,7 @@ async def provisional_people_form(request: Request, camp_id: int, db: Session = 
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -1922,6 +3038,7 @@ async def create_provisional_people(
                 "request": request,
                 "camp": camp,
                 "sections": sections,
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
                 "error": "Please choose a valid section.",
             },
             status_code=400,
@@ -2008,6 +3125,7 @@ async def new_person_form(request: Request, camp_id: int, db: Session = Depends(
             "request": request,
             "camp": camp,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -2331,6 +3449,7 @@ async def replace_provisional_person_form(
             "camp": camp,
             "person": person,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )
@@ -2448,6 +3567,7 @@ async def edit_person_form(
             "camp": camp,
             "person": person,
             "sections": sections,
+            "participating_group_lookup": get_participating_group_lookup(db, camp),
             "error": None,
         },
     )

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card" style="border-left: 7px solid #dc2626;">
+  <h2 style="color: #7f1d1d;">Delete Camp — {{ camp.name }}</h2>
+
+  {% set camp_error = request.query_params.get("camp_error") %}
+
+  {% if camp_error == "delete_box_not_ticked" %}
+    <p class="warning">Camp delete was not applied. Please tick the confirmation box.</p>
+  {% elif camp_error == "delete_name_mismatch" %}
+    <p class="warning">Camp delete was not applied. Please type the camp name exactly as shown.</p>
+  {% elif camp_error %}
+    <p class="warning">Camp delete was not applied.</p>
+  {% endif %}
+
+  <p class="muted">
+    This is a permanent cleanup action for this local database. Use it only for test camps or camps you genuinely want to remove.
+  </p>
+</section>
+
+<section class="card">
+  <h3>What will be deleted?</h3>
+
+  <p>Deleting this camp will remove:</p>
+
+  <ul>
+    <li>The camp record and camp details.</li>
+    <li>Participating groups and sections for this camp.</li>
+    <li>People, team memberships and teams for this camp.</li>
+    <li>Tasks, task assignments, task phases and task categories for this camp.</li>
+    <li>Activities and programme sessions for this camp.</li>
+    <li>Camp and activity risk assessment records linked to this camp.</li>
+  </ul>
+
+  <p class="muted">
+    Other camps are not deleted. External files such as OSM exports are not deleted.
+  </p>
+</section>
+
+<section class="card">
+  <h3>Confirm deletion</h3>
+
+  <form method="post" action="/camps/{{ camp.id }}/delete">
+    <label for="confirm_camp_name">Type the camp name exactly</label>
+    <input id="confirm_camp_name" name="confirm_camp_name" placeholder="{{ camp.name }}">
+
+    <label style="display: inline-flex; align-items: center; gap: .5rem; margin: .75rem 0; font-weight: 700; color: #7f1d1d; width: auto;">
+      <input type="checkbox" name="confirm_delete_camp" value="yes" style="width: auto; margin: 0;">
+      <span>I understand this will permanently delete this camp and its related records.</span>
+    </label>
+
+    <div class="form-actions">
+      <button type="submit" style="background: #b91c1c;" onclick="return confirm('Delete this whole camp? This cannot be undone easily.');">
+        Delete Camp
+      </button>
+      <a class="button secondary" href="/camps/{{ camp.id }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
