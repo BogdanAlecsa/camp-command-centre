@@ -1,6 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+  .inline-checkbox-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: .5rem !important;
+    margin: .75rem 0 !important;
+    text-align: left !important;
+  }
+
+  .inline-checkbox-row input[type="checkbox"] {
+    width: auto !important;
+    margin: 0 !important;
+    flex: 0 0 auto !important;
+  }
+
+  .inline-checkbox-row label {
+    display: inline !important;
+    width: auto !important;
+    margin: 0 !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+  }
+</style>
+
+
+<style>
+  .inline-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: .75rem 0;
+  }
+
+  .inline-checkbox-row input {
+    margin: 0;
+    width: auto;
+  }
+
+  .inline-checkbox-row label {
+    margin: 0;
+    font-weight: 700;
+  }
+</style>
+
 <section class="card">
   <h2>Edit Section — {{ camp.name }}</h2>
 
@@ -29,9 +76,9 @@
     <label for="sort_order">Sort Order</label>
     <input id="sort_order" name="sort_order" type="number" value="{{ section.sort_order }}">
 
-    <label>
-      <input type="checkbox" name="is_active" value="yes" {% if section.is_active %}checked{% endif %}>
-      Active
+    <label style="display: inline-flex; align-items: center; justify-content: flex-start; gap: .5rem; margin: .75rem 0; font-weight: 700; width: auto;">
+      <input type="checkbox" name="is_active" value="yes" {% if section.is_active %}checked{% endif %} style="width: auto; margin: 0;">
+      <span>Active</span>
     </label>
 
     <label for="notes">Notes</label>

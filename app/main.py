@@ -1398,6 +1398,153 @@ async def camp_section_list(request: Request, camp_id: int, db: Session = Depend
     )
 
 
+
+@app.post("/camps/{camp_id}/sections/bulk-move")
+async def bulk_move_sections(
+    request: Request,
+    camp_id: int,
+    selected_section_id: list[int] | None = Form(None),
+    target_participating_group_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section_ids = selected_section_id or []
+
+    if not section_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_selection#section-bulk-actions",
+            status_code=303,
+        )
+
+    target_group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == target_participating_group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
+    if target_group is None:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=invalid_group#section-bulk-actions",
+            status_code=303,
+        )
+
+    sections = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.id.in_(section_ids),
+        )
+        .all()
+    )
+
+    if not sections:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_valid_sections#section-bulk-actions",
+            status_code=303,
+        )
+
+    moved = 0
+
+    for section in sections:
+        section.participating_group_id = target_group.id
+        moved += 1
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/sections?bulk_moved={moved}#section-bulk-actions",
+        status_code=303,
+    )
+
+
+
+@app.post("/camps/{camp_id}/sections/bulk-delete")
+async def bulk_delete_sections(
+    request: Request,
+    camp_id: int,
+    selected_section_id: list[int] | None = Form(None),
+    confirm_delete_sections: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    section_ids = selected_section_id or []
+
+    if not section_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_selection#section-bulk-actions",
+            status_code=303,
+        )
+
+    if confirm_delete_sections != "yes":
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=delete_not_confirmed#section-bulk-actions",
+            status_code=303,
+        )
+
+    sections = (
+        db.query(Section)
+        .filter(
+            Section.camp_id == camp.id,
+            Section.id.in_(section_ids),
+        )
+        .all()
+    )
+
+    if not sections:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=no_valid_sections#section-bulk-actions",
+            status_code=303,
+        )
+
+    section_ids_to_delete = [section.id for section in sections]
+
+    people_count = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            Person.home_section_id.in_(section_ids_to_delete),
+        )
+        .count()
+    )
+
+    if people_count > 0:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/sections?bulk_error=sections_not_empty#section-bulk-actions",
+            status_code=303,
+        )
+
+    deleted_count = len(sections)
+
+    for section in sections:
+        db.delete(section)
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/sections?bulk_deleted={deleted_count}#section-bulk-actions",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}/sections/new", response_class=HTMLResponse)
 async def new_section_form(request: Request, camp_id: int, db: Session = Depends(get_db)):
     camp = db.get(Camp, camp_id)
@@ -1447,7 +1594,36 @@ async def create_section(
             status_code=404,
         )
 
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id, ParticipatingGroup.is_active == True)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+
+    selected_group = (
+        db.query(ParticipatingGroup)
+        .filter(
+            ParticipatingGroup.id == participating_group_id,
+            ParticipatingGroup.camp_id == camp.id,
+        )
+        .first()
+    )
+
     clean_name = name.strip()
+
+    if selected_group is None:
+        return templates.TemplateResponse(
+            "sections/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "participating_groups": participating_groups,
+                "section_types": [section_type for name, section_type in DEFAULT_SECTIONS],
+                "error": "Please choose a valid participating group.",
+            },
+            status_code=400,
+        )
 
     if not clean_name:
         return templates.TemplateResponse(
@@ -1473,6 +1649,7 @@ async def create_section(
         camp_id=camp.id,
         name=clean_name,
         section_type=section_type,
+        participating_group_id=selected_group.id,
         notes=notes.strip() or None,
         sort_order=next_order,
         is_active=True,
