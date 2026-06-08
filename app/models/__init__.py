@@ -1,4 +1,5 @@
 from app.models.camp import Camp
+from app.models.participating_group import ParticipatingGroup
 from app.models.person import Person
 from app.models.section import Section
 from app.models.team import Team
@@ -17,6 +18,7 @@ from app.models.camp_risk_assessment import CampRiskAssessment
 
 __all__ = [
     "Camp",
+    "ParticipatingGroup",
     "Person",
     "Section",
     "Team",

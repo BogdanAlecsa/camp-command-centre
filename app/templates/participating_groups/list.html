@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .group-bulk-sticky {
+    position: sticky;
+    top: .5rem;
+    z-index: 15;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #bfd3dd;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
+  }
+
+  .group-bulk-drawer > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: .85rem 1rem;
+    border-left: 7px solid #0f766e;
+    background: linear-gradient(90deg, #e6f7f4 0%, #f8fafc 65%, #ffffff 100%);
+  }
+
+  .group-bulk-drawer > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .group-bulk-title {
+    display: block;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .group-bulk-subtitle {
+    display: block;
+    font-size: .88rem;
+    color: #475569;
+  }
+
+  #group-bulk-form {
+    padding: 1rem;
+    border-top: 1px solid #dbe5ea;
+    background: #ffffff;
+  }
+
+  #group-bulk-form label {
+    display: block;
+    font-weight: 700;
+    font-size: .86rem;
+    color: #334155;
+    margin-bottom: .25rem;
+  }
+
+  #group-bulk-form select {
+    width: 100%;
+    margin: .15rem 0 .8rem 0;
+  }
+
+  .group-delete-confirm-panel {
+    display: none;
+    margin: .8rem 0;
+    padding: .6rem .75rem;
+    border: 1px solid #fecaca;
+    border-left: 5px solid #dc2626;
+    border-radius: 10px;
+    background: #fff7f7;
+    text-align: left;
+  }
+
+  .group-delete-confirm-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .5rem;
+    margin: 0;
+    color: #7f1d1d;
+    font-weight: 700;
+  }
+
+  .group-delete-confirm-inline input {
+    width: auto;
+    margin: 0;
+  }
+
+  .group-bulk-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    align-items: center;
+  }
+
+  .group-bulk-message {
+    margin: .85rem 1rem 0;
+    padding: .65rem .75rem;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  .group-bulk-message.good {
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  .group-bulk-message.warning {
+    border: 1px solid #fecaca;
+    background: #fff7f7;
+    color: #7f1d1d;
+  }
+
+  .select-column {
+    width: 2.5rem;
+    text-align: center;
+  }
+</style>
+
+<section class="card">
+  <h2>Participating Groups — {{ camp.name }}</h2>
+  <p class="muted">
+    Participating groups are the Scout Groups, Explorer Units or visiting groups involved in this camp.
+    Sections belong to a participating group.
+  </p>
+
+  <a class="button" href="/camps/{{ camp.id }}/participating-groups/new">Add Participating Group</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+</section>
+
+{% set bulk_deleted = request.query_params.get("bulk_deleted") %}
+{% set bulk_error = request.query_params.get("bulk_error") %}
+
+<section id="group-bulk-actions" class="card group-bulk-sticky">
+  <details class="group-bulk-drawer" {% if bulk_deleted or bulk_error %}open{% endif %}>
+    <summary>
+      <span class="group-bulk-title">Bulk actions for participating groups</span>
+      <span class="group-bulk-subtitle">Delete selected empty groups. Groups with sections are protected.</span>
+    </summary>
+
+    {% if bulk_deleted %}
+      <div class="group-bulk-message good">Deleted {{ bulk_deleted }} empty participating group{% if bulk_deleted != "1" %}s{% endif %}.</div>
+    {% endif %}
+
+    {% if bulk_error %}
+      <div class="group-bulk-message warning">
+        {% if bulk_error == "no_selection" %}
+          Please tick at least one participating group.
+        {% elif bulk_error == "delete_not_confirmed" %}
+          Delete was not applied because the delete confirmation box was not ticked.
+        {% elif bulk_error == "groups_not_empty" %}
+          Delete was blocked because one or more selected groups still contain sections. Move or delete those sections first.
+        {% elif bulk_error == "no_valid_groups" %}
+          None of the selected groups could be found.
+        {% else %}
+          The bulk action could not be applied.
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <form id="group-bulk-form" method="post" action="/camps/{{ camp.id }}/participating-groups/bulk-delete">
+      <label for="group_bulk_action">Action</label>
+      <select id="group_bulk_action" name="group_bulk_action" required>
+        <option value="delete">Delete selected empty groups</option>
+      </select>
+
+      <div id="group-delete-confirm-panel" class="group-delete-confirm-panel">
+        <label class="group-delete-confirm-inline">
+          <input type="checkbox" name="confirm_delete_groups" value="yes">
+          <span>Confirm delete: remove the selected empty participating groups from this camp.</span>
+        </label>
+      </div>
+
+      <div class="group-bulk-buttons">
+        <button type="submit">Apply to ticked groups</button>
+        <button type="button" class="secondary" onclick="setGroupSelection(true)">Tick all</button>
+        <button type="button" class="secondary" onclick="setGroupSelection(false)">Clear ticks</button>
+      </div>
+    </form>
+  </details>
+</section>
+
+<section class="card">
+  {% if groups %}
+    <table>
+      <thead>
+        <tr>
+          <th class="select-column">Select</th>
+          <th>Order</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Sections</th>
+          <th>People</th>
+          <th>Contact</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in groups %}
+          <tr>
+            <td class="select-column">
+              <input class="group-bulk-checkbox" form="group-bulk-form" type="checkbox" name="selected_group_id" value="{{ group.id }}">
+            </td>
+            <td>{{ group.sort_order }}</td>
+            <td><strong>{{ group.name }}</strong></td>
+            <td>{{ group.group_type }}</td>
+            <td>
+              {% if group.is_active %}
+                <span class="badge risk-status risk-status-approved">Active</span>
+              {% else %}
+                <span class="badge risk-status risk-status-not-started">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ group_section_counts.get(group.id, 0) }}</td>
+            <td>{{ group_person_counts.get(group.id, 0) }}</td>
+            <td>
+              {{ group.contact_name or "" }}
+              {% if group.contact_email %}<br>{{ group.contact_email }}{% endif %}
+              {% if group.contact_phone %}<br>{{ group.contact_phone }}{% endif %}
+            </td>
+            <td>
+              <a class="button small secondary" href="/camps/{{ camp.id }}/participating-groups/{{ group.id }}/edit">Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No participating groups have been added yet.</p>
+  {% endif %}
+</section>
+
+<script>
+  function setGroupSelection(checked) {
+    document.querySelectorAll(".group-bulk-checkbox").forEach(function (box) {
+      box.checked = checked;
+    });
+  }
+
+  function updateGroupDeleteConfirmationVisibility() {
+    const panel = document.getElementById("group-delete-confirm-panel");
+    if (panel) {
+      panel.style.display = "block";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", updateGroupDeleteConfirmationVisibility);
+</script>
+{% endblock %}

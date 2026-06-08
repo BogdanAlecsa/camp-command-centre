@@ -1,6 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+  .inline-checkbox-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: .5rem !important;
+    margin: .75rem 0 !important;
+    text-align: left !important;
+  }
+
+  .inline-checkbox-row input[type="checkbox"] {
+    width: auto !important;
+    margin: 0 !important;
+    flex: 0 0 auto !important;
+  }
+
+  .inline-checkbox-row label {
+    display: inline !important;
+    width: auto !important;
+    margin: 0 !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+  }
+</style>
+
+
+<style>
+  .inline-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: .75rem 0;
+  }
+
+  .inline-checkbox-row input {
+    margin: 0;
+    width: auto;
+  }
+
+  .inline-checkbox-row label {
+    margin: 0;
+    font-weight: 700;
+  }
+</style>
+
 <section class="card">
   <h2>Add Section — {{ camp.name }}</h2>
 
@@ -9,6 +56,13 @@
   {% endif %}
 
   <form method="post">
+    <label for="participating_group_id">Participating Group</label>
+    <select id="participating_group_id" name="participating_group_id" required>
+      {% for group in participating_groups %}
+        <option value="{{ group.id }}">{{ group.name }}</option>
+      {% endfor %}
+    </select>
+
     <label for="name">Section Name</label>
     <input id="name" name="name" required placeholder="e.g. Cubs, Scouts, Young Leaders">
 
