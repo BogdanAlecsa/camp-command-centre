@@ -138,6 +138,207 @@
     padding: .45rem .65rem;
   }
 
+
+  .bulk-people-panel {
+    margin: 0 0 1rem 0;
+    padding: .85rem;
+    border: 1px solid #cbd5e1;
+    border-left: 6px solid #334155;
+    border-radius: 12px;
+    background: #f8fafc;
+  }
+
+  .bulk-people-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: .65rem;
+    align-items: end;
+  }
+
+  .bulk-people-grid label {
+    display: block;
+    font-weight: bold;
+    font-size: .85rem;
+    margin-bottom: .2rem;
+  }
+
+  .bulk-people-grid select {
+    width: 100%;
+  }
+
+  .bulk-help {
+    color: var(--muted);
+    font-size: .9rem;
+    margin: .4rem 0 .75rem 0;
+  }
+
+  .select-column {
+    width: 2.5rem;
+    text-align: center;
+  }
+
+  .bulk-person-checkbox {
+    transform: scale(1.15);
+  }
+
+  @media (max-width: 900px) {
+    .bulk-people-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+
+  .bulk-edit-sticky {
+    position: sticky;
+    top: .5rem;
+    z-index: 20;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .bulk-edit-drawer > summary {
+    cursor: pointer;
+    padding: .85rem 1rem;
+    background: #f8fafc;
+    border-left: 6px solid #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .bulk-edit-drawer-body {
+    padding: .85rem 1rem 1rem;
+    border-top: 1px solid #cbd5e1;
+  }
+
+  .bulk-selected-count {
+    display: inline-block;
+    padding: .18rem .5rem;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #075985;
+    font-weight: bold;
+    font-size: .82rem;
+  }
+
+
+  /* Polished bulk edit drawer */
+  .bulk-edit-sticky {
+    position: sticky;
+    top: .5rem;
+    z-index: 20;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #bfd3dd;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
+  }
+
+  .bulk-edit-drawer {
+    background: #ffffff;
+  }
+
+  .bulk-edit-drawer > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: .85rem 1rem;
+    border-left: 7px solid #0f766e;
+    background: linear-gradient(90deg, #e6f7f4 0%, #f8fafc 65%, #ffffff 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .bulk-edit-drawer > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .bulk-drawer-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+  }
+
+  .bulk-drawer-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .bulk-drawer-subtitle {
+    font-size: .88rem;
+    color: #475569;
+  }
+
+  .bulk-edit-drawer-body {
+    padding: 1rem;
+    border-top: 1px solid #dbe5ea;
+    background: #ffffff;
+  }
+
+  .bulk-selected-count {
+    display: inline-block;
+    min-width: 5.5rem;
+    text-align: center;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    background: #dff7ee;
+    color: #065f46;
+    font-weight: 700;
+    font-size: .82rem;
+    white-space: nowrap;
+  }
+
+  .bulk-people-panel {
+    margin: 0;
+    padding: 1rem;
+    border: 1px solid #dbe5ea;
+    border-radius: 12px;
+    background: #f8fafc;
+  }
+
+  .bulk-people-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(190px, 1fr));
+    gap: .85rem 1rem;
+    align-items: end;
+  }
+
+  .bulk-people-grid > div {
+    min-width: 0;
+  }
+
+  .bulk-people-grid label {
+    display: block;
+    font-weight: 700;
+    font-size: .84rem;
+    color: #334155;
+    margin-bottom: .25rem;
+  }
+
+  .bulk-people-grid select {
+    width: 100%;
+  }
+
+  .bulk-people-grid button {
+    margin-right: .35rem;
+    margin-bottom: .35rem;
+  }
+
+  .bulk-help {
+    color: #475569;
+    font-size: .9rem;
+    margin: 0 0 .85rem 0;
+  }
+
+  @media (max-width: 1000px) {
+    .bulk-people-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
 </style>
 
 {% set member_import_updated = request.query_params.get("member_import_updated") %}
@@ -149,6 +350,37 @@
     Replaced provisional: {{ request.query_params.get("member_import_replaced", "0") }} ·
     Created: {{ request.query_params.get("member_import_created", "0") }} ·
     Skipped: {{ request.query_params.get("member_import_skipped", "0") }}
+  </p>
+</section>
+{% endif %}
+
+{% set bulk_updated = request.query_params.get("bulk_updated") %}
+{% set bulk_error = request.query_params.get("bulk_error") %}
+
+{% if bulk_updated %}
+<section class="card">
+  <h3>Bulk update complete</h3>
+  <p class="good">Updated {{ bulk_updated }} person{% if bulk_updated != "1" %}s{% endif %}.</p>
+</section>
+{% endif %}
+
+{% if bulk_error %}
+<section class="card">
+  <h3>Bulk update not applied</h3>
+  <p class="warning">
+    {% if bulk_error == "no_selection" %}
+      Please tick at least one person before applying a bulk change.
+    {% elif bulk_error == "invalid_section" %}
+      The selected section was not valid for this camp.
+    {% elif bulk_error == "invalid_person_type" %}
+      The selected person type was not valid.
+    {% elif bulk_error == "invalid_attendance_status" %}
+      The selected attendance status was not valid.
+    {% elif bulk_error == "invalid_provisional_status" %}
+      The selected provisional/confirmed option was not valid.
+    {% else %}
+      The bulk update could not be applied.
+    {% endif %}
   </p>
 </section>
 {% endif %}
@@ -171,6 +403,7 @@
   <table>
     <thead>
       <tr>
+        <th class="select-column">Select</th>
         <th>Name</th>
         <th>Type</th>
         <th>Status</th>
@@ -186,6 +419,9 @@
       {% for person in section_people %}
         {% set task_count = person_task_counts.get(person.id, 0) %}
         <tr>
+          <td class="select-column">
+            <input class="bulk-person-checkbox" type="checkbox" name="selected_person_id" value="{{ person.id }}">
+          </td>
           <td><strong>{{ person.first_name }} {{ person.last_name }}</strong></td>
           <td>
             {{ person.person_type }}
@@ -259,6 +495,85 @@
 {% endmacro %}
 
 {% if people or sections %}
+  <form method="post" action="/camps/{{ camp.id }}/people/bulk-edit">
+  <section class="card bulk-edit-sticky">
+    <details class="bulk-edit-drawer">
+      <summary>
+        <div class="bulk-drawer-title-block">
+          <span class="bulk-drawer-title">Bulk edit selected people</span>
+          <span class="bulk-drawer-subtitle">Open when you need to move, reclassify, or update several people at once.</span>
+        </div>
+        <span class="bulk-selected-count" id="bulk-selected-count">0 selected</span>
+      </summary>
+      <div class="bulk-edit-drawer-body">
+    <p class="bulk-help">
+      Tick people below, choose one safe bulk action, then apply it. This is mainly for fixing wrong sections after imports or setup mistakes.
+    </p>
+
+    <div class="bulk-people-panel">
+      <div class="bulk-people-grid">
+        <div>
+          <label for="bulk_action">Action</label>
+          <select id="bulk_action" name="bulk_action" required>
+            <option value="">Choose action...</option>
+            <option value="section">Change section</option>
+            <option value="person_type">Change person type</option>
+            <option value="attendance_status">Change attendance status</option>
+            <option value="provisional_status">Mark provisional / confirmed</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="bulk_home_section_id">New section</label>
+          <select id="bulk_home_section_id" name="bulk_home_section_id">
+            <option value="">No section</option>
+            {% for section in sections %}
+              {% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}
+              <option value="{{ section.id }}">{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="bulk_person_type">New person type</label>
+          <select id="bulk_person_type" name="bulk_person_type">
+            {% for option in ["Young Person", "Parent/Guardian", "Leader", "Helper", "Young Leader", "Visitor"] %}
+              <option value="{{ option }}">{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="bulk_attendance_status">New attendance</label>
+          <select id="bulk_attendance_status" name="bulk_attendance_status">
+            <option value="">Not set</option>
+            <option value="Invited">Invited</option>
+            <option value="Attending">Attending</option>
+            <option value="Not Attending">Not Attending</option>
+            <option value="Maybe">Maybe</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="bulk_provisional_status">Provisional / confirmed</label>
+          <select id="bulk_provisional_status" name="bulk_provisional_status">
+            <option value="confirmed">Confirmed</option>
+            <option value="provisional">Provisional</option>
+          </select>
+        </div>
+
+        <div>
+          <button type="submit">Apply to ticked people</button>
+          <button type="button" class="secondary" onclick="setPeopleSelection(true)">Tick all</button>
+          <button type="button" class="secondary" onclick="setPeopleSelection(false)">Clear ticks</button>
+        </div>
+      </div>
+    </div>
+      </div>
+    </details>
+  </section>
+
   <section class="card">
     <h3>People by Participating Group and Section</h3>
     <p class="muted">
@@ -339,10 +654,40 @@
       {% endif %}
     </div>
   </section>
+  </form>
 {% else %}
   <section class="card">
     <p>No people have been added to this camp yet.</p>
     <p><a class="button" href="/camps/{{ camp.id }}/people/new">Add the first person</a></p>
   </section>
 {% endif %}
+
+
+
+
+<script>
+  function updateBulkSelectedCount() {
+    const count = document.querySelectorAll(".bulk-person-checkbox:checked").length;
+    const badge = document.getElementById("bulk-selected-count");
+    if (badge) {
+      badge.textContent = count + " selected";
+    }
+  }
+
+  function setPeopleSelection(checked) {
+    document.querySelectorAll(".bulk-person-checkbox").forEach(function (box) {
+      box.checked = checked;
+    });
+    updateBulkSelectedCount();
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target && event.target.classList.contains("bulk-person-checkbox")) {
+      updateBulkSelectedCount();
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", updateBulkSelectedCount);
+</script>
+
 {% endblock %}

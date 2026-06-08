@@ -1728,6 +1728,117 @@ async def camp_people_list(request: Request, camp_id: int, db: Session = Depends
     )
 
 
+@app.post("/camps/{camp_id}/people/bulk-edit")
+async def bulk_edit_people(
+    request: Request,
+    camp_id: int,
+    selected_person_id: list[int] | None = Form(None),
+    bulk_action: str = Form(""),
+    bulk_home_section_id: str = Form(""),
+    bulk_person_type: str = Form(""),
+    bulk_attendance_status: str = Form(""),
+    bulk_provisional_status: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    person_ids = selected_person_id or []
+
+    if not person_ids:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_selection",
+            status_code=303,
+        )
+
+    people = (
+        db.query(Person)
+        .filter(Person.camp_id == camp.id, Person.id.in_(person_ids))
+        .all()
+    )
+
+    if not people:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=no_valid_people",
+            status_code=303,
+        )
+
+    updated = 0
+
+    if bulk_action == "section":
+        selected_section_id = int(bulk_home_section_id) if bulk_home_section_id else None
+
+        if selected_section_id is not None:
+            section = (
+                db.query(Section)
+                .filter(Section.id == selected_section_id, Section.camp_id == camp.id)
+                .first()
+            )
+            if section is None:
+                return RedirectResponse(
+                    url=f"/camps/{camp.id}/people?bulk_error=invalid_section",
+                    status_code=303,
+                )
+
+        for person in people:
+            person.home_section_id = selected_section_id
+            updated += 1
+
+    elif bulk_action == "person_type":
+        if bulk_person_type not in PERSON_TYPES:
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_person_type",
+                status_code=303,
+            )
+
+        for person in people:
+            person.person_type = bulk_person_type
+            updated += 1
+
+    elif bulk_action == "attendance_status":
+        allowed_statuses = ["", "Invited", "Attending", "Not Attending", "Maybe", "Unknown"]
+
+        if bulk_attendance_status not in allowed_statuses:
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_attendance_status",
+                status_code=303,
+            )
+
+        for person in people:
+            person.attendance_status = bulk_attendance_status or None
+            updated += 1
+
+    elif bulk_action == "provisional_status":
+        if bulk_provisional_status not in ["provisional", "confirmed"]:
+            return RedirectResponse(
+                url=f"/camps/{camp.id}/people?bulk_error=invalid_provisional_status",
+                status_code=303,
+            )
+
+        for person in people:
+            person.is_provisional = bulk_provisional_status == "provisional"
+            updated += 1
+
+    else:
+        return RedirectResponse(
+            url=f"/camps/{camp.id}/people?bulk_error=invalid_action",
+            status_code=303,
+        )
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp.id}/people?bulk_updated={updated}",
+        status_code=303,
+    )
+
+
 @app.get("/camps/{camp_id}/people/osm-member-import", response_class=HTMLResponse)
 async def osm_member_import_form(
     request: Request,
