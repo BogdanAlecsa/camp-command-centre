@@ -4,7 +4,7 @@
 <section class="card">
   <h2>{{ camp.name }}</h2>
   <p class="muted">
-    {{ camp.start_date }} to {{ camp.end_date }}
+    {{ camp.start_date }} {{ camp.start_time.strftime("%H:%M") if camp.start_time else "" }} to {{ camp.end_date }} {{ camp.end_time.strftime("%H:%M") if camp.end_time else "" }}
     {% if camp.venue_name %} · {{ camp.venue_name }}{% endif %}
   </p>
   <p>Status: <span class="badge">{{ camp.status }}</span></p>
@@ -12,6 +12,7 @@
   <a class="button" href="/camps/{{ camp.id }}/edit">Edit Camp</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/delete">Delete...</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/people">People</a>
+  <a class="button secondary" href="/camps/{{ camp.id }}/presence">Presence</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/sections">Sections</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/participating-groups">Participating Groups</a>
   <a class="button secondary" href="/camps/{{ camp.id }}/teams">Teams</a>

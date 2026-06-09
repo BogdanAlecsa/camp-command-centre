@@ -11,6 +11,7 @@ from app.models.task_category import TaskCategory
 from app.models.activity import Activity
 from app.models.programme_session import ProgrammeSession
 from app.models.programme_session_staff import ProgrammeSessionStaff
+from app.models.presence_window import PresenceWindow
 from app.models.activity_risk_control import ActivityRiskControl
 from app.models.activity_risk_assessment import ActivityRiskAssessment
 from app.models.camp_risk_control import CampRiskControl
@@ -30,6 +31,7 @@ __all__ = [
     "Activity",
     "ProgrammeSession",
     "ProgrammeSessionStaff",
+    "PresenceWindow",
     "ActivityRiskControl",
     "ActivityRiskAssessment",
     "CampRiskControl",

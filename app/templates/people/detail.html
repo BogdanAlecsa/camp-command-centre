@@ -1,20 +1,88 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  .person-header-actions,
+  .person-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+    margin-top: .75rem;
+  }
+
+  .person-action-card p {
+    margin-bottom: .6rem;
+  }
+
+  .person-action-buttons .button {
+    margin: 0;
+  }
+</style>
 <section class="card">
   <h2>{{ person.first_name }} {{ person.last_name }}</h2>
   <p>Status: <span class="badge">{{ person.person_type }}</span></p>
 
-  <a class="button" href="/camps/{{ camp.id }}/people/{{ person.id }}/edit">Edit Person</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/osm-update">Update from OSM Export</a>
-  {% if person.is_provisional %}
-    <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Replace Provisional</a>
-  {% elif person.last_name.startswith("YP") %}
-    <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Fill Placeholder Details</a>
-  {% endif %}
-  <a class="button secondary" href="/camps/{{ camp.id }}/people">Back to People</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+  <div class="person-header-actions">
+    <a class="button" href="/camps/{{ camp.id }}/people/{{ person.id }}/edit">Edit Person</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/osm-update">Update from OSM Export</a>
+    {% if person.is_provisional %}
+      <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Replace Provisional</a>
+    {% elif person.last_name.startswith("YP") %}
+      <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/replace-provisional">Fill Placeholder Details</a>
+    {% endif %}
+    <a class="button secondary" href="/camps/{{ camp.id }}/people">Back to People</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+  </div>
 </section>
+
+<section class="card person-action-card">
+  <h3>Actions</h3>
+  <p class="muted">
+    Use this person in the planning areas below. Assignment pages will become presence-aware as the next step.
+  </p>
+
+  <div class="person-action-buttons">
+    <a class="button" href="/camps/{{ camp.id }}/tasks?person_id={{ person.id }}">Assign / view tasks</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/teams?person_id={{ person.id }}">Add / view teams</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/programme?person_id={{ person.id }}">Programme roles</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/presence">Camp presence</a>
+  </div>
+</section>
+
+
+<section class="card">
+  <h3>Presence</h3>
+  <p class="muted">
+    Effective presence for this person, using the cascade from person → section → group → camp.
+  </p>
+
+  {% if person_presence_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Window</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in person_presence_rows %}
+          <tr>
+            <td><strong>{{ row.source }}</strong></td>
+            <td><span class="badge">{{ row.status }}</span></td>
+            <td>{{ row.starts_at.strftime("%a %d %b %H:%M") }} → {{ row.ends_at.strftime("%a %d %b %H:%M") }}</td>
+            <td>{{ row.notes or "" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No presence information is available for this person.</p>
+  {% endif %}
+</section>
+
 
 <div class="grid">
   <section class="card">

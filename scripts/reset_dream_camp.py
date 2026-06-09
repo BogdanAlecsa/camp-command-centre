@@ -13,6 +13,7 @@ def run_script(script_name: str) -> None:
 def main() -> None:
     run_script("seed_dream_camp.py")
     run_script("seed_groups_sections_for_dream_camp.py")
+    run_script("seed_presence_windows.py")
     print("Dream Camp reset complete.")
 
 

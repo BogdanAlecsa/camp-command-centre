@@ -21,11 +21,27 @@
       <option>Other</option>
     </select>
 
-    <label for="start_date">Start Date</label>
-    <input id="start_date" name="start_date" type="date" required>
+    <div class="grid">
+      <div>
+        <label for="start_date">Start Date</label>
+        <input id="start_date" name="start_date" type="date" required>
+      </div>
 
-    <label for="end_date">End Date</label>
-    <input id="end_date" name="end_date" type="date" required>
+      <div>
+        <label for="start_time">Start Time</label>
+        <input id="start_time" name="start_time" type="time" required value="18:00">
+      </div>
+
+      <div>
+        <label for="end_date">End Date</label>
+        <input id="end_date" name="end_date" type="date" required>
+      </div>
+
+      <div>
+        <label for="end_time">End Time</label>
+        <input id="end_time" name="end_time" type="time" required value="14:00">
+      </div>
+    </div>
 
     <label for="venue_name">Venue</label>
     <input id="venue_name" name="venue_name" placeholder="Green Wood Campsite">

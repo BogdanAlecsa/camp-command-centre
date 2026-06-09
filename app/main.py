@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, time
 from io import BytesIO
 import json
 import re
@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, get_db
 from app.routes.programme import router as programme_router
-from app.models import Camp, ParticipatingGroup, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl
+from app.routes.presence import router as presence_router
+from app.models import Camp, ParticipatingGroup, Person, Section, Team, TeamMembership, Task, TaskAssignment, TaskPhase, TaskCategory, Activity, ProgrammeSession, CampRiskAssessment, CampRiskControl, ActivityRiskAssessment, ActivityRiskControl, PresenceWindow
 from app.services.osm_event_import import parse_osm_event_attendance_export, normalise_person_match_value
 
 app = FastAPI(title="Camp Command Centre")
 app.include_router(programme_router)
+app.include_router(presence_router)
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -36,9 +38,62 @@ def on_startup():
             ensure_default_task_categories(db, camp)
             apply_default_task_phase_descriptions(db, camp)
             apply_default_task_category_descriptions(db, camp)
+            ensure_camp_default_presence_window(db, camp)
 
 def get_latest_camp(db: Session):
     return db.query(Camp).order_by(Camp.start_date.desc()).first()
+
+
+def camp_start_datetime(camp: Camp):
+    return datetime.combine(camp.start_date, camp.start_time or time(18, 0))
+
+
+def camp_end_datetime(camp: Camp):
+    return datetime.combine(camp.end_date, camp.end_time or time(14, 0))
+
+
+def ensure_camp_default_presence_window(db: Session, camp: Camp):
+    # Keep the camp-level default presence rule aligned with camp setup times.
+    start_at = camp_start_datetime(camp)
+    end_at = camp_end_datetime(camp)
+
+    if end_at <= start_at:
+        return None
+
+    default_rule = (
+        db.query(PresenceWindow)
+        .filter(
+            PresenceWindow.camp_id == camp.id,
+            PresenceWindow.scope_type == "camp",
+            PresenceWindow.scope_id.is_(None),
+        )
+        .order_by(PresenceWindow.id)
+        .first()
+    )
+
+    if default_rule is None:
+        default_rule = PresenceWindow(
+            camp_id=camp.id,
+            scope_type="camp",
+            scope_id=None,
+            starts_at=start_at,
+            ends_at=end_at,
+            status="Expected",
+            notes="Camp default presence window from camp setup.",
+        )
+        db.add(default_rule)
+    else:
+        default_rule.starts_at = start_at
+        default_rule.ends_at = end_at
+
+        if not default_rule.status:
+            default_rule.status = "Expected"
+
+        if not default_rule.notes:
+            default_rule.notes = "Camp default presence window from camp setup."
+
+    db.commit()
+    return default_rule
 
 
 def parse_optional_date(value: str):
@@ -476,6 +531,8 @@ def ensure_optional_schema_columns():
                 )
 
         optional_columns = [
+            ("camp", "start_time", "TIME DEFAULT '18:00:00'"),
+            ("camp", "end_time", "TIME DEFAULT '14:00:00'"),
             ("section", "participating_group_id", "INTEGER"),
             ("activity", "badge_notes", "TEXT"),
             ("person", "home_section_id", "INTEGER"),
@@ -1019,19 +1076,21 @@ async def create_camp(
     name: str = Form(...),
     camp_type: str = Form("Campsite Camp"),
     start_date: date = Form(...),
+    start_time: time = Form(time(18, 0)),
     end_date: date = Form(...),
+    end_time: time = Form(time(14, 0)),
     venue_name: str = Form(""),
     camp_leader: str = Form(""),
     permit_holder: str = Form(""),
     notes: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    if end_date < start_date:
+    if datetime.combine(end_date, end_time) <= datetime.combine(start_date, start_time):
         return templates.TemplateResponse(
             "camps/new.html",
             {
                 "request": request,
-                "error": "The end date cannot be before the start date.",
+                "error": "The camp end date/time must be after the start date/time.",
             },
             status_code=400,
         )
@@ -1040,7 +1099,9 @@ async def create_camp(
         name=name.strip(),
         camp_type=camp_type,
         start_date=start_date,
+        start_time=start_time,
         end_date=end_date,
+        end_time=end_time,
         venue_name=venue_name.strip() or None,
         camp_leader=camp_leader.strip() or None,
         permit_holder=permit_holder.strip() or None,
@@ -1058,6 +1119,7 @@ async def create_camp(
     ensure_default_task_categories(db, camp)
     apply_default_task_phase_descriptions(db, camp)
     apply_default_task_category_descriptions(db, camp)
+    ensure_camp_default_presence_window(db, camp)
 
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
 
@@ -1093,7 +1155,9 @@ async def update_camp(
     name: str = Form(...),
     camp_type: str = Form("Campsite Camp"),
     start_date: date = Form(...),
+    start_time: time = Form(time(18, 0)),
     end_date: date = Form(...),
+    end_time: time = Form(time(14, 0)),
     venue_name: str = Form(""),
     camp_leader: str = Form(""),
     permit_holder: str = Form(""),
@@ -1113,13 +1177,13 @@ async def update_camp(
             status_code=404,
         )
 
-    if end_date < start_date:
+    if datetime.combine(end_date, end_time) <= datetime.combine(start_date, start_time):
         return templates.TemplateResponse(
             "camps/edit.html",
             {
                 "request": request,
                 "camp": camp,
-                "error": "The end date cannot be before the start date.",
+                "error": "The camp end date/time must be after the start date/time.",
             },
             status_code=400,
         )
@@ -1127,7 +1191,9 @@ async def update_camp(
     camp.name = name.strip()
     camp.camp_type = camp_type
     camp.start_date = start_date
+    camp.start_time = start_time
     camp.end_date = end_date
+    camp.end_time = end_time
     camp.venue_name = venue_name.strip() or None
     camp.camp_leader = camp_leader.strip() or None
     camp.permit_holder = permit_holder.strip() or None
@@ -1135,6 +1201,7 @@ async def update_camp(
     camp.notes = notes.strip() or None
 
     db.commit()
+    ensure_camp_default_presence_window(db, camp)
 
     return RedirectResponse(url=f"/camps/{camp.id}", status_code=303)
 
@@ -3896,6 +3963,66 @@ async def person_detail(
             .first()
         )
 
+    participating_group_lookup = get_participating_group_lookup(db, camp)
+
+    home_group = None
+    if home_section and home_section.participating_group_id:
+        home_group = participating_group_lookup.get(home_section.participating_group_id)
+
+    def get_presence_rule_rows(scope_type: str, scope_id: int | None):
+        query = db.query(PresenceWindow).filter(
+            PresenceWindow.camp_id == camp.id,
+            PresenceWindow.scope_type == scope_type,
+        )
+
+        if scope_id is None:
+            query = query.filter(PresenceWindow.scope_id.is_(None))
+        else:
+            query = query.filter(PresenceWindow.scope_id == scope_id)
+
+        return query.order_by(PresenceWindow.starts_at, PresenceWindow.ends_at, PresenceWindow.id).all()
+
+    presence_source_options = [
+        ("Person override", "person", person.id),
+    ]
+
+    if home_section:
+        presence_source_options.append((f"Section override: {home_section.name}", "section", home_section.id))
+
+    if home_group:
+        presence_source_options.append((f"Group override: {home_group.name}", "participating_group", home_group.id))
+
+    presence_source_options.append(("Camp default", "camp", None))
+
+    person_presence_rows = []
+
+    for source_label, scope_type, scope_id in presence_source_options:
+        windows = get_presence_rule_rows(scope_type, scope_id)
+
+        if windows:
+            person_presence_rows = [
+                {
+                    "source": source_label,
+                    "status": window.status,
+                    "starts_at": window.starts_at,
+                    "ends_at": window.ends_at,
+                    "notes": window.notes,
+                }
+                for window in windows
+            ]
+            break
+
+    if not person_presence_rows:
+        person_presence_rows = [
+            {
+                "source": "Camp date/time fallback",
+                "status": "Expected",
+                "starts_at": camp_start_datetime(camp),
+                "ends_at": camp_end_datetime(camp),
+                "notes": "No presence rule has been created yet.",
+            }
+        ]
+
     team_rows = (
         db.query(TeamMembership, Team)
         .join(Team, Team.id == TeamMembership.team_id)
@@ -3945,6 +4072,8 @@ async def person_detail(
             "person": person,
             "team_rows": team_rows,
             "home_section": home_section,
+            "home_group": home_group,
+            "person_presence_rows": person_presence_rows,
             "missing_profile_fields": missing_profile_fields,
             "direct_task_rows": direct_task_rows,
             "team_task_rows": team_task_rows,

@@ -77,7 +77,7 @@
         {% for camp in camps %}
           <tr>
             <td><strong>{{ camp.name }}</strong></td>
-            <td>{{ camp.start_date }} to {{ camp.end_date }}</td>
+            <td>{{ camp.start_date }} {{ camp.start_time.strftime("%H:%M") if camp.start_time else "" }} to {{ camp.end_date }} {{ camp.end_time.strftime("%H:%M") if camp.end_time else "" }}</td>
             <td>{{ camp.camp_type }}</td>
             <td>{{ camp.venue_name }}</td>
             <td><span class="badge">{{ camp.status }}</span></td>
