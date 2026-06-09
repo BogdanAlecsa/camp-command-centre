@@ -3963,6 +3963,66 @@ async def person_detail(
             .first()
         )
 
+    participating_group_lookup = get_participating_group_lookup(db, camp)
+
+    home_group = None
+    if home_section and home_section.participating_group_id:
+        home_group = participating_group_lookup.get(home_section.participating_group_id)
+
+    def get_presence_rule_rows(scope_type: str, scope_id: int | None):
+        query = db.query(PresenceWindow).filter(
+            PresenceWindow.camp_id == camp.id,
+            PresenceWindow.scope_type == scope_type,
+        )
+
+        if scope_id is None:
+            query = query.filter(PresenceWindow.scope_id.is_(None))
+        else:
+            query = query.filter(PresenceWindow.scope_id == scope_id)
+
+        return query.order_by(PresenceWindow.starts_at, PresenceWindow.ends_at, PresenceWindow.id).all()
+
+    presence_source_options = [
+        ("Person override", "person", person.id),
+    ]
+
+    if home_section:
+        presence_source_options.append((f"Section override: {home_section.name}", "section", home_section.id))
+
+    if home_group:
+        presence_source_options.append((f"Group override: {home_group.name}", "participating_group", home_group.id))
+
+    presence_source_options.append(("Camp default", "camp", None))
+
+    person_presence_rows = []
+
+    for source_label, scope_type, scope_id in presence_source_options:
+        windows = get_presence_rule_rows(scope_type, scope_id)
+
+        if windows:
+            person_presence_rows = [
+                {
+                    "source": source_label,
+                    "status": window.status,
+                    "starts_at": window.starts_at,
+                    "ends_at": window.ends_at,
+                    "notes": window.notes,
+                }
+                for window in windows
+            ]
+            break
+
+    if not person_presence_rows:
+        person_presence_rows = [
+            {
+                "source": "Camp date/time fallback",
+                "status": "Expected",
+                "starts_at": camp_start_datetime(camp),
+                "ends_at": camp_end_datetime(camp),
+                "notes": "No presence rule has been created yet.",
+            }
+        ]
+
     team_rows = (
         db.query(TeamMembership, Team)
         .join(Team, Team.id == TeamMembership.team_id)
@@ -4012,6 +4072,8 @@ async def person_detail(
             "person": person,
             "team_rows": team_rows,
             "home_section": home_section,
+            "home_group": home_group,
+            "person_presence_rows": person_presence_rows,
             "missing_profile_fields": missing_profile_fields,
             "direct_task_rows": direct_task_rows,
             "team_task_rows": team_task_rows,

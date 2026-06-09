@@ -130,6 +130,25 @@
     gap: .4rem;
     flex-wrap: wrap;
   }
+
+  .presence-rules-form {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .presence-rules-table {
+    margin-top: .75rem;
+  }
+
+  .presence-rule-help {
+    margin-top: .35rem;
+  }
+  .presence-person-link {
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 </style>
 
 <section class="card">
@@ -144,7 +163,14 @@
     <input id="at_time" name="at_time" type="datetime-local" value="{{ selected_at_input }}">
     <button type="submit">Check presence</button>
     <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/people">Open People</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/tasks">Open Tasks</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/programme">Open Programme</a>
   </form>
+
+  <p class="muted presence-rule-help">
+    Presence tells you who is available. Use People, Tasks and Programme to assign work or responsibilities.
+  </p>
 </section>
 
 <section class="card">
@@ -229,7 +255,7 @@
   <p class="muted">{{ present_rows|length }} person{% if present_rows|length != 1 %}s{% endif %} expected on site.</p>
 
   {% if present_rows %}
-    <table>
+    <table class="presence-rules-table">
       <thead>
         <tr>
           <th>Name</th>
@@ -243,7 +269,11 @@
       <tbody>
         {% for row in present_rows %}
           <tr>
-            <td><strong>{{ row.display_name }}</strong></td>
+            <td>
+                <a class="presence-person-link" href="/camps/{{ camp.id }}/people/{{ row.person.id }}">
+                  {{ row.person.first_name }} {{ row.person.last_name }}
+                </a>
+              </td>
             <td>{{ row.person.person_type }}</td>
             <td>{{ row.group_name }}</td>
             <td>{{ row.section_name }}</td>
@@ -282,7 +312,11 @@
       <tbody>
         {% for row in absent_rows %}
           <tr>
-            <td><strong>{{ row.display_name }}</strong></td>
+            <td>
+                <a class="presence-person-link" href="/camps/{{ camp.id }}/people/{{ row.person.id }}">
+                  {{ row.person.first_name }} {{ row.person.last_name }}
+                </a>
+              </td>
             <td>{{ row.person.person_type }}</td>
             <td>{{ row.group_name }}</td>
             <td>{{ row.section_name }}</td>
@@ -301,7 +335,7 @@
     Multiple rules at the same level allow split attendance windows.
   </p>
 
-  <form method="post" action="/camps/{{ camp.id }}/presence/rules/add">
+  <form method="post" action="/camps/{{ camp.id }}/presence/rules/add" class="presence-rules-form">
     <input type="hidden" name="return_at_time" value="{{ selected_at_input }}">
 
     <div class="presence-rule-grid">
