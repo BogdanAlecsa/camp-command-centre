@@ -240,7 +240,7 @@
 
         {% if schedule.sessions %}
           {% for session_date, day_sessions in schedule.sessions_by_date.items() %}
-            <h2>{{ session_date.strftime("%A %-d %B %Y") }}</h2>
+            <h2>{{ session_date.strftime("%A %d %B %Y").replace(" 0", " ") }}</h2>
 
             <table>
               <thead>
@@ -316,3 +316,4 @@
   {% endif %}
 </body>
 </html>
+

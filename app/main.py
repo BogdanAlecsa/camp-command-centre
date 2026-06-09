@@ -658,6 +658,70 @@ def get_active_sections(db: Session, camp: Camp):
 
 
 
+
+def is_leaders_adults_section(section: Section | None):
+    if section is None:
+        return False
+
+    section_type = (section.section_type or "").strip().lower()
+    section_name = (section.name or "").strip().lower()
+    combined = f"{section_type} {section_name}"
+
+    if "young leader" in combined:
+        return False
+
+    adult_section_types = {
+        "adult",
+        "adults",
+        "leader",
+        "leaders",
+        "leaders / adults",
+        "leader / adult",
+        "leader/adult",
+    }
+
+    if section_type in adult_section_types:
+        return True
+
+    return "adult" in section_name
+
+
+def section_person_type_error(section: Section | None, person_type: str):
+    if not is_leaders_adults_section(section):
+        return None
+
+    allowed_types = {"Leader", "Helper"}
+
+    if person_type in allowed_types:
+        return None
+
+    return (
+        "Only Leaders and Helpers can be placed in a Leaders / Adults section. "
+        "Young Leaders must stay as Young Leaders and should not be counted as adult cover."
+    )
+
+
+def validate_home_section_for_person_type(
+    db: Session,
+    camp: Camp,
+    home_section_id: int | None,
+    person_type: str,
+):
+    if home_section_id is None:
+        return None, None
+
+    section = (
+        db.query(Section)
+        .filter(Section.id == home_section_id, Section.camp_id == camp.id)
+        .first()
+    )
+
+    if section is None:
+        return None, "Please choose a valid home section."
+
+    return section, section_person_type_error(section, person_type)
+
+
 def get_participating_group_lookup(db: Session, camp: Camp):
     return {
         group.id: group
@@ -2346,6 +2410,7 @@ async def bulk_edit_people(
 
     if bulk_action == "section":
         selected_section_id = int(bulk_home_section_id) if bulk_home_section_id else None
+        section = None
 
         if selected_section_id is not None:
             section = (
@@ -2356,6 +2421,19 @@ async def bulk_edit_people(
             if section is None:
                 return RedirectResponse(
                     url=f"/camps/{camp.id}/people?bulk_error=invalid_section#bulk-actions",
+                    status_code=303,
+                )
+
+        if section is not None:
+            blocked_people = [
+                person
+                for person in people
+                if section_person_type_error(section, person.person_type)
+            ]
+
+            if blocked_people:
+                return RedirectResponse(
+                    url=f"/camps/{camp.id}/people?bulk_error=leader_section_person_type#bulk-actions",
                     status_code=303,
                 )
 
@@ -3410,6 +3488,35 @@ async def create_person(
         )
 
     selected_home_section_id = int(home_section_id) if home_section_id else None
+    selected_home_section, section_error = validate_home_section_for_person_type(
+        db,
+        camp,
+        selected_home_section_id,
+        person_type,
+    )
+
+    if section_error:
+        return templates.TemplateResponse(
+            "people/new.html",
+            {
+                "request": request,
+                "camp": camp,
+                "sections": get_active_sections(db, camp),
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
+                "duplicate_people": build_manual_duplicate_people_data(db, camp),
+                "form_data": {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "person_type": person_type,
+                    "home_section_id": home_section_id,
+                    "email": email,
+                    "phone": phone,
+                    "role_notes": role_notes,
+                },
+                "error": section_error,
+            },
+            status_code=400,
+        )
 
     person = Person(
         camp_id=camp.id,
@@ -3742,9 +3849,31 @@ async def replace_provisional_person(
             status_code=400,
         )
 
+    selected_home_section_id = int(home_section_id) if home_section_id else None
+    selected_home_section, section_error = validate_home_section_for_person_type(
+        db,
+        camp,
+        selected_home_section_id,
+        person.person_type,
+    )
+
+    if section_error:
+        return templates.TemplateResponse(
+            "people/replace_provisional.html",
+            {
+                "request": request,
+                "camp": camp,
+                "person": person,
+                "sections": get_active_sections(db, camp),
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
+                "error": section_error,
+            },
+            status_code=400,
+        )
+
     person.first_name = first_name.strip()
     person.last_name = last_name.strip()
-    person.home_section_id = int(home_section_id) if home_section_id else None
+    person.home_section_id = selected_home_section_id
     person.email = email.strip() or None
     person.phone = phone.strip() or None
     person.information_source = information_source.strip() or "Manual Entry"
@@ -3886,10 +4015,33 @@ async def update_person(
             status_code=400,
         )
 
+    selected_home_section_id = int(home_section_id) if home_section_id else None
+    selected_home_section, section_error = validate_home_section_for_person_type(
+        db,
+        camp,
+        selected_home_section_id,
+        person_type,
+    )
+
+    if section_error:
+        return templates.TemplateResponse(
+            "people/edit.html",
+            {
+                "request": request,
+                "camp": camp,
+                "person": person,
+                "sections": get_active_sections(db, camp),
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
+                "duplicate_people": build_manual_duplicate_people_data(db, camp, exclude_person_id=person.id),
+                "error": section_error,
+            },
+            status_code=400,
+        )
+
     person.first_name = first_name.strip()
     person.last_name = last_name.strip()
     person.person_type = person_type
-    person.home_section_id = int(home_section_id) if home_section_id else None
+    person.home_section_id = selected_home_section_id
     person.section_unit = section_unit.strip() or None
     person.attendance_status = attendance_status.strip() or None
     person.information_source = information_source.strip() or None
