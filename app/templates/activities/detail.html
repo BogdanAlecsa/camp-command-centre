@@ -5,14 +5,15 @@
   <h2>{{ activity.name }}</h2>
   <p class="muted">{{ camp.name }}</p>
 
-  <a class="button" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">Edit Activity</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open / Create RA</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment/print" target="_blank" rel="noopener noreferrer">Print RA</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}/activities">Back to Activities</a>
-
-  <form class="inline-form" method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/delete" onsubmit="return confirm('Delete this activity?');">
-    <button class="secondary" type="submit">Delete</button>
-  </form>
+  <div class="form-actions">
+    <a class="button secondary" href="/camps/{{ camp.id }}/activities">Back to Activities</a>
+    <a class="button" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">Edit Activity</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Risk Assessment</a>
+    <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment/print" target="_blank" rel="noopener noreferrer">Print Risk Assessment</a>
+    <form class="inline-form" method="post" action="/camps/{{ camp.id }}/activities/{{ activity.id }}/delete" onsubmit="return confirm('Delete this activity?');">
+      <button class="secondary" type="submit">Delete</button>
+    </form>
+  </div>
 </section>
 
 <div class="grid">

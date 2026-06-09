@@ -7,8 +7,10 @@
     Build the activity library for this camp. Programme sessions will use these activities in the next milestone.
   </p>
 
-  <a class="button" href="/camps/{{ camp.id }}/activities/new">Add Activity</a>
-  <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+  <div class="form-actions">
+    <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+    <a class="button" href="/camps/{{ camp.id }}/activities/new">Add Activity</a>
+  </div>
 </section>
 
 <section class="card">
@@ -59,8 +61,7 @@
             <td>
               <div class="table-actions">
                 <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}">Open</a>
-                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Open / Create RA</a>
-                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/edit">Edit</a>
+                <a class="button small secondary" href="/camps/{{ camp.id }}/activities/{{ activity.id }}/risk-assessment">Risk Assessment</a>
               </div>
             </td>
           </tr>
