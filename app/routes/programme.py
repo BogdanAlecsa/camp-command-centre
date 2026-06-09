@@ -1682,7 +1682,7 @@ async def add_programme_session_staff(
 
     db.commit()
 
-    return RedirectResponse(url=f"/camps/{camp.id}/programme/{session.id}/edit", status_code=303)
+    return RedirectResponse(url=f"/camps/{camp.id}/programme/{session.id}", status_code=303)
 
 
 @router.post("/camps/{camp_id}/programme/{session_id}/staff/{staff_id}/delete")
@@ -1706,4 +1706,4 @@ async def delete_programme_session_staff(
         db.delete(staff)
         db.commit()
 
-    return RedirectResponse(url=f"/camps/{camp_id}/programme/{session_id}/edit", status_code=303)
+    return RedirectResponse(url=f"/camps/{camp_id}/programme/{session_id}", status_code=303)
