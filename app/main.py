@@ -110,6 +110,32 @@ def combine_names(first_name, last_name):
 
 
 
+def build_osm_duplicate_location_summaries(camp, people, section_lookup, participating_group_lookup):
+    summaries = []
+
+    for person in people:
+        section = section_lookup.get(person.home_section_id)
+        group = participating_group_lookup.get(section.participating_group_id) if section else None
+
+        location_parts = []
+        if group:
+            location_parts.append(group.name)
+        if section:
+            location_parts.append(section.name)
+
+        summaries.append(
+            {
+                "person_id": person.id,
+                "display_name": combine_names(person.first_name, person.last_name) or f"Person {person.id}",
+                "location": " → ".join(location_parts) if location_parts else "No section assigned",
+                "person_url": f"/camps/{camp.id}/people/{person.id}",
+                "section_url": f"/camps/{camp.id}/people?open_section_id={section.id}&highlight_person_id={person.id}#person-{person.id}" if section else "",
+            }
+        )
+
+    return summaries
+
+
 def detect_person_type_from_osm_unit(unit_name, default_person_type="Young Person"):
     value = normalise_osm_label(unit_name)
 
@@ -2063,7 +2089,12 @@ async def people_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/camps/{camp_id}/people", response_class=HTMLResponse)
-async def camp_people_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+async def camp_people_list(
+    request: Request,
+    camp_id: int,
+    open_section_id: int | None = None,
+    db: Session = Depends(get_db),
+):
     camp = db.get(Camp, camp_id)
 
     if camp is None:
@@ -2551,6 +2582,9 @@ async def preview_osm_member_import(
         )
         elsewhere_lookup.setdefault(key, []).append(person)
 
+    section_lookup = {section.id: section for section in sections}
+    participating_group_lookup_for_locations = get_participating_group_lookup(db, camp)
+
     preview_rows = []
     matched_count = 0
     unmatched_count = 0
@@ -2579,6 +2613,13 @@ async def preview_osm_member_import(
             unmatched_count += 1
             warning = "No match found"
 
+        elsewhere_match_summaries = build_osm_duplicate_location_summaries(
+            camp,
+            elsewhere_matches,
+            section_lookup,
+            participating_group_lookup_for_locations,
+        )
+
         apply_payload = dict(candidate)
         apply_payload["matched_person_id"] = matched_person.id if matched_person else None
         apply_payload["suggested_person_type"] = candidate.get("suggested_person_type") or default_person_type
@@ -2589,6 +2630,7 @@ async def preview_osm_member_import(
                 **candidate,
                 "matched_person": matched_person,
                 "warning": warning,
+                "elsewhere_matches": elsewhere_match_summaries,
                 "payload": json.dumps(apply_payload),
             }
         )
@@ -2892,6 +2934,9 @@ async def preview_osm_attendance_update(
         )
         elsewhere_lookup.setdefault(key, []).append(person)
 
+    section_lookup = {section.id: section for section in sections}
+    participating_group_lookup_for_locations = get_participating_group_lookup(db, camp)
+
     preview_rows = []
     matched_count = 0
     unmatched_count = 0
@@ -2920,6 +2965,13 @@ async def preview_osm_attendance_update(
             unmatched_count += 1
             warning = "No match found"
 
+        elsewhere_match_summaries = build_osm_duplicate_location_summaries(
+            camp,
+            elsewhere_matches,
+            section_lookup,
+            participating_group_lookup_for_locations,
+        )
+
         payload = {
             "first_name": row["first_name"],
             "last_name": row["last_name"],
@@ -2934,6 +2986,7 @@ async def preview_osm_attendance_update(
                 **row,
                 "matched_person": matched_person,
                 "warning": warning,
+                "elsewhere_matches": elsewhere_match_summaries,
                 "payload": json.dumps(payload),
             }
         )

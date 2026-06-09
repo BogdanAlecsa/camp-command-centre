@@ -502,7 +502,7 @@
 
 {% macro section_panel(section) %}
   {% set section_people = people_by_section.get(section.id, []) %}
-  <details class="people-section-card" {% if section_people %}open{% endif %}>
+  <details id="section-{{ section.id }}" class="people-section-card" {% if open_section_id is defined and open_section_id %}{% if open_section_id|int == section.id %}open{% endif %}{% elif section_people %}open{% endif %}>
     <summary>
       <div class="people-section-title">
         <span class="people-section-name">{{ section.name }}</span>
@@ -672,7 +672,7 @@
           {% set group_people_count.value = group_people_count.value + people_by_section.get(section.id, [])|length %}
         {% endfor %}
 
-        <details class="people-group" open>
+        <details class="people-group" {% if open_section_id is defined and open_section_id %}{% for section in group_sections %}{% if open_section_id|int == section.id %}open{% endif %}{% endfor %}{% else %}open{% endif %}>
           <summary>
             <div class="people-group-title">
               <span class="people-group-name">{{ group.name }}</span>
@@ -904,6 +904,47 @@
   });
 
   document.addEventListener("DOMContentLoaded", updatePeopleBulkDrawerFields);
+</script>
+
+
+<script>
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const openSectionId = params.get("open_section_id");
+
+    if (!openSectionId) {
+      return;
+    }
+
+    const targetSection = document.getElementById("section-" + CSS.escape(openSectionId));
+
+    if (!targetSection) {
+      return;
+    }
+
+    document.querySelectorAll("details.people-section-card").forEach(function (details) {
+      details.open = false;
+    });
+
+    document.querySelectorAll("details.people-group").forEach(function (details) {
+      details.open = false;
+    });
+
+    targetSection.open = true;
+
+    let parent = targetSection.parentElement;
+    while (parent) {
+      if (parent.tagName && parent.tagName.toLowerCase() === "details") {
+        parent.open = true;
+      }
+      parent = parent.parentElement;
+    }
+
+    targetSection.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  })();
 </script>
 
 {% endblock %}
