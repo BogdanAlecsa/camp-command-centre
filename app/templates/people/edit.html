@@ -13,6 +13,111 @@
     <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ person.id }}/osm-update">Update from OSM Export</a>
   </p>
 
+
+  <div id="manual-duplicate-warning" class="warning" style="display: none;"></div>
+
+  <script>
+    (function () {
+      const duplicatePeople = {{ duplicate_people|default([])|tojson }};
+
+      function normaliseNamePart(value) {
+        return (value || "").toString().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      }
+
+      function setText(element, value) {
+        element.textContent = value;
+        return element;
+      }
+
+      function updateManualDuplicateWarning() {
+        const firstNameInput = document.getElementById("first_name");
+        const lastNameInput = document.getElementById("last_name");
+        const sectionInput = document.getElementById("home_section_id");
+        const warningBox = document.getElementById("manual-duplicate-warning");
+
+        if (!firstNameInput || !lastNameInput || !warningBox) {
+          return;
+        }
+
+        const firstKey = normaliseNamePart(firstNameInput.value);
+        const lastKey = normaliseNamePart(lastNameInput.value);
+        const selectedSectionId = sectionInput ? sectionInput.value : "";
+
+        warningBox.innerHTML = "";
+        warningBox.style.display = "none";
+
+        if (!firstKey || !lastKey) {
+          return;
+        }
+
+        const matches = duplicatePeople.filter(function (person) {
+          return person.first_name_key === firstKey && person.last_name_key === lastKey;
+        });
+
+        if (!matches.length) {
+          return;
+        }
+
+        const sameSectionMatches = matches.filter(function (person) {
+          return String(person.home_section_id || "") === String(selectedSectionId || "");
+        });
+
+        const title = document.createElement("strong");
+        title.textContent = sameSectionMatches.length
+          ? "Possible duplicate in this section."
+          : "Possible duplicate elsewhere in this camp.";
+
+        warningBox.appendChild(title);
+        warningBox.appendChild(document.createElement("br"));
+
+        const message = document.createElement("span");
+        message.textContent = "This does not stop you saving, but check before continuing.";
+        warningBox.appendChild(message);
+
+        const list = document.createElement("ul");
+        list.style.margin = ".45rem 0 0 1rem";
+        list.style.padding = "0";
+
+        matches.forEach(function (person) {
+          const item = document.createElement("li");
+
+          const name = document.createElement("strong");
+          name.textContent = person.display_name;
+          item.appendChild(name);
+
+          item.appendChild(document.createElement("br"));
+          item.appendChild(setText(document.createElement("span"), person.location || "No section assigned"));
+
+          item.appendChild(document.createElement("br"));
+
+          const link = document.createElement("a");
+          link.href = person.person_url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = "Open existing person";
+          item.appendChild(link);
+
+          list.appendChild(item);
+        });
+
+        warningBox.appendChild(list);
+        warningBox.style.display = "block";
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        ["first_name", "last_name", "home_section_id"].forEach(function (id) {
+          const element = document.getElementById(id);
+          if (element) {
+            element.addEventListener("input", updateManualDuplicateWarning);
+            element.addEventListener("change", updateManualDuplicateWarning);
+          }
+        });
+
+        updateManualDuplicateWarning();
+      });
+    })();
+  </script>
+
   <form method="post" action="/camps/{{ camp.id }}/people/{{ person.id }}/edit">
     <label for="first_name">First Name</label>
     <input id="first_name" name="first_name" required value="{{ person.first_name }}">

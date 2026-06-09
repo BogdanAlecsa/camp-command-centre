@@ -9,12 +9,117 @@
     <p class="warning">{{ error }}</p>
   {% endif %}
 
+
+  <div id="manual-duplicate-warning" class="warning" style="display: none;"></div>
+
+  <script>
+    (function () {
+      const duplicatePeople = {{ duplicate_people|default([])|tojson }};
+
+      function normaliseNamePart(value) {
+        return (value || "").toString().toLowerCase().replace(/[^a-z0-9]+/g, "");
+      }
+
+      function setText(element, value) {
+        element.textContent = value;
+        return element;
+      }
+
+      function updateManualDuplicateWarning() {
+        const firstNameInput = document.getElementById("first_name");
+        const lastNameInput = document.getElementById("last_name");
+        const sectionInput = document.getElementById("home_section_id");
+        const warningBox = document.getElementById("manual-duplicate-warning");
+
+        if (!firstNameInput || !lastNameInput || !warningBox) {
+          return;
+        }
+
+        const firstKey = normaliseNamePart(firstNameInput.value);
+        const lastKey = normaliseNamePart(lastNameInput.value);
+        const selectedSectionId = sectionInput ? sectionInput.value : "";
+
+        warningBox.innerHTML = "";
+        warningBox.style.display = "none";
+
+        if (!firstKey || !lastKey) {
+          return;
+        }
+
+        const matches = duplicatePeople.filter(function (person) {
+          return person.first_name_key === firstKey && person.last_name_key === lastKey;
+        });
+
+        if (!matches.length) {
+          return;
+        }
+
+        const sameSectionMatches = matches.filter(function (person) {
+          return String(person.home_section_id || "") === String(selectedSectionId || "");
+        });
+
+        const title = document.createElement("strong");
+        title.textContent = sameSectionMatches.length
+          ? "Possible duplicate in this section."
+          : "Possible duplicate elsewhere in this camp.";
+
+        warningBox.appendChild(title);
+        warningBox.appendChild(document.createElement("br"));
+
+        const message = document.createElement("span");
+        message.textContent = "This does not stop you saving, but check before continuing.";
+        warningBox.appendChild(message);
+
+        const list = document.createElement("ul");
+        list.style.margin = ".45rem 0 0 1rem";
+        list.style.padding = "0";
+
+        matches.forEach(function (person) {
+          const item = document.createElement("li");
+
+          const name = document.createElement("strong");
+          name.textContent = person.display_name;
+          item.appendChild(name);
+
+          item.appendChild(document.createElement("br"));
+          item.appendChild(setText(document.createElement("span"), person.location || "No section assigned"));
+
+          item.appendChild(document.createElement("br"));
+
+          const link = document.createElement("a");
+          link.href = person.person_url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = "Open existing person";
+          item.appendChild(link);
+
+          list.appendChild(item);
+        });
+
+        warningBox.appendChild(list);
+        warningBox.style.display = "block";
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        ["first_name", "last_name", "home_section_id"].forEach(function (id) {
+          const element = document.getElementById(id);
+          if (element) {
+            element.addEventListener("input", updateManualDuplicateWarning);
+            element.addEventListener("change", updateManualDuplicateWarning);
+          }
+        });
+
+        updateManualDuplicateWarning();
+      });
+    })();
+  </script>
+
   <form method="post" action="/camps/{{ camp.id }}/people/new">
     <label for="first_name">First Name</label>
-    <input id="first_name" name="first_name" required>
+    <input id="first_name" name="first_name" required value="{{ form_data.first_name if form_data is defined else '' }}">
 
     <label for="last_name">Last Name</label>
-    <input id="last_name" name="last_name" required>
+    <input id="last_name" name="last_name" required value="{{ form_data.last_name if form_data is defined else '' }}">
 
     <label for="person_type">Person Type</label>
     <select id="person_type" name="person_type">
@@ -30,18 +135,18 @@
     <select id="home_section_id" name="home_section_id">
       <option value="">Not set</option>
       {% for section in sections %}
-        <option value="{{ section.id }}">{% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
+        <option value="{{ section.id }}" {% if form_data is defined and form_data.home_section_id|string == section.id|string %}selected{% endif %}>{% set group = participating_group_lookup.get(section.participating_group_id) if participating_group_lookup is defined else None %}{{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
       {% endfor %}
     </select>
 
     <label for="email">Email</label>
-    <input id="email" name="email" type="email">
+    <input id="email" name="email" type="email" value="{{ form_data.email if form_data is defined else '' }}">
 
     <label for="phone">Phone</label>
-    <input id="phone" name="phone">
+    <input id="phone" name="phone" value="{{ form_data.phone if form_data is defined else '' }}">
 
     <label for="role_notes">Notes</label>
-    <textarea id="role_notes" name="role_notes" placeholder="Role, parent link, useful context, etc."></textarea>
+    <textarea id="role_notes" name="role_notes" placeholder="Role, parent link, useful context, etc.">{{ form_data.role_notes if form_data is defined else "" }}</textarea>
 
     <div class="form-actions">
       <button type="submit">Add Person</button>
