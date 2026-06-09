@@ -2533,6 +2533,24 @@ async def preview_osm_member_import(
         )
         lookup.setdefault(key, []).append(person)
 
+    people_elsewhere_in_camp = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            (Person.home_section_id != section.id) | (Person.home_section_id.is_(None)),
+        )
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+    elsewhere_lookup = {}
+    for person in people_elsewhere_in_camp:
+        key = (
+            normalise_person_match_value(person.first_name),
+            normalise_person_match_value(person.last_name),
+        )
+        elsewhere_lookup.setdefault(key, []).append(person)
+
     preview_rows = []
     matched_count = 0
     unmatched_count = 0
@@ -2544,14 +2562,19 @@ async def preview_osm_member_import(
         )
 
         matches = lookup.get(key, [])
+        elsewhere_matches = elsewhere_lookup.get(key, [])
         matched_person = matches[0] if len(matches) == 1 else None
+        name_exists_elsewhere = bool(elsewhere_matches)
 
         if matched_person:
             matched_count += 1
             warning = ""
         elif len(matches) > 1:
             unmatched_count += 1
-            warning = "Multiple matches found"
+            warning = "Multiple matches found in this section"
+        elif name_exists_elsewhere:
+            unmatched_count += 1
+            warning = "Same name exists elsewhere in this camp, but not in this section"
         else:
             unmatched_count += 1
             warning = "No match found"
@@ -2559,6 +2582,7 @@ async def preview_osm_member_import(
         apply_payload = dict(candidate)
         apply_payload["matched_person_id"] = matched_person.id if matched_person else None
         apply_payload["suggested_person_type"] = candidate.get("suggested_person_type") or default_person_type
+        apply_payload["name_exists_elsewhere"] = name_exists_elsewhere
 
         preview_rows.append(
             {
@@ -2656,6 +2680,10 @@ async def apply_osm_member_import(
                 update_identity=False,
             )
             updated += 1
+            continue
+
+        if data.get("name_exists_elsewhere"):
+            skipped += 1
             continue
 
         if replace_provisional == "yes":
@@ -2846,6 +2874,24 @@ async def preview_osm_attendance_update(
         )
         lookup.setdefault(key, []).append(person)
 
+    people_elsewhere_in_camp = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            (Person.home_section_id != section.id) | (Person.home_section_id.is_(None)),
+        )
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+    elsewhere_lookup = {}
+    for person in people_elsewhere_in_camp:
+        key = (
+            normalise_person_match_value(person.first_name),
+            normalise_person_match_value(person.last_name),
+        )
+        elsewhere_lookup.setdefault(key, []).append(person)
+
     preview_rows = []
     matched_count = 0
     unmatched_count = 0
@@ -2857,14 +2903,19 @@ async def preview_osm_attendance_update(
         )
 
         matches = lookup.get(key, [])
+        elsewhere_matches = elsewhere_lookup.get(key, [])
         matched_person = matches[0] if len(matches) == 1 else None
+        name_exists_elsewhere = bool(elsewhere_matches)
 
         if matched_person:
             matched_count += 1
             warning = ""
         elif len(matches) > 1:
             unmatched_count += 1
-            warning = "Multiple matches found"
+            warning = "Multiple matches found in this section"
+        elif name_exists_elsewhere:
+            unmatched_count += 1
+            warning = "Same name exists elsewhere in this camp, but not in this section"
         else:
             unmatched_count += 1
             warning = "No match found"
@@ -2875,6 +2926,7 @@ async def preview_osm_attendance_update(
             "attendance_status": row["attendance_status"],
             "attending_raw": row["attending_raw"],
             "matched_person_id": matched_person.id if matched_person else None,
+            "name_exists_elsewhere": name_exists_elsewhere,
         }
 
         preview_rows.append(
@@ -2954,6 +3006,9 @@ async def apply_osm_attendance_update(
         if person:
             person.attendance_status = data.get("attendance_status") or "No response"
             person.information_source = "OSM Event Export"
+            continue
+
+        if data.get("name_exists_elsewhere"):
             continue
 
         if create_missing == "yes":
