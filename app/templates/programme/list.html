@@ -81,15 +81,13 @@
 
   <div class="programme-actions">
     <div class="programme-actions-row">
+      <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+      <a class="button secondary" href="/camps/{{ camp.id }}/activities">Activities</a>
       <a class="button" href="/camps/{{ camp.id }}/programme/new">Add Programme Session</a>
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/full" target="_blank" rel="noopener noreferrer">Print Full Programme</a>
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/groups" target="_blank" rel="noopener noreferrer">Print YP Programme</a>
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/leader" target="_blank" rel="noopener noreferrer">Print Operational Programme</a>
       <a class="button secondary" href="/camps/{{ camp.id }}/programme/print/leader-board" target="_blank" rel="noopener noreferrer">Print Leader Board</a>
-    </div>
-    <div class="programme-actions-row">
-      <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
-      <a class="button secondary" href="/camps/{{ camp.id }}/activities">Activities</a>
     </div>
   </div>
 </section>
@@ -327,7 +325,6 @@
               <td>
                 <div class="table-actions">
                   <a class="button small secondary" href="/camps/{{ camp.id }}/programme/{{ session.id }}">Open</a>
-                  <a class="button small secondary" href="/camps/{{ camp.id }}/programme/{{ session.id }}/edit">Edit</a>
                 </div>
               </td>
             </tr>

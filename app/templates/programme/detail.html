@@ -52,8 +52,10 @@
         <span class="badge risk-status risk-status-{{ risk_status | lower | replace(' ', '-') }}">{{ risk_status }}</span>
       </p>
 
-      <p><a href="/camps/{{ camp.id }}/activities/{{ session.activity_id }}">Open activity</a></p>
-      <p><a href="/camps/{{ camp.id }}/activities/{{ session.activity_id }}/risk-assessment">Open / Create RA</a></p>
+      <div class="form-actions">
+        <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ session.activity_id }}">Open activity</a>
+        <a class="button secondary" href="/camps/{{ camp.id }}/activities/{{ session.activity_id }}/risk-assessment">Open / Create RA</a>
+      </div>
     {% else %}
       <p>No linked activity. This is a manual programme block.</p>
     {% endif %}
