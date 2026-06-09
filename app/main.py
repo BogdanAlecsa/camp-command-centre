@@ -136,6 +136,57 @@ def build_osm_duplicate_location_summaries(camp, people, section_lookup, partici
     return summaries
 
 
+def build_manual_duplicate_people_data(db: Session, camp: Camp, exclude_person_id: int | None = None):
+    sections = (
+        db.query(Section)
+        .filter(Section.camp_id == camp.id)
+        .order_by(Section.sort_order, Section.name)
+        .all()
+    )
+    section_lookup = {section.id: section for section in sections}
+
+    participating_groups = (
+        db.query(ParticipatingGroup)
+        .filter(ParticipatingGroup.camp_id == camp.id)
+        .order_by(ParticipatingGroup.sort_order, ParticipatingGroup.name)
+        .all()
+    )
+    participating_group_lookup = {group.id: group for group in participating_groups}
+
+    people_query = db.query(Person).filter(Person.camp_id == camp.id)
+
+    if exclude_person_id is not None:
+        people_query = people_query.filter(Person.id != exclude_person_id)
+
+    people = people_query.order_by(Person.last_name, Person.first_name).all()
+
+    duplicate_people = []
+
+    for person in people:
+        section = section_lookup.get(person.home_section_id)
+        group = participating_group_lookup.get(section.participating_group_id) if section else None
+
+        location_parts = []
+        if group:
+            location_parts.append(group.name)
+        if section:
+            location_parts.append(section.name)
+
+        duplicate_people.append(
+            {
+                "id": person.id,
+                "first_name_key": normalise_person_match_value(person.first_name),
+                "last_name_key": normalise_person_match_value(person.last_name),
+                "display_name": combine_names(person.first_name, person.last_name) or f"Person {person.id}",
+                "home_section_id": person.home_section_id,
+                "location": " → ".join(location_parts) if location_parts else "No section assigned",
+                "person_url": f"/camps/{camp.id}/people/{person.id}",
+            }
+        )
+
+    return duplicate_people
+
+
 def detect_person_type_from_osm_unit(unit_name, default_person_type="Young Person"):
     value = normalise_osm_label(unit_name)
 
@@ -3234,6 +3285,7 @@ async def new_person_form(request: Request, camp_id: int, db: Session = Depends(
             "camp": camp,
             "sections": sections,
             "participating_group_lookup": get_participating_group_lookup(db, camp),
+            "duplicate_people": build_manual_duplicate_people_data(db, camp),
             "error": None,
         },
     )
@@ -3274,6 +3326,17 @@ async def create_person(
                 "request": request,
                 "camp": camp,
                 "sections": get_active_sections(db, camp),
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
+                "duplicate_people": build_manual_duplicate_people_data(db, camp),
+                "form_data": {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "person_type": person_type,
+                    "home_section_id": home_section_id,
+                    "email": email,
+                    "phone": phone,
+                    "role_notes": role_notes,
+                },
                 "error": "First name and last name are required.",
             },
             status_code=400,
@@ -3676,6 +3739,7 @@ async def edit_person_form(
             "person": person,
             "sections": sections,
             "participating_group_lookup": get_participating_group_lookup(db, camp),
+            "duplicate_people": build_manual_duplicate_people_data(db, camp, exclude_person_id=person.id),
             "error": None,
         },
     )
@@ -3748,6 +3812,8 @@ async def update_person(
                 "camp": camp,
                 "person": person,
                 "sections": get_active_sections(db, camp),
+                "participating_group_lookup": get_participating_group_lookup(db, camp),
+                "duplicate_people": build_manual_duplicate_people_data(db, camp, exclude_person_id=person.id),
                 "error": "First name and last name are required.",
             },
             status_code=400,
