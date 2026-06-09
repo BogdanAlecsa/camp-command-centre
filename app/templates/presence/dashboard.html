@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .presence-check-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    margin-top: .75rem;
+  }
+
+  .presence-check-row label {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .presence-check-row input {
+    width: 240px;
+    max-width: 240px;
+    margin: 0;
+  }
+
+  .presence-check-row button,
+  .presence-check-row .button {
+    margin: 0;
+  }
+
+  .presence-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: .65rem;
+    margin-bottom: .85rem;
+  }
+
+  .presence-kpi-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .7rem .75rem;
+    background: #f8fafc;
+    min-height: 70px;
+  }
+
+  .presence-summary-number {
+    font-size: 1.75rem;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: .25rem;
+  }
+
+  .presence-kpi-label {
+    font-size: .92rem;
+  }
+
+  .presence-kpi-help {
+    color: var(--muted);
+    font-size: .82rem;
+    margin-top: .2rem;
+  }
+
+  .presence-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: .65rem;
+  }
+
+  .presence-breakdown-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .7rem .75rem;
+    background: #ffffff;
+  }
+
+  .presence-breakdown-card h4 {
+    margin: 0 0 .45rem;
+  }
+
+  .presence-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    align-items: baseline;
+    padding: .22rem 0;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .presence-breakdown-row:first-of-type {
+    border-top: 0;
+  }
+
+  .presence-breakdown-label {
+    min-width: 0;
+  }
+
+  .presence-count-pill {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: .1rem .45rem;
+    background: #eef2ff;
+    font-weight: bold;
+  }
+  .presence-rule-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.5fr) minmax(190px, 1fr) minmax(190px, 1fr) minmax(150px, .8fr);
+    gap: .65rem;
+    align-items: end;
+  }
+
+  .presence-rule-notes-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: .65rem;
+    align-items: end;
+    margin-top: .65rem;
+  }
+
+  .presence-rule-grid label,
+  .presence-rule-notes-row label {
+    margin: 0;
+  }
+
+  .presence-rule-grid input,
+  .presence-rule-grid select,
+  .presence-rule-notes-row input {
+    margin: .25rem 0 0;
+  }
+
+  .presence-rule-actions {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+  }
+</style>
+
+<section class="card">
+  <h2>Presence — {{ camp.name }}</h2>
+  <p class="muted">
+    Check who is expected to be on site at a specific point in the camp.
+    Presence is inherited from camp → group → section → person.
+  </p>
+
+  <form method="get" action="/camps/{{ camp.id }}/presence" class="presence-check-row">
+    <label for="at_time"><strong>Check time</strong></label>
+    <input id="at_time" name="at_time" type="datetime-local" value="{{ selected_at_input }}">
+    <button type="submit">Check presence</button>
+    <a class="button secondary" href="/camps/{{ camp.id }}">Back to Camp</a>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Presence summary at {{ format_dt(selected_at) }}</h3>
+
+  <div class="presence-kpi-grid">
+    <div class="presence-kpi-card">
+      <div class="presence-summary-number">{{ present_rows|length }}</div>
+      <div class="presence-kpi-label">Total expected on site</div>
+    </div>
+
+    <div class="presence-kpi-card">
+      <div class="presence-summary-number">{{ present_responsible_adult_count }}</div>
+      <div class="presence-kpi-label">Responsible adults</div>
+      <div class="presence-kpi-help">Leaders and helpers only.</div>
+    </div>
+
+    <div class="presence-kpi-card">
+      <div class="presence-summary-number">{{ present_young_leader_count }}</div>
+      <div class="presence-kpi-label">Young Leaders</div>
+      <div class="presence-kpi-help">Separate from adult cover.</div>
+    </div>
+
+    <div class="presence-kpi-card">
+      <div class="presence-summary-number">{{ present_young_person_count }}</div>
+      <div class="presence-kpi-label">Young people</div>
+    </div>
+
+    <div class="presence-kpi-card">
+      <div class="presence-summary-number">{{ absent_rows|length }}</div>
+      <div class="presence-kpi-label">Not expected on site</div>
+    </div>
+  </div>
+
+  <div class="presence-breakdown-grid">
+    <div class="presence-breakdown-card">
+      <h4>By group</h4>
+      {% if summary_groups %}
+        {% for group_name, count in summary_groups %}
+          <div class="presence-breakdown-row">
+            <span class="presence-breakdown-label">{{ group_name }}</span>
+            <span class="presence-count-pill">{{ count }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">No people expected.</p>
+      {% endif %}
+    </div>
+
+    <div class="presence-breakdown-card">
+      <h4>By section</h4>
+      {% if summary_sections %}
+        {% for section_name, count in summary_sections %}
+          <div class="presence-breakdown-row">
+            <span class="presence-breakdown-label">{{ section_name }}</span>
+            <span class="presence-count-pill">{{ count }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">No people expected.</p>
+      {% endif %}
+    </div>
+
+    <div class="presence-breakdown-card">
+      <h4>By person type</h4>
+      {% if summary_types %}
+        {% for person_type, count in summary_types %}
+          <div class="presence-breakdown-row">
+            <span class="presence-breakdown-label">{{ person_type }}</span>
+            <span class="presence-count-pill">{{ count }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">No people expected.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h3>Expected on site</h3>
+  <p class="muted">{{ present_rows|length }} person{% if present_rows|length != 1 %}s{% endif %} expected on site.</p>
+
+  {% if present_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Group</th>
+          <th>Section</th>
+          <th>Presence source</th>
+          <th>Window</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in present_rows %}
+          <tr>
+            <td><strong>{{ row.display_name }}</strong></td>
+            <td>{{ row.person.person_type }}</td>
+            <td>{{ row.group_name }}</td>
+            <td>{{ row.section_name }}</td>
+            <td>{{ row.source_label }}</td>
+            <td>
+              {% for window in row.windows %}
+                {{ format_dt(window.starts_at) }} → {{ format_dt(window.ends_at) }}
+                {% if window.notes %}<br><span class="muted">{{ window.notes }}</span>{% endif %}
+                {% if not loop.last %}<hr>{% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No people are expected on site at this time.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Not expected on site at this time</h3>
+  <p class="muted">{{ absent_rows|length }} person{% if absent_rows|length != 1 %}s{% endif %} not expected on site.</p>
+
+  {% if absent_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Group</th>
+          <th>Section</th>
+          <th>Presence source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in absent_rows %}
+          <tr>
+            <td><strong>{{ row.display_name }}</strong></td>
+            <td>{{ row.person.person_type }}</td>
+            <td>{{ row.group_name }}</td>
+            <td>{{ row.section_name }}</td>
+            <td>{{ row.source_label }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h3>Presence rules</h3>
+  <p class="muted">
+    Rules cascade from camp → group → section → person. More specific rules override broader ones.
+    Multiple rules at the same level allow split attendance windows.
+  </p>
+
+  <form method="post" action="/camps/{{ camp.id }}/presence/rules/add">
+    <input type="hidden" name="return_at_time" value="{{ selected_at_input }}">
+
+    <div class="presence-rule-grid">
+      <div>
+        <label for="scope_ref"><strong>Rule applies to</strong></label>
+        <select id="scope_ref" name="scope_ref" required>
+          <option value="camp:">Whole camp default</option>
+
+          <optgroup label="Participating groups">
+            {% for group in groups %}
+              <option value="participating_group:{{ group.id }}">Group — {{ group.name }}</option>
+            {% endfor %}
+          </optgroup>
+
+          <optgroup label="Sections">
+            {% for section in sections %}
+              {% set group = group_lookup.get(section.participating_group_id) if group_lookup is defined else None %}
+              <option value="section:{{ section.id }}">Section — {{ group.name ~ " → " if group else "" }}{{ section.name }}</option>
+            {% endfor %}
+          </optgroup>
+
+          <optgroup label="People">
+            {% for person in people %}
+              <option value="person:{{ person.id }}">Person — {{ person.first_name }} {{ person.last_name }} ({{ person.person_type }})</option>
+            {% endfor %}
+          </optgroup>
+        </select>
+      </div>
+
+      <div>
+        <label for="starts_at"><strong>Starts</strong></label>
+        <input id="starts_at" name="starts_at" type="datetime-local" value="{{ rule_default_start_input }}" required>
+      </div>
+
+      <div>
+        <label for="ends_at"><strong>Ends</strong></label>
+        <input id="ends_at" name="ends_at" type="datetime-local" value="{{ rule_default_end_input }}" required>
+      </div>
+
+      <div>
+        <label for="status"><strong>Status</strong></label>
+        <select id="status" name="status">
+          {% for status in presence_statuses %}
+            <option value="{{ status }}">{{ status }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="presence-rule-notes-row">
+      <div>
+        <label for="notes"><strong>Notes</strong></label>
+        <input id="notes" name="notes" placeholder="Late arrival, early departure, day helper, etc.">
+      </div>
+      <button type="submit">Add presence rule</button>
+    </div>
+  </form>
+
+  {% if rule_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Scope</th>
+          <th>Status</th>
+          <th>Window</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rule_rows %}
+          <tr>
+            <td><strong>{{ row.scope_label }}</strong></td>
+            <td>{{ row.window.status }}</td>
+            <td>{{ format_dt(row.window.starts_at) }} → {{ format_dt(row.window.ends_at) }}</td>
+            <td>{{ row.window.notes or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/presence/rules/{{ row.rule_id }}/delete" onsubmit="return confirm('Delete this presence rule?');">
+                <input type="hidden" name="return_at_time" value="{{ selected_at_input }}">
+                <button class="secondary small" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No presence rules have been added yet. The page is using the camp date fallback.</p>
+  {% endif %}
+</section>
+
+{% endblock %}

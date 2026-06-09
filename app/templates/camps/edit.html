@@ -29,11 +29,27 @@
       {% endfor %}
     </select>
 
-    <label for="start_date">Start Date</label>
-    <input id="start_date" name="start_date" type="date" required value="{{ camp.start_date }}">
+    <div class="grid">
+      <div>
+        <label for="start_date">Start Date</label>
+        <input id="start_date" name="start_date" type="date" required value="{{ camp.start_date }}">
+      </div>
 
-    <label for="end_date">End Date</label>
-    <input id="end_date" name="end_date" type="date" required value="{{ camp.end_date }}">
+      <div>
+        <label for="start_time">Start Time</label>
+        <input id="start_time" name="start_time" type="time" required value="{{ camp.start_time.strftime('%H:%M') if camp.start_time else '18:00' }}">
+      </div>
+
+      <div>
+        <label for="end_date">End Date</label>
+        <input id="end_date" name="end_date" type="date" required value="{{ camp.end_date }}">
+      </div>
+
+      <div>
+        <label for="end_time">End Time</label>
+        <input id="end_time" name="end_time" type="time" required value="{{ camp.end_time.strftime('%H:%M') if camp.end_time else '14:00' }}">
+      </div>
+    </div>
 
     <label for="venue_name">Venue</label>
     <input id="venue_name" name="venue_name" value="{{ camp.venue_name or '' }}">
