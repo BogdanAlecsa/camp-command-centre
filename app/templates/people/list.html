@@ -91,6 +91,58 @@
     overflow-x: auto;
   }
 
+  .people-search-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .55rem .75rem;
+    margin: .85rem 0 1rem;
+    padding: .65rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+
+  .people-search-panel label {
+    margin: 0;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  .people-search-row {
+    display: flex;
+    flex: 1 1 420px;
+    gap: .5rem;
+    align-items: center;
+  }
+
+  .people-search-row input {
+    flex: 1;
+    min-width: 240px;
+    margin: 0;
+  }
+
+  .people-search-row button {
+    white-space: nowrap;
+  }
+
+  .people-search-count {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: .9rem;
+    white-space: nowrap;
+  }
+
+  .people-search-hidden {
+    display: none !important;
+  }
+
+  .people-search-match {
+    outline: 2px solid #f59e0b;
+    outline-offset: -2px;
+    background: #fff7ed;
+  }
+
   .people-empty {
     padding: .7rem .8rem .8rem;
     color: var(--muted);
@@ -461,7 +513,7 @@
     <tbody>
       {% for person in section_people %}
         {% set task_count = person_task_counts.get(person.id, 0) %}
-        <tr>
+        <tr class="people-row" data-person-search="{{ (person.first_name ~ ' ' ~ person.last_name ~ ' ' ~ person.person_type ~ ' ' ~ (person.attendance_status or '') ~ ' ' ~ (person.email or '') ~ ' ' ~ (person.phone or ''))|lower }}">
           <td class="select-column">
             <input class="bulk-person-checkbox" type="checkbox" name="selected_person_id" value="{{ person.id }}">
           </td>
@@ -502,7 +554,7 @@
 
 {% macro section_panel(section) %}
   {% set section_people = people_by_section.get(section.id, []) %}
-  <details id="section-{{ section.id }}" class="people-section-card" {% if open_section_id is defined and open_section_id %}{% if open_section_id|int == section.id %}open{% endif %}{% elif section_people %}open{% endif %}>
+  <details id="section-{{ section.id }}" class="people-section-card" data-people-section-name="{{ section.name|lower }}" data-people-section-type="{{ section.section_type|lower }}" {% if open_section_id is defined and open_section_id %}{% if open_section_id|int == section.id %}open{% endif %}{% elif section_people %}open{% endif %}>
     <summary>
       <div class="people-section-title">
         <span class="people-section-name">{{ section.name }}</span>
@@ -664,6 +716,15 @@
       Participating Groups are the main containers. Sections sit inside them. People sit inside sections.
     </p>
 
+    <div class="people-search-panel">
+      <label for="people-search-input"><strong>Search people</strong></label>
+      <div class="people-search-row">
+        <input id="people-search-input" type="search" placeholder="Search by name, section, group, type, status, email or phone">
+        <button type="button" class="secondary" id="people-search-clear">Clear search</button>
+      </div>
+      <div class="people-search-count" id="people-search-count">Showing all people.</div>
+    </div>
+
     <div class="people-hierarchy">
       {% for group in participating_groups %}
         {% set group_sections = sections_by_group.get(group.id, []) %}
@@ -672,7 +733,7 @@
           {% set group_people_count.value = group_people_count.value + people_by_section.get(section.id, [])|length %}
         {% endfor %}
 
-        <details class="people-group" {% if open_section_id is defined and open_section_id %}{% for section in group_sections %}{% if open_section_id|int == section.id %}open{% endif %}{% endfor %}{% else %}open{% endif %}>
+        <details class="people-group" data-people-group-name="{{ group.name|lower }}" {% if open_section_id is defined and open_section_id %}{% for section in group_sections %}{% if open_section_id|int == section.id %}open{% endif %}{% endfor %}{% else %}open{% endif %}>
           <summary>
             <div class="people-group-title">
               <span class="people-group-name">{{ group.name }}</span>
@@ -943,6 +1004,99 @@
     targetSection.scrollIntoView({
       behavior: "smooth",
       block: "start"
+    });
+  })();
+</script>
+
+
+<script id="people-live-search-script">
+  (function () {
+    function normalise(value) {
+      return (value || "").toString().toLowerCase().trim();
+    }
+
+    function applyPeopleSearch() {
+      const input = document.getElementById("people-search-input");
+      const count = document.getElementById("people-search-count");
+
+      if (!input || !count) {
+        return;
+      }
+
+      const query = normalise(input.value);
+      let visiblePeople = 0;
+      let totalPeople = 0;
+
+      document.querySelectorAll(".people-row").forEach(function (row) {
+        totalPeople += 1;
+
+        const sectionCard = row.closest(".people-section-card");
+        const groupCard = row.closest(".people-group");
+
+        const rowText = normalise(row.dataset.personSearch);
+        const sectionText = sectionCard ? normalise((sectionCard.dataset.peopleSectionName || "") + " " + (sectionCard.dataset.peopleSectionType || "")) : "";
+        const groupText = groupCard ? normalise(groupCard.dataset.peopleGroupName) : "";
+
+        const haystack = rowText + " " + sectionText + " " + groupText;
+        const isMatch = !query || haystack.includes(query);
+
+        row.classList.toggle("people-search-hidden", !isMatch);
+        row.classList.toggle("people-search-match", Boolean(query && isMatch));
+
+        if (isMatch) {
+          visiblePeople += 1;
+        }
+      });
+
+      document.querySelectorAll(".people-section-card").forEach(function (section) {
+        const matchingRows = section.querySelectorAll(".people-row:not(.people-search-hidden)").length;
+        const shouldShow = !query || matchingRows > 0;
+
+        section.classList.toggle("people-search-hidden", !shouldShow);
+
+        if (query && shouldShow) {
+          section.open = true;
+        }
+      });
+
+      document.querySelectorAll(".people-group").forEach(function (group) {
+        const matchingSections = group.querySelectorAll(".people-section-card:not(.people-search-hidden)").length;
+        const shouldShow = !query || matchingSections > 0;
+
+        group.classList.toggle("people-search-hidden", !shouldShow);
+
+        if (query && shouldShow) {
+          group.open = true;
+        }
+      });
+
+      if (!query) {
+        count.textContent = "Showing all people.";
+        document.querySelectorAll(".people-row").forEach(function (row) {
+          row.classList.remove("people-search-match");
+        });
+      } else {
+        count.textContent = "Showing " + visiblePeople + " of " + totalPeople + " people.";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const input = document.getElementById("people-search-input");
+      const clear = document.getElementById("people-search-clear");
+
+      if (input) {
+        input.addEventListener("input", applyPeopleSearch);
+      }
+
+      if (clear && input) {
+        clear.addEventListener("click", function () {
+          input.value = "";
+          applyPeopleSearch();
+          input.focus();
+        });
+      }
+
+      applyPeopleSearch();
     });
   })();
 </script>
