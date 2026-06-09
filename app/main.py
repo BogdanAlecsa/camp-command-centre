@@ -110,6 +110,32 @@ def combine_names(first_name, last_name):
 
 
 
+def build_osm_duplicate_location_summaries(camp, people, section_lookup, participating_group_lookup):
+    summaries = []
+
+    for person in people:
+        section = section_lookup.get(person.home_section_id)
+        group = participating_group_lookup.get(section.participating_group_id) if section else None
+
+        location_parts = []
+        if group:
+            location_parts.append(group.name)
+        if section:
+            location_parts.append(section.name)
+
+        summaries.append(
+            {
+                "person_id": person.id,
+                "display_name": combine_names(person.first_name, person.last_name) or f"Person {person.id}",
+                "location": " → ".join(location_parts) if location_parts else "No section assigned",
+                "person_url": f"/camps/{camp.id}/people/{person.id}",
+                "section_url": f"/camps/{camp.id}/people?open_section_id={section.id}&highlight_person_id={person.id}#person-{person.id}" if section else "",
+            }
+        )
+
+    return summaries
+
+
 def detect_person_type_from_osm_unit(unit_name, default_person_type="Young Person"):
     value = normalise_osm_label(unit_name)
 
@@ -2063,7 +2089,12 @@ async def people_page(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/camps/{camp_id}/people", response_class=HTMLResponse)
-async def camp_people_list(request: Request, camp_id: int, db: Session = Depends(get_db)):
+async def camp_people_list(
+    request: Request,
+    camp_id: int,
+    open_section_id: int | None = None,
+    db: Session = Depends(get_db),
+):
     camp = db.get(Camp, camp_id)
 
     if camp is None:
@@ -2533,6 +2564,27 @@ async def preview_osm_member_import(
         )
         lookup.setdefault(key, []).append(person)
 
+    people_elsewhere_in_camp = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            (Person.home_section_id != section.id) | (Person.home_section_id.is_(None)),
+        )
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+    elsewhere_lookup = {}
+    for person in people_elsewhere_in_camp:
+        key = (
+            normalise_person_match_value(person.first_name),
+            normalise_person_match_value(person.last_name),
+        )
+        elsewhere_lookup.setdefault(key, []).append(person)
+
+    section_lookup = {section.id: section for section in sections}
+    participating_group_lookup_for_locations = get_participating_group_lookup(db, camp)
+
     preview_rows = []
     matched_count = 0
     unmatched_count = 0
@@ -2544,27 +2596,41 @@ async def preview_osm_member_import(
         )
 
         matches = lookup.get(key, [])
+        elsewhere_matches = elsewhere_lookup.get(key, [])
         matched_person = matches[0] if len(matches) == 1 else None
+        name_exists_elsewhere = bool(elsewhere_matches)
 
         if matched_person:
             matched_count += 1
             warning = ""
         elif len(matches) > 1:
             unmatched_count += 1
-            warning = "Multiple matches found"
+            warning = "Multiple matches found in this section"
+        elif name_exists_elsewhere:
+            unmatched_count += 1
+            warning = "Same name exists elsewhere in this camp, but not in this section"
         else:
             unmatched_count += 1
             warning = "No match found"
 
+        elsewhere_match_summaries = build_osm_duplicate_location_summaries(
+            camp,
+            elsewhere_matches,
+            section_lookup,
+            participating_group_lookup_for_locations,
+        )
+
         apply_payload = dict(candidate)
         apply_payload["matched_person_id"] = matched_person.id if matched_person else None
         apply_payload["suggested_person_type"] = candidate.get("suggested_person_type") or default_person_type
+        apply_payload["name_exists_elsewhere"] = name_exists_elsewhere
 
         preview_rows.append(
             {
                 **candidate,
                 "matched_person": matched_person,
                 "warning": warning,
+                "elsewhere_matches": elsewhere_match_summaries,
                 "payload": json.dumps(apply_payload),
             }
         )
@@ -2656,6 +2722,10 @@ async def apply_osm_member_import(
                 update_identity=False,
             )
             updated += 1
+            continue
+
+        if data.get("name_exists_elsewhere"):
+            skipped += 1
             continue
 
         if replace_provisional == "yes":
@@ -2846,6 +2916,27 @@ async def preview_osm_attendance_update(
         )
         lookup.setdefault(key, []).append(person)
 
+    people_elsewhere_in_camp = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            (Person.home_section_id != section.id) | (Person.home_section_id.is_(None)),
+        )
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+    elsewhere_lookup = {}
+    for person in people_elsewhere_in_camp:
+        key = (
+            normalise_person_match_value(person.first_name),
+            normalise_person_match_value(person.last_name),
+        )
+        elsewhere_lookup.setdefault(key, []).append(person)
+
+    section_lookup = {section.id: section for section in sections}
+    participating_group_lookup_for_locations = get_participating_group_lookup(db, camp)
+
     preview_rows = []
     matched_count = 0
     unmatched_count = 0
@@ -2857,17 +2948,29 @@ async def preview_osm_attendance_update(
         )
 
         matches = lookup.get(key, [])
+        elsewhere_matches = elsewhere_lookup.get(key, [])
         matched_person = matches[0] if len(matches) == 1 else None
+        name_exists_elsewhere = bool(elsewhere_matches)
 
         if matched_person:
             matched_count += 1
             warning = ""
         elif len(matches) > 1:
             unmatched_count += 1
-            warning = "Multiple matches found"
+            warning = "Multiple matches found in this section"
+        elif name_exists_elsewhere:
+            unmatched_count += 1
+            warning = "Same name exists elsewhere in this camp, but not in this section"
         else:
             unmatched_count += 1
             warning = "No match found"
+
+        elsewhere_match_summaries = build_osm_duplicate_location_summaries(
+            camp,
+            elsewhere_matches,
+            section_lookup,
+            participating_group_lookup_for_locations,
+        )
 
         payload = {
             "first_name": row["first_name"],
@@ -2875,6 +2978,7 @@ async def preview_osm_attendance_update(
             "attendance_status": row["attendance_status"],
             "attending_raw": row["attending_raw"],
             "matched_person_id": matched_person.id if matched_person else None,
+            "name_exists_elsewhere": name_exists_elsewhere,
         }
 
         preview_rows.append(
@@ -2882,6 +2986,7 @@ async def preview_osm_attendance_update(
                 **row,
                 "matched_person": matched_person,
                 "warning": warning,
+                "elsewhere_matches": elsewhere_match_summaries,
                 "payload": json.dumps(payload),
             }
         )
@@ -2954,6 +3059,9 @@ async def apply_osm_attendance_update(
         if person:
             person.attendance_status = data.get("attendance_status") or "No response"
             person.information_source = "OSM Event Export"
+            continue
+
+        if data.get("name_exists_elsewhere"):
             continue
 
         if create_missing == "yes":

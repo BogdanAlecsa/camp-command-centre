@@ -136,7 +136,7 @@
   </div>
 
   <p class="muted">
-    Matched: {{ matched_count }} · Unmatched: {{ unmatched_count }}
+    Matched: {{ matched_count }} · Unmatched: {{ unmatched_count }}<br><span class="muted">File row includes header rows from the uploaded spreadsheet.</span>
   </p>
 
   {% if preview_rows %}
@@ -148,7 +148,7 @@
         <thead>
           <tr>
             <th>Apply</th>
-            <th>Row</th>
+            <th>File row</th>
             <th>Name</th>
             <th>OSM Attending</th>
             <th>Status to Set</th>
@@ -175,6 +175,17 @@
               <td>
                 {% if row.warning %}
                   <span class="warning">{{ row.warning }}</span>
+                {% if row.elsewhere_matches %}
+                  <ul class="muted" style="margin: .35rem 0 0 1rem; padding: 0;">
+                    {% for match in row.elsewhere_matches %}
+                      <li>
+                        <strong>{{ match.display_name }}</strong><br>
+                        {{ match.location }}<br>
+                        <a href="{{ match.person_url }}" target="_blank" rel="noopener">Open existing person</a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
                 {% else %}
                   <span class="good">Matched</span>
                 {% endif %}
