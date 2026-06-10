@@ -455,6 +455,7 @@ def get_session_staff_lookup(db: Session, camp: Camp, sessions):
 
 
 def build_programme_warnings(
+    db: Session,
     camp: Camp,
     sessions,
     person_names,
@@ -479,6 +480,30 @@ def build_programme_warnings(
             f"{session.title} · {group_name}"
         )
 
+    def is_lead_staff_item(staff_item):
+        return (staff_item.get("role") or "").strip().lower() == "lead"
+
+    lead_person_ids = {
+        staff_item["person_id"]
+        for session in sessions
+        for staff_item in session_staff_by_session_id.get(session.id, [])
+        if is_lead_staff_item(staff_item)
+    }
+
+    lead_people_by_id = {}
+
+    if lead_person_ids:
+        lead_people = (
+            db.query(Person)
+            .filter(
+                Person.camp_id == camp.id,
+                Person.id.in_(lead_person_ids),
+            )
+            .all()
+        )
+
+        lead_people_by_id = {person.id: person for person in lead_people}
+
     for session in sessions:
         session_assignments = {}
 
@@ -494,24 +519,88 @@ def build_programme_warnings(
                 "roles": sorted(roles),
             }
 
+        lead_items = [
+            staff_item
+            for staff_item in session_staff_by_session_id.get(session.id, [])
+            if is_lead_staff_item(staff_item)
+        ]
+
         if not session_assignments:
             warnings.append(
                 {
                     "severity": "high",
-                    "title": "No adult or young leader assigned",
+                    "title": "No staff assigned",
                     "detail": session_detail(session),
                     "url": f"/camps/{camp.id}/programme/{session.id}/edit",
                 }
             )
-        elif not session.lead_person_id:
+
+        if not lead_items:
             warnings.append(
                 {
-                    "severity": "medium",
-                    "title": "Missing lead person",
+                    "severity": "high",
+                    "title": "No Lead assigned",
                     "detail": session_detail(session),
                     "url": f"/camps/{camp.id}/programme/{session.id}/edit",
                 }
             )
+        else:
+            full_session_lead_count = 0
+
+            for lead_item in lead_items:
+                lead_person = lead_people_by_id.get(lead_item["person_id"])
+                lead_name = lead_item.get("display_name") or "Unknown person"
+
+                if lead_person is None:
+                    warnings.append(
+                        {
+                            "severity": "high",
+                            "title": f"Lead person not found: {lead_name}",
+                            "detail": session_detail(session),
+                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                        }
+                    )
+                    continue
+
+                presence_info = get_person_session_presence_info(
+                    db,
+                    camp,
+                    lead_person,
+                    session,
+                )
+
+                if presence_info["expected_for_full_session"]:
+                    full_session_lead_count += 1
+                    continue
+
+                if not presence_info["present_at_start"]:
+                    warnings.append(
+                        {
+                            "severity": "high",
+                            "title": f"Lead not expected at session start: {lead_name}",
+                            "detail": session_detail(session),
+                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                        }
+                    )
+                else:
+                    warnings.append(
+                        {
+                            "severity": "medium",
+                            "title": f"Lead leaves before session ends: {lead_name}",
+                            "detail": f"{session_detail(session)} · {presence_info['warning']}",
+                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                        }
+                    )
+
+            if full_session_lead_count == 0:
+                warnings.append(
+                    {
+                        "severity": "high",
+                        "title": "No Lead present for the full session",
+                        "detail": session_detail(session),
+                        "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                    }
+                )
 
         if session.activity_id:
             risk_status = risk_statuses.get(session.activity_id, "Not Started")
@@ -629,6 +718,7 @@ async def camp_programme_list(
             "risk_statuses": risk_statuses,
             "session_staff_by_session_id": session_staff_by_session_id,
             "programme_warnings": build_programme_warnings(
+                db,
                 camp,
                 sessions,
                 person_names,
