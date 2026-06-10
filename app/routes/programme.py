@@ -207,14 +207,29 @@ def get_session_staff(db: Session, camp: Camp, session: ProgrammeSession):
         .all()
     )
 
-    return [
-        {
-            "staff": staff,
-            "person": person,
-            "display_name": person_display_name(person),
-        }
-        for staff, person in staff_rows
-    ]
+    session_staff = []
+
+    for staff, person in staff_rows:
+        is_expected_for_full_session = person_is_expected_for_session_interval(
+            db,
+            camp,
+            person,
+            session,
+        )
+
+        session_staff.append(
+            {
+                "staff": staff,
+                "person": person,
+                "display_name": person_display_name(person),
+                "is_expected_for_full_session": is_expected_for_full_session,
+                "presence_warning": ""
+                if is_expected_for_full_session
+                else "Not expected for full session",
+            }
+        )
+
+    return session_staff
 
 
 PROGRAMME_STAFF_PERSON_TYPES = [

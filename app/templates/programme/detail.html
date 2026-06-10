@@ -76,6 +76,7 @@
         <tr>
           <th>Name</th>
           <th>Person Type</th>
+          <th>Presence</th>
           <th>Role</th>
           <th>Notes</th>
           <th></th>
@@ -86,6 +87,13 @@
           <tr>
             <td>{{ item.display_name }}</td>
             <td>{{ item.person.person_type }}</td>
+            <td>
+              {% if item.presence_warning %}
+                <span class="warning">{{ item.presence_warning }}</span>
+              {% else %}
+                <span class="good">Expected</span>
+              {% endif %}
+            </td>
             <td>{{ item.staff.role }}</td>
             <td>{{ item.staff.notes or "" }}</td>
             <td>
