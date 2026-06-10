@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Session Roll Call — {{ session.title }}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #111827;
+      margin: 24px;
+      font-size: 12px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 8px;
+    }
+
+    .muted {
+      color: #4b5563;
+    }
+
+    .summary {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #d1d5db;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f3f4f6;
+      font-weight: 700;
+    }
+
+    .tick {
+      width: 28px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .warning {
+      color: #b45309;
+      font-weight: 700;
+    }
+
+    @media print {
+      body {
+        margin: 12mm;
+      }
+
+      .no-print {
+        display: none;
+      }
+
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()">Print</button>
+  </div>
+
+  <h1>Session Roll Call</h1>
+  <h2>{{ session.title }}</h2>
+  <p class="muted">
+    {{ session.session_date.strftime("%A %d %B %Y").replace(" 0", " ") }}
+    · {{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}
+    · {% if session.participant_team_id %}{{ team_names.get(session.participant_team_id, "Unknown group") }}{% else %}Whole camp{% endif %}
+    · {{ session.location or "Location not set" }}
+  </p>
+
+  <div class="summary">
+    <h3>Headcount</h3>
+    <p>
+      <strong>Total people at start:</strong> {{ session_cover_summary.total_people_at_start }}<br>
+      <strong>Total people for full session:</strong> {{ session_cover_summary.total_people_full_session }}<br>
+      <strong>People leaving before session ends:</strong> {{ session_cover_summary.people_leaving_early_count }}
+    </p>
+    <p>
+      <strong>Participants at start:</strong> {{ session_cover_summary.participants_at_start }}<br>
+      <strong>Assigned staff by person type at start:</strong> {{ session_cover_summary.staff_person_types_at_start }}<br>
+      <strong>Assigned staff by session role at start:</strong> {{ session_cover_summary.staff_roles_at_start }}
+    </p>
+  </div>
+
+  <h3>Session Staff</h3>
+  <table>
+    <thead>
+      <tr>
+        <th class="tick">✓</th>
+        <th>Name</th>
+        <th>Person Type</th>
+        <th>Session Role</th>
+        <th>Presence</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in roll_call.staff %}
+        <tr>
+          <td class="tick">☐</td>
+          <td>{{ row.display_name }}</td>
+          <td>{{ row.person_type }}</td>
+          <td>{{ row.session_role }}</td>
+          <td>{% if row.presence != "Expected full session" %}<span class="warning">{{ row.presence }}</span>{% else %}{{ row.presence }}{% endif %}</td>
+          <td>{{ row.notes }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6">No session staff expected at start.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Participants</h3>
+  <table>
+    <thead>
+      <tr>
+        <th class="tick">✓</th>
+        <th>Name</th>
+        <th>Person Type</th>
+        <th>Session Role</th>
+        <th>Group</th>
+        <th>Presence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in roll_call.participants %}
+        <tr>
+          <td class="tick">☐</td>
+          <td>{{ row.display_name }}</td>
+          <td>{{ row.person_type }}</td>
+          <td>{{ row.session_role }}</td>
+          <td>{{ row.group }}</td>
+          <td>{% if row.presence != "Expected full session" %}<span class="warning">{{ row.presence }}</span>{% else %}{{ row.presence }}{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6">No participants expected at start.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

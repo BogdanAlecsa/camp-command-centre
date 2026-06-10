@@ -788,7 +788,22 @@ def build_session_cover_summary(
     participant_start_counts = Counter()
     participant_full_counts = Counter()
 
+    unique_people_at_start = set()
+    unique_people_full_session = set()
+    unique_people_leaving_early = set()
+
+    staff_person_ids = {
+        item["person"].id
+        for item in session_staff
+        if item.get("person") is not None
+    }
+
     for person in get_session_participant_people(db, camp, session):
+        # If someone is explicitly assigned as staff, count them as staff/support,
+        # not as an activity participant.
+        if person.id in staff_person_ids:
+            continue
+
         presence_info = get_person_session_presence_info(
             db,
             camp,
@@ -798,9 +813,14 @@ def build_session_cover_summary(
 
         if presence_info["present_at_start"]:
             participant_start_counts[person.person_type] += 1
+            unique_people_at_start.add(person.id)
 
         if presence_info["expected_for_full_session"]:
             participant_full_counts[person.person_type] += 1
+            unique_people_full_session.add(person.id)
+
+        if presence_info["present_at_start"] and not presence_info["expected_for_full_session"]:
+            unique_people_leaving_early.add(person.id)
 
     staff_person_type_start_counts = Counter()
     staff_person_type_full_counts = Counter()
@@ -829,14 +849,20 @@ def build_session_cover_summary(
         if presence_info["present_at_start"]:
             staff_person_type_start_counts[person_type] += 1
             staff_role_start_counts[role] += 1
+            unique_people_at_start.add(person.id)
 
         if presence_info["expected_for_full_session"]:
             staff_person_type_full_counts[person_type] += 1
             staff_role_full_counts[role] += 1
-        elif presence_info["present_at_start"] and presence_info["warning"]:
-            staff_leaving_early.append(
-                f"{display_name} {presence_info['warning'][0].lower()}{presence_info['warning'][1:]}"
-            )
+            unique_people_full_session.add(person.id)
+
+        if presence_info["present_at_start"] and not presence_info["expected_for_full_session"]:
+            unique_people_leaving_early.add(person.id)
+
+            if presence_info["warning"]:
+                staff_leaving_early.append(
+                    f"{display_name} {presence_info['warning'][0].lower()}{presence_info['warning'][1:]}"
+                )
 
         if role_key == "lead" and person_type in {"Leader", "Helper"}:
             if presence_info["present_at_start"]:
@@ -846,6 +872,9 @@ def build_session_cover_summary(
                 adult_leads_full_session.append(display_name)
 
     return {
+        "total_people_at_start": len(unique_people_at_start),
+        "total_people_full_session": len(unique_people_full_session),
+        "people_leaving_early_count": len(unique_people_leaving_early),
         "participants_at_start": format_person_type_counts(participant_start_counts),
         "participants_full_session": format_person_type_counts(participant_full_counts),
         "staff_person_types_at_start": format_person_type_counts(staff_person_type_start_counts),
@@ -860,6 +889,87 @@ def build_session_cover_summary(
         "adult_lead_full_session_ok": bool(adult_leads_full_session),
     }
 
+
+def build_session_roll_call(
+    db: Session,
+    camp: Camp,
+    session: ProgrammeSession,
+    session_staff,
+    team_names,
+):
+    participant_rows = []
+    staff_rows = []
+
+    staff_person_ids = {
+        item["person"].id
+        for item in session_staff
+        if item.get("person") is not None
+    }
+
+    participant_group = (
+        team_names.get(session.participant_team_id, "Unknown group")
+        if session.participant_team_id
+        else "Whole camp"
+    )
+
+    for person in get_session_participant_people(db, camp, session):
+        if person.id in staff_person_ids:
+            continue
+
+        presence_info = get_person_session_presence_info(
+            db,
+            camp,
+            person,
+            session,
+        )
+
+        if not presence_info["present_at_start"]:
+            continue
+
+        participant_rows.append(
+            {
+                "display_name": person_display_name(person),
+                "person_type": person.person_type,
+                "session_role": "Participant",
+                "group": participant_group,
+                "presence": presence_info["warning"] or "Expected full session",
+                "notes": "",
+            }
+        )
+
+    for item in session_staff:
+        staff = item["staff"]
+        person = item["person"]
+
+        presence_info = get_person_session_presence_info(
+            db,
+            camp,
+            person,
+            session,
+        )
+
+        if not presence_info["present_at_start"]:
+            continue
+
+        staff_rows.append(
+            {
+                "display_name": item.get("display_name") or person_display_name(person),
+                "person_type": person.person_type,
+                "session_role": staff.role or "Session Staff",
+                "group": "Session Staff",
+                "presence": presence_info["warning"] or "Expected full session",
+                "notes": staff.notes or "",
+            }
+        )
+
+    participant_rows.sort(key=lambda row: row["display_name"])
+    staff_rows.sort(key=lambda row: (row["session_role"], row["display_name"]))
+
+    return {
+        "participants": participant_rows,
+        "staff": staff_rows,
+        "total_at_start": len(participant_rows) + len(staff_rows),
+    }
 
 
 @router.get("/programme", response_class=HTMLResponse)
@@ -1150,6 +1260,74 @@ async def programme_session_detail(
             "session_cover_summary": session_cover_summary,
             "available_staff_people": get_available_session_staff_people(db, camp, session),
             "staff_roles": PROGRAMME_STAFF_ROLES,
+        },
+    )
+
+
+@router.get("/camps/{camp_id}/programme/{session_id}/print/roll-call", response_class=HTMLResponse)
+async def print_session_roll_call(
+    request: Request,
+    camp_id: int,
+    session_id: int,
+    db: Session = Depends(get_db),
+):
+    camp = db.get(Camp, camp_id)
+
+    if camp is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Camp not found."},
+            status_code=404,
+        )
+
+    session = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.id == session_id, ProgrammeSession.camp_id == camp.id)
+        .first()
+    )
+
+    if session is None:
+        return templates.TemplateResponse(
+            "not_found.html",
+            {"request": request, "message": "Programme session not found."},
+            status_code=404,
+        )
+
+    (
+        activities,
+        teams,
+        people,
+        activity_names,
+        team_names,
+        person_names,
+        risk_statuses,
+    ) = get_programme_lookup_maps(db, camp)
+
+    session_staff = get_session_staff(db, camp, session)
+    session_cover_summary = build_session_cover_summary(
+        db,
+        camp,
+        session,
+        session_staff,
+    )
+    roll_call = build_session_roll_call(
+        db,
+        camp,
+        session,
+        session_staff,
+        team_names,
+    )
+
+    return templates.TemplateResponse(
+        "programme/print_session_roll_call.html",
+        {
+            "request": request,
+            "camp": camp,
+            "session": session,
+            "activity_names": activity_names,
+            "team_names": team_names,
+            "session_cover_summary": session_cover_summary,
+            "roll_call": roll_call,
         },
     )
 

@@ -73,7 +73,19 @@
   <table class="compact-table">
     <tbody>
       <tr>
-        <th style="width: 35%;">Participants at start</th>
+        <th style="width: 35%;">Total people at start</th>
+        <td><strong>{{ session_cover_summary.total_people_at_start }}</strong></td>
+      </tr>
+      <tr>
+        <th>Total people for full session</th>
+        <td><strong>{{ session_cover_summary.total_people_full_session }}</strong></td>
+      </tr>
+      <tr>
+        <th>People leaving before session ends</th>
+        <td>{{ session_cover_summary.people_leaving_early_count }}</td>
+      </tr>
+      <tr>
+        <th>Participants at start</th>
         <td>{{ session_cover_summary.participants_at_start }}</td>
       </tr>
       <tr>
@@ -128,6 +140,10 @@
       </tr>
     </tbody>
   </table>
+
+  <div class="form-actions">
+    <a class="button secondary" href="/camps/{{ camp.id }}/programme/{{ session.id }}/print/roll-call" target="_blank" rel="noopener noreferrer">Print Session Roll Call</a>
+  </div>
 </section>
 
 <section class="card">
