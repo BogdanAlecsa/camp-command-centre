@@ -58,15 +58,7 @@
     <label for="location">Location</label>
     <input id="location" name="location">
 
-    <label for="lead_person_id">Lead Person</label>
-    <select id="lead_person_id" name="lead_person_id">
-      <option value="">Not set</option>
-      {% for person in people %}
-        <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}</option>
-      {% endfor %}
-    </select>
-
-    <label for="rotation_group">Rotation Group / Rotation Name</label>
+<label for="rotation_group">Rotation Group / Rotation Name</label>
     <input id="rotation_group" name="rotation_group" placeholder="Example: Saturday morning bases">
 
     <label for="rotation_slot_number">Rotation Slot Number</label>

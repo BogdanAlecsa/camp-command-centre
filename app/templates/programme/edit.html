@@ -57,15 +57,7 @@
     <label for="location">Location</label>
     <input id="location" name="location" value="{{ session.location or '' }}">
 
-    <label for="lead_person_id">Lead Person</label>
-    <select id="lead_person_id" name="lead_person_id">
-      <option value="">Not set</option>
-      {% for person in people %}
-        <option value="{{ person.id }}" {% if session.lead_person_id == person.id %}selected{% endif %}>{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}</option>
-      {% endfor %}
-    </select>
-
-    <label for="rotation_group">Rotation Group / Rotation Name</label>
+<label for="rotation_group">Rotation Group / Rotation Name</label>
     <input id="rotation_group" name="rotation_group" value="{{ session.rotation_group or '' }}">
 
     <label for="rotation_slot_number">Rotation Slot Number</label>

@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -986,7 +987,22 @@ def build_session_roll_call(
     }
 
 
+def ensure_programme_session_backup_schema(db: Session) -> None:
+    columns = db.execute(text("PRAGMA table_info(programme_session_backup)")).mappings().all()
+
+    if not columns:
+        return
+
+    column_names = {column["name"] for column in columns}
+
+    if "activity_id" not in column_names:
+        db.execute(text("ALTER TABLE programme_session_backup ADD COLUMN activity_id INTEGER"))
+        db.commit()
+
+
 def get_session_backup_plans(db: Session, camp: Camp, session: ProgrammeSession):
+    ensure_programme_session_backup_schema(db)
+
     return (
         db.query(ProgrammeSessionBackup)
         .filter(
@@ -1368,7 +1384,8 @@ async def print_session_roll_call(
 async def add_programme_session_backup(
     camp_id: int,
     session_id: int,
-    title: str = Form(...),
+    title: str = Form(""),
+    activity_id: str = Form(""),
     reason: str = Form(""),
     location: str = Form(""),
     duration_minutes: str = Form(""),
@@ -1384,9 +1401,33 @@ async def add_programme_session_backup(
     if session is None:
         return RedirectResponse(url=f"/camps/{camp_id}/programme", status_code=303)
 
-    clean_title = title.strip()
+    ensure_programme_session_backup_schema(db)
 
-    if clean_title:
+    clean_title = title.strip()
+    selected_activity_id = None
+    selected_activity_name = ""
+
+    if activity_id.strip():
+        try:
+            possible_activity_id = int(activity_id)
+        except ValueError:
+            possible_activity_id = None
+
+        if possible_activity_id is not None:
+            selected_activity = (
+                db.query(Activity)
+                .filter(
+                    Activity.id == possible_activity_id,
+                    Activity.camp_id == camp_id,
+                )
+                .first()
+            )
+
+            if selected_activity is not None:
+                selected_activity_id = selected_activity.id
+                selected_activity_name = selected_activity.name or ""
+
+    if selected_activity_id or clean_title:
         parsed_duration = None
 
         if duration_minutes.strip():
@@ -1407,7 +1448,8 @@ async def add_programme_session_backup(
         backup_plan = ProgrammeSessionBackup(
             camp_id=camp_id,
             programme_session_id=session_id,
-            title=clean_title,
+            title=clean_title or selected_activity_name,
+            activity_id=selected_activity_id,
             reason=reason.strip() or None,
             location=location.strip() or None,
             duration_minutes=parsed_duration,

@@ -14,6 +14,12 @@ class ProgrammeSessionBackup(Base):
         nullable=False,
         index=True,
     )
+    activity_id = Column(
+        Integer,
+        ForeignKey("activity.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     title = Column(String, nullable=False)
     reason = Column(String, nullable=True)

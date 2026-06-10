@@ -167,7 +167,18 @@
       <tbody>
         {% for backup in backup_plans %}
           <tr>
-            <td><strong>{{ backup.title }}</strong></td>
+            <td>
+              <strong>
+                {% if backup.activity_id %}
+                  {{ activity_names.get(backup.activity_id, backup.title) }}
+                {% else %}
+                  {{ backup.title }}
+                {% endif %}
+              </strong>
+              {% if backup.activity_id and backup.title and backup.title != activity_names.get(backup.activity_id, backup.title) %}
+                <br><span class="muted">{{ backup.title }}</span>
+              {% endif %}
+            </td>
             <td>{{ backup.reason or "Not set" }}</td>
             <td>{{ backup.location or "Not set" }}</td>
             <td>
@@ -192,8 +203,16 @@
   {% endif %}
 
   <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/add">
-    <label for="backup_title">Backup Activity</label>
-    <input id="backup_title" name="title" required placeholder="e.g. Indoor quiz, craft challenge, board games">
+    <label for="backup_activity_id">Link Existing Activity (optional)</label>
+    <select id="backup_activity_id" name="activity_id">
+      <option value="">No linked activity</option>
+      {% for activity_id, activity_name in activity_names.items() %}
+        <option value="{{ activity_id }}">{{ activity_name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="backup_title">Backup Activity / Notes Title</label>
+    <input id="backup_title" name="title" placeholder="Optional if linked to an existing activity">
 
     <label for="backup_reason">Reason</label>
     <select id="backup_reason" name="reason">
