@@ -270,7 +270,7 @@ h1 {
   {% if sessions %}
     {% for session_date, day_sessions in sessions_by_date.items() %}
       <section class="day-section">
-        <h2>{{ session_date.strftime("%A %-d %B %Y") }}</h2>
+        <h2>{{ session_date.strftime("%A %d %B %Y").replace(" 0", " ") }}</h2>
 
         {% set rotation_summaries = rotation_summaries_by_date.get(session_date, []) %}
         {% if rotation_summaries %}
@@ -404,3 +404,4 @@ h1 {
   {% endif %}
 </body>
 </html>
+

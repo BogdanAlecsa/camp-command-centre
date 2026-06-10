@@ -237,7 +237,7 @@ h1 {
 
   {% for day in days %}
     <section class="day-section">
-      <h2>{{ day.session_date.strftime("%A %-d %B %Y") }}</h2>
+      <h2>{{ day.session_date.strftime("%A %d %B %Y").replace(" 0", " ") }}</h2>
 
       {% for block in day.blocks %}
         {% if block.block_type == "session" %}
@@ -377,3 +377,4 @@ h1 {
   {% endfor %}
 </body>
 </html>
+

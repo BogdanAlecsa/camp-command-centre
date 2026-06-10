@@ -225,7 +225,7 @@
             <div>
               <strong>Date</strong><br>
               {% if schedule.start_date == schedule.end_date %}
-                {{ schedule.start_date.strftime("%A %-d %B %Y") }}
+                {{ schedule.start_date.strftime("%A %d %B %Y").replace(" 0", " ") }}
               {% else %}
                 {{ schedule.start_date }} to {{ schedule.end_date }}
               {% endif %}
@@ -339,7 +339,7 @@
               <tbody>
                 {% for session in schedule.sessions %}
                   <tr>
-                    <td>{{ session.session_date.strftime("%A %-d %B") }}</td>
+                    <td>{{ session.session_date.strftime("%A %d %B").replace(" 0", " ") }}</td>
                     <td>{{ session.start_time.strftime("%H:%M") }}–{{ session.end_time.strftime("%H:%M") }}</td>
                     <td>
                       {% if session.participant_team_id %}
@@ -379,3 +379,4 @@
   {% endif %}
 </body>
 </html>
+

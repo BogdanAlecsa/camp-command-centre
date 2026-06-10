@@ -627,6 +627,8 @@
               The selected attendance status was not valid.
             {% elif bulk_error == "invalid_provisional_status" %}
               The selected provisional/confirmed option was not valid.
+            {% elif bulk_error == "leader_section_person_type" %}
+              Some selected people could not be moved because only Leaders and Helpers can be placed in Adult Volunteers / adult leader sections. Young Leaders must stay separate and are not counted as adult cover.
             {% else %}
               The bulk action could not be applied.
             {% endif %}
