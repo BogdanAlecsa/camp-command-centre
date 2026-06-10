@@ -483,6 +483,13 @@ def build_programme_warnings(
     def is_lead_staff_item(staff_item):
         return (staff_item.get("role") or "").strip().lower() == "lead"
 
+    def is_adult_lead_staff_item(staff_item):
+        if not is_lead_staff_item(staff_item):
+            return False
+
+        person_type = (staff_item.get("person_type") or "").strip().lower()
+        return person_type in {"leader", "helper"}
+
     lead_person_ids = {
         staff_item["person_id"]
         for session in sessions
@@ -525,6 +532,18 @@ def build_programme_warnings(
             if is_lead_staff_item(staff_item)
         ]
 
+        adult_lead_items = [
+            staff_item
+            for staff_item in lead_items
+            if is_adult_lead_staff_item(staff_item)
+        ]
+
+        non_adult_lead_items = [
+            staff_item
+            for staff_item in lead_items
+            if not is_adult_lead_staff_item(staff_item)
+        ]
+
         if not session_assignments:
             warnings.append(
                 {
@@ -544,22 +563,39 @@ def build_programme_warnings(
                     "url": f"/camps/{camp.id}/programme/{session.id}/edit",
                 }
             )
-        else:
-            full_session_lead_count = 0
+        elif not adult_lead_items:
+            warnings.append(
+                {
+                    "severity": "high",
+                    "title": "No adult Lead assigned",
+                    "detail": session_detail(session),
+                    "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                }
+            )
 
-            for lead_item in lead_items:
+        for lead_item in non_adult_lead_items:
+            lead_name = lead_item.get("display_name") or "Unknown person"
+            person_type = lead_item.get("person_type") or "Unknown type"
+
+            warnings.append(
+                {
+                    "severity": "medium",
+                    "title": f"Lead role assigned to {person_type}: {lead_name}",
+                    "detail": f"{session_detail(session)} · Adult Lead still required",
+                    "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                }
+            )
+
+        if adult_lead_items:
+            full_session_adult_lead_count = 0
+            adult_lead_presence_problems = []
+
+            for lead_item in adult_lead_items:
                 lead_person = lead_people_by_id.get(lead_item["person_id"])
                 lead_name = lead_item.get("display_name") or "Unknown person"
 
                 if lead_person is None:
-                    warnings.append(
-                        {
-                            "severity": "high",
-                            "title": f"Lead person not found: {lead_name}",
-                            "detail": session_detail(session),
-                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
-                        }
-                    )
+                    adult_lead_presence_problems.append(f"{lead_name} could not be found")
                     continue
 
                 presence_info = get_person_session_presence_info(
@@ -570,37 +606,42 @@ def build_programme_warnings(
                 )
 
                 if presence_info["expected_for_full_session"]:
-                    full_session_lead_count += 1
+                    full_session_adult_lead_count += 1
                     continue
 
                 if not presence_info["present_at_start"]:
-                    warnings.append(
-                        {
-                            "severity": "high",
-                            "title": f"Lead not expected at session start: {lead_name}",
-                            "detail": session_detail(session),
-                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
-                        }
+                    adult_lead_presence_problems.append(
+                        f"{lead_name} is not expected at session start"
                     )
                 else:
-                    warnings.append(
-                        {
-                            "severity": "medium",
-                            "title": f"Lead leaves before session ends: {lead_name}",
-                            "detail": f"{session_detail(session)} · {presence_info['warning']}",
-                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
-                        }
+                    adult_lead_presence_problems.append(
+                        f"{lead_name} {presence_info['warning'][0].lower()}{presence_info['warning'][1:]}"
                     )
 
-            if full_session_lead_count == 0:
+            if full_session_adult_lead_count == 0:
+                detail = session_detail(session)
+
+                if adult_lead_presence_problems:
+                    detail = f"{detail} · {'; '.join(adult_lead_presence_problems)}"
+
                 warnings.append(
                     {
                         "severity": "high",
-                        "title": "No Lead present for the full session",
-                        "detail": session_detail(session),
+                        "title": "No adult Lead present for the full session",
+                        "detail": detail,
                         "url": f"/camps/{camp.id}/programme/{session.id}/edit",
                     }
                 )
+            else:
+                for problem in adult_lead_presence_problems:
+                    warnings.append(
+                        {
+                            "severity": "medium",
+                            "title": "Adult Lead coverage note",
+                            "detail": f"{session_detail(session)} · {problem}",
+                            "url": f"/camps/{camp.id}/programme/{session.id}/edit",
+                        }
+                    )
 
         if session.activity_id:
             risk_status = risk_statuses.get(session.activity_id, "Not Started")
