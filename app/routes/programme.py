@@ -1542,6 +1542,78 @@ async def add_programme_session_backup(
     )
 
 
+@router.post("/camps/{camp_id}/programme/{session_id}/backup/{backup_id}/edit")
+async def update_programme_session_backup(
+    camp_id: int,
+    session_id: int,
+    backup_id: int,
+    title: str = Form(""),
+    activity_id: str = Form(""),
+    reason: str = Form(""),
+    location: str = Form(""),
+    duration_minutes: str = Form(""),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    backup_plan = (
+        db.query(ProgrammeSessionBackup)
+        .filter(
+            ProgrammeSessionBackup.id == backup_id,
+            ProgrammeSessionBackup.camp_id == camp_id,
+            ProgrammeSessionBackup.programme_session_id == session_id,
+        )
+        .first()
+    )
+
+    if backup_plan is not None:
+        ensure_programme_session_backup_schema(db)
+
+        clean_title = title.strip()
+        selected_activity_id = None
+        selected_activity_name = ""
+
+        if activity_id.strip():
+            try:
+                possible_activity_id = int(activity_id)
+            except ValueError:
+                possible_activity_id = None
+
+            if possible_activity_id is not None:
+                selected_activity = (
+                    db.query(Activity)
+                    .filter(
+                        Activity.id == possible_activity_id,
+                        Activity.camp_id == camp_id,
+                    )
+                    .first()
+                )
+
+                if selected_activity is not None:
+                    selected_activity_id = selected_activity.id
+                    selected_activity_name = selected_activity.name or ""
+
+        parsed_duration = None
+
+        if duration_minutes.strip():
+            try:
+                parsed_duration = int(duration_minutes)
+            except ValueError:
+                parsed_duration = None
+
+        if selected_activity_id or clean_title:
+            backup_plan.title = clean_title or selected_activity_name
+            backup_plan.activity_id = selected_activity_id
+            backup_plan.reason = reason.strip() or None
+            backup_plan.location = location.strip() or None
+            backup_plan.duration_minutes = parsed_duration
+            backup_plan.notes = notes.strip() or None
+            db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp_id}/programme/{session_id}",
+        status_code=303,
+    )
+
 @router.post("/camps/{camp_id}/programme/{session_id}/backup/{backup_id}/delete")
 async def delete_programme_session_backup(
     camp_id: int,

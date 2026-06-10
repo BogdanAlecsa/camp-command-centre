@@ -190,7 +190,47 @@
             </td>
             <td>{{ backup.notes or "" }}</td>
             <td>
-              <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/{{ backup.id }}/delete" onsubmit="return confirm('Remove this backup plan?');">
+              <div class="table-actions-inline">
+                <details class="inline-edit-details">
+                  <summary class="button secondary">Edit</summary>
+                  <div class="inline-edit-panel">
+                    <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/{{ backup.id }}/edit">
+                      <label for="backup_activity_id_{{ backup.id }}">Linked Activity</label>
+                      <select id="backup_activity_id_{{ backup.id }}" name="activity_id">
+                        <option value="">No linked activity</option>
+                        {% for activity_id, activity_name in activity_names.items() %}
+                          <option value="{{ activity_id }}" {% if backup.activity_id == activity_id %}selected{% endif %}>{{ activity_name }}</option>
+                        {% endfor %}
+                      </select>
+
+                      <label for="backup_title_{{ backup.id }}">Backup Activity / Notes Title</label>
+                      <input id="backup_title_{{ backup.id }}" name="title" value="{{ backup.title or '' }}">
+
+                      <label for="backup_reason_{{ backup.id }}">Reason</label>
+                      <select id="backup_reason_{{ backup.id }}" name="reason">
+                        <option value="">Not set</option>
+                        {% for reason in backup_reasons %}
+                          <option value="{{ reason }}" {% if backup.reason == reason %}selected{% endif %}>{{ reason }}</option>
+                        {% endfor %}
+                      </select>
+
+                      <label for="backup_location_{{ backup.id }}">Location</label>
+                      <input id="backup_location_{{ backup.id }}" name="location" value="{{ backup.location or '' }}">
+
+                      <label for="backup_duration_minutes_{{ backup.id }}">Approx Duration (minutes)</label>
+                      <input id="backup_duration_minutes_{{ backup.id }}" name="duration_minutes" type="number" min="1" step="1" value="{{ backup.duration_minutes or '' }}">
+
+                      <label for="backup_notes_{{ backup.id }}">Notes</label>
+                      <input id="backup_notes_{{ backup.id }}" name="notes" value="{{ backup.notes or '' }}">
+
+                      <div class="form-actions">
+                        <button type="submit">Save</button>
+                      </div>
+                    </form>
+                  </div>
+                </details>
+
+                <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/{{ backup.id }}/delete" onsubmit="return confirm('Remove this backup plan?');">
                   <button class="secondary" type="submit">Remove</button>
                 </form>
               </div>

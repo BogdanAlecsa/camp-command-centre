@@ -215,7 +215,8 @@
       }
     }
 
-  </style>
+  
+</style>
 </head>
 
 <body>
@@ -263,7 +264,7 @@
                       <strong>{{ session.title }}</strong>
 
                       {% if session.activity_id %}
-                        <br><span class="muted small">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}</span>
+                        <br><span class="muted small">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}
                       {% endif %}
 
                       {% if session.rotation_group %}

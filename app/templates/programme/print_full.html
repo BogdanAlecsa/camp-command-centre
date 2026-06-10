@@ -246,7 +246,8 @@ h1 {
       }
     }
 
-  </style>
+  
+</style>
 </head>
 
 <body>
@@ -353,7 +354,7 @@ h1 {
                 <td>
                   <strong>{{ session.title }}</strong>
                   {% if session.activity_id %}
-                    <br><span class="muted small">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}</span>
+                    <br><span class="muted small">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}
                   {% endif %}
                   {% if session.rotation_group %}
                     <br><span class="muted small">{{ session.rotation_group }}{% if session.rotation_slot_number %}, slot {{ session.rotation_slot_number }}{% endif %}</span>
