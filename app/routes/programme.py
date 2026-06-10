@@ -395,9 +395,24 @@ def get_available_session_staff_people(
     if session is None:
         return people
 
+    assigned_staff_person_ids = {
+        person_id
+        for (person_id,) in (
+            db.query(ProgrammeSessionStaff.person_id)
+            .filter(
+                ProgrammeSessionStaff.camp_id == camp.id,
+                ProgrammeSessionStaff.programme_session_id == session.id,
+            )
+            .all()
+        )
+    }
+
     available_people = []
 
     for person in people:
+        if person.id in assigned_staff_person_ids:
+            continue
+
         presence_info = get_person_session_presence_info(
             db,
             camp,
@@ -689,6 +704,164 @@ def build_programme_warnings(
     return warnings
 
 
+def pluralise_person_type(person_type: str, count: int):
+    if count == 1:
+        return person_type
+
+    irregular = {
+        "Young Person": "Young People",
+        "Person": "People",
+    }
+
+    if person_type in irregular:
+        return irregular[person_type]
+
+    if person_type.endswith("y"):
+        return f"{person_type[:-1]}ies"
+
+    if person_type.endswith("s"):
+        return person_type
+
+    return f"{person_type}s"
+
+
+def format_person_type_counts(counts):
+    preferred_order = [
+        "Leader",
+        "Helper",
+        "Young Leader",
+        "Young Person",
+        "Parent/Guardian",
+        "Visitor",
+    ]
+
+    parts = []
+
+    for person_type in preferred_order:
+        count = counts.get(person_type, 0)
+
+        if count:
+            parts.append(f"{count} {pluralise_person_type(person_type, count)}")
+
+    for person_type in sorted(set(counts) - set(preferred_order)):
+        count = counts.get(person_type, 0)
+
+        if count:
+            parts.append(f"{count} {pluralise_person_type(person_type, count)}")
+
+    return ", ".join(parts) if parts else "None"
+
+
+def get_session_participant_people(db: Session, camp: Camp, session: ProgrammeSession):
+    query = (
+        db.query(Person)
+        .filter(
+            Person.camp_id == camp.id,
+            Person.person_type == "Young Person",
+        )
+    )
+
+    if session.participant_team_id:
+        query = (
+            query.join(TeamMembership, TeamMembership.person_id == Person.id)
+            .filter(
+                TeamMembership.camp_id == camp.id,
+                TeamMembership.team_id == session.participant_team_id,
+            )
+        )
+
+    return (
+        query.distinct()
+        .order_by(Person.last_name, Person.first_name)
+        .all()
+    )
+
+
+def build_session_cover_summary(
+    db: Session,
+    camp: Camp,
+    session: ProgrammeSession,
+    session_staff,
+):
+    from collections import Counter
+
+    participant_start_counts = Counter()
+    participant_full_counts = Counter()
+
+    for person in get_session_participant_people(db, camp, session):
+        presence_info = get_person_session_presence_info(
+            db,
+            camp,
+            person,
+            session,
+        )
+
+        if presence_info["present_at_start"]:
+            participant_start_counts[person.person_type] += 1
+
+        if presence_info["expected_for_full_session"]:
+            participant_full_counts[person.person_type] += 1
+
+    staff_person_type_start_counts = Counter()
+    staff_person_type_full_counts = Counter()
+    staff_role_start_counts = Counter()
+    staff_role_full_counts = Counter()
+
+    staff_leaving_early = []
+    adult_leads_at_start = []
+    adult_leads_full_session = []
+
+    for item in session_staff:
+        staff = item["staff"]
+        person = item["person"]
+        role = (staff.role or "Other").strip() or "Other"
+        role_key = role.lower()
+        person_type = (person.person_type or "Unknown").strip() or "Unknown"
+        display_name = item.get("display_name") or person_display_name(person)
+
+        presence_info = get_person_session_presence_info(
+            db,
+            camp,
+            person,
+            session,
+        )
+
+        if presence_info["present_at_start"]:
+            staff_person_type_start_counts[person_type] += 1
+            staff_role_start_counts[role] += 1
+
+        if presence_info["expected_for_full_session"]:
+            staff_person_type_full_counts[person_type] += 1
+            staff_role_full_counts[role] += 1
+        elif presence_info["present_at_start"] and presence_info["warning"]:
+            staff_leaving_early.append(
+                f"{display_name} {presence_info['warning'][0].lower()}{presence_info['warning'][1:]}"
+            )
+
+        if role_key == "lead" and person_type in {"Leader", "Helper"}:
+            if presence_info["present_at_start"]:
+                adult_leads_at_start.append(display_name)
+
+            if presence_info["expected_for_full_session"]:
+                adult_leads_full_session.append(display_name)
+
+    return {
+        "participants_at_start": format_person_type_counts(participant_start_counts),
+        "participants_full_session": format_person_type_counts(participant_full_counts),
+        "staff_person_types_at_start": format_person_type_counts(staff_person_type_start_counts),
+        "staff_person_types_full_session": format_person_type_counts(staff_person_type_full_counts),
+        "staff_roles_at_start": format_person_type_counts(staff_role_start_counts),
+        "staff_roles_full_session": format_person_type_counts(staff_role_full_counts),
+        "staff_leaving_early": "; ".join(staff_leaving_early) if staff_leaving_early else "None",
+        "assigned_staff_count": len(session_staff),
+        "adult_leads_at_start": ", ".join(adult_leads_at_start) if adult_leads_at_start else "",
+        "adult_leads_full_session": ", ".join(adult_leads_full_session) if adult_leads_full_session else "",
+        "adult_lead_ok": bool(adult_leads_at_start),
+        "adult_lead_full_session_ok": bool(adult_leads_full_session),
+    }
+
+
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -955,6 +1128,14 @@ async def programme_session_detail(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    session_staff = get_session_staff(db, camp, session)
+    session_cover_summary = build_session_cover_summary(
+        db,
+        camp,
+        session,
+        session_staff,
+    )
+
     return templates.TemplateResponse(
         "programme/detail.html",
         {
@@ -965,7 +1146,8 @@ async def programme_session_detail(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
-            "session_staff": get_session_staff(db, camp, session),
+            "session_staff": session_staff,
+            "session_cover_summary": session_cover_summary,
             "available_staff_people": get_available_session_staff_people(db, camp, session),
             "staff_roles": PROGRAMME_STAFF_ROLES,
         },

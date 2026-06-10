@@ -63,6 +63,73 @@
 </div>
 
 
+
+<section class="card">
+  <h3>Session Cover</h3>
+  <p class="muted">
+    Quick check of who is expected for this session. Young Leaders are counted as session staff when assigned, not as activity participants.
+  </p>
+
+  <table class="compact-table">
+    <tbody>
+      <tr>
+        <th style="width: 35%;">Participants at start</th>
+        <td>{{ session_cover_summary.participants_at_start }}</td>
+      </tr>
+      <tr>
+        <th>Participants for full session</th>
+        <td>{{ session_cover_summary.participants_full_session }}</td>
+      </tr>
+      <tr>
+        <th>Assigned staff by person type at start</th>
+        <td>{{ session_cover_summary.staff_person_types_at_start }}</td>
+      </tr>
+      <tr>
+        <th>Assigned staff by person type for full session</th>
+        <td>{{ session_cover_summary.staff_person_types_full_session }}</td>
+      </tr>
+      <tr>
+        <th>Assigned staff by session role at start</th>
+        <td>{{ session_cover_summary.staff_roles_at_start }}</td>
+      </tr>
+      <tr>
+        <th>Assigned staff by session role for full session</th>
+        <td>{{ session_cover_summary.staff_roles_full_session }}</td>
+      </tr>
+      <tr>
+        <th>Staff leaving before session ends</th>
+        <td>
+          {% if session_cover_summary.staff_leaving_early == "None" %}
+            <span class="muted">None</span>
+          {% else %}
+            <span class="warning">{{ session_cover_summary.staff_leaving_early }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Adult Lead at start</th>
+        <td>
+          {% if session_cover_summary.adult_lead_ok %}
+            <span class="good">OK</span> — {{ session_cover_summary.adult_leads_at_start }}
+          {% else %}
+            <span class="warning">Missing</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Adult Lead for full session</th>
+        <td>
+          {% if session_cover_summary.adult_lead_full_session_ok %}
+            <span class="good">OK</span> — {{ session_cover_summary.adult_leads_full_session }}
+          {% else %}
+            <span class="warning">Missing</span>
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
 <section class="card">
   <h3>Session Staff</h3>
   <p class="muted">
