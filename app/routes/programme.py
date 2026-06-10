@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 import re
 from pathlib import Path
 
@@ -13,8 +13,10 @@ from app.models import (
     ActivityRiskAssessment,
     Camp,
     Person,
+    PresenceWindow,
     ProgrammeSession,
     ProgrammeSessionStaff,
+    Section,
     Team,
     TeamMembership,
 )
@@ -215,24 +217,125 @@ def get_session_staff(db: Session, camp: Camp, session: ProgrammeSession):
     ]
 
 
-def get_available_session_staff_people(db: Session, camp: Camp):
+PROGRAMME_STAFF_PERSON_TYPES = [
+    "Leader",
+    "Helper",
+    "Young Leader",
+    "Parent/Guardian",
+    "Visitor",
+]
+
+
+def get_programme_session_interval(session: ProgrammeSession):
     return (
+        datetime.combine(session.session_date, session.start_time),
+        datetime.combine(session.session_date, session.end_time),
+    )
+
+
+def get_presence_windows_for_scope(
+    db: Session,
+    camp: Camp,
+    scope_type: str,
+    scope_id: int | None,
+):
+    query = db.query(PresenceWindow).filter(
+        PresenceWindow.camp_id == camp.id,
+        PresenceWindow.scope_type == scope_type,
+    )
+
+    if scope_id is None:
+        query = query.filter(PresenceWindow.scope_id.is_(None))
+    else:
+        query = query.filter(PresenceWindow.scope_id == scope_id)
+
+    return query.order_by(
+        PresenceWindow.starts_at,
+        PresenceWindow.ends_at,
+        PresenceWindow.id,
+    ).all()
+
+
+def get_effective_presence_windows_for_person(
+    db: Session,
+    camp: Camp,
+    person: Person,
+):
+    presence_sources = [("person", person.id)]
+
+    home_section = None
+
+    if person.home_section_id:
+        home_section = (
+            db.query(Section)
+            .filter(
+                Section.id == person.home_section_id,
+                Section.camp_id == camp.id,
+            )
+            .first()
+        )
+
+    if home_section is not None:
+        presence_sources.append(("section", home_section.id))
+
+        if home_section.participating_group_id is not None:
+            presence_sources.append(
+                ("participating_group", home_section.participating_group_id)
+            )
+
+    presence_sources.append(("camp", None))
+
+    for scope_type, scope_id in presence_sources:
+        windows = get_presence_windows_for_scope(db, camp, scope_type, scope_id)
+
+        if windows:
+            return windows
+
+    return []
+
+
+def person_is_expected_for_session_interval(
+    db: Session,
+    camp: Camp,
+    person: Person,
+    session: ProgrammeSession,
+):
+    session_starts_at, session_ends_at = get_programme_session_interval(session)
+    windows = get_effective_presence_windows_for_person(db, camp, person)
+
+    for window in windows:
+        if (window.status or "").strip() != "Expected":
+            continue
+
+        if window.starts_at <= session_starts_at and window.ends_at >= session_ends_at:
+            return True
+
+    return False
+
+
+def get_available_session_staff_people(
+    db: Session,
+    camp: Camp,
+    session: ProgrammeSession | None = None,
+):
+    people = (
         db.query(Person)
         .filter(
             Person.camp_id == camp.id,
-            Person.person_type.in_(
-                [
-                    "Leader",
-                    "Helper",
-                    "Young Leader",
-                    "Parent/Guardian",
-                    "Visitor",
-                ]
-            ),
+            Person.person_type.in_(PROGRAMME_STAFF_PERSON_TYPES),
         )
         .order_by(Person.person_type, Person.last_name, Person.first_name)
         .all()
     )
+
+    if session is None:
+        return people
+
+    return [
+        person
+        for person in people
+        if person_is_expected_for_session_interval(db, camp, person, session)
+    ]
 
 def get_session_staff_lookup(db: Session, camp: Camp, sessions):
     session_ids = [session.id for session in sessions]
@@ -655,7 +758,7 @@ async def programme_session_detail(
             "person_names": person_names,
             "risk_statuses": risk_statuses,
             "session_staff": get_session_staff(db, camp, session),
-            "available_staff_people": get_available_session_staff_people(db, camp),
+            "available_staff_people": get_available_session_staff_people(db, camp, session),
             "staff_roles": PROGRAMME_STAFF_ROLES,
         },
     )
@@ -712,7 +815,7 @@ async def edit_programme_session_form(
     activities, teams, people = get_programme_form_options(db, camp)
 
     session_staff = get_session_staff(db, camp, session)
-    available_staff_people = get_available_session_staff_people(db, camp)
+    available_staff_people = get_available_session_staff_people(db, camp, session)
 
     return templates.TemplateResponse(
         "programme/edit.html",
