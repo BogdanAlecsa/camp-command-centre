@@ -544,9 +544,6 @@ def build_programme_warnings(
     for session in sessions:
         session_assignments = {}
 
-        if session.lead_person_id:
-            session_assignments.setdefault(session.lead_person_id, set()).add("Lead Person")
-
         for staff_item in session_staff_by_session_id.get(session.id, []):
             session_assignments.setdefault(staff_item["person_id"], set()).add(staff_item["role"])
 
@@ -1018,6 +1015,83 @@ def get_session_backup_plans(db: Session, camp: Camp, session: ProgrammeSession)
     )
 
 
+def migrate_legacy_session_leads(
+    db: Session,
+    camp: Camp,
+    session: ProgrammeSession | None = None,
+) -> None:
+    query = db.query(ProgrammeSession).filter(
+        ProgrammeSession.camp_id == camp.id,
+        ProgrammeSession.lead_person_id.isnot(None),
+    )
+
+    if session is not None:
+        query = query.filter(ProgrammeSession.id == session.id)
+
+    sessions = query.all()
+    changed = False
+
+    for programme_session in sessions:
+        legacy_lead_person_id = programme_session.lead_person_id
+
+        if legacy_lead_person_id is None:
+            continue
+
+        person = (
+            db.query(Person)
+            .filter(
+                Person.id == legacy_lead_person_id,
+                Person.camp_id == camp.id,
+            )
+            .first()
+        )
+
+        if person is not None:
+            existing_staff = (
+                db.query(ProgrammeSessionStaff)
+                .filter(
+                    ProgrammeSessionStaff.camp_id == camp.id,
+                    ProgrammeSessionStaff.programme_session_id == programme_session.id,
+                    ProgrammeSessionStaff.person_id == person.id,
+                )
+                .first()
+            )
+
+            if existing_staff is None:
+                db.add(
+                    ProgrammeSessionStaff(
+                        camp_id=camp.id,
+                        programme_session_id=programme_session.id,
+                        person_id=person.id,
+                        role="Lead",
+                        notes="Migrated from legacy Lead Person field",
+                    )
+                )
+                changed = True
+            else:
+                current_role = (existing_staff.role or "").strip().lower()
+
+                if current_role != "lead":
+                    existing_staff.role = "Lead"
+
+                    if existing_staff.notes:
+                        if "Migrated from legacy Lead Person field" not in existing_staff.notes:
+                            existing_staff.notes = (
+                                existing_staff.notes.rstrip()
+                                + "\nMigrated from legacy Lead Person field"
+                            )
+                    else:
+                        existing_staff.notes = "Migrated from legacy Lead Person field"
+
+                    changed = True
+
+        programme_session.lead_person_id = None
+        changed = True
+
+    if changed:
+        db.commit()
+
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -1284,6 +1358,7 @@ async def programme_session_detail(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    migrate_legacy_session_leads(db, camp, session)
     session_staff = get_session_staff(db, camp, session)
     session_cover_summary = build_session_cover_summary(
         db,
@@ -1351,6 +1426,7 @@ async def print_session_roll_call(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    migrate_legacy_session_leads(db, camp, session)
     session_staff = get_session_staff(db, camp, session)
     session_cover_summary = build_session_cover_summary(
         db,
@@ -1543,6 +1619,7 @@ async def edit_programme_session_form(
 
     activities, teams, people = get_programme_form_options(db, camp)
 
+    migrate_legacy_session_leads(db, camp, session)
     session_staff = get_session_staff(db, camp, session)
     available_staff_people = get_available_session_staff_people(db, camp, session)
 
