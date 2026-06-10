@@ -2517,6 +2517,36 @@ async def add_programme_session_staff(
     return RedirectResponse(url=f"/camps/{camp.id}/programme/{session.id}", status_code=303)
 
 
+@router.post("/camps/{camp_id}/programme/{session_id}/staff/{staff_id}/edit")
+async def update_programme_session_staff(
+    camp_id: int,
+    session_id: int,
+    staff_id: int,
+    role: str = Form(...),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    staff_item = (
+        db.query(ProgrammeSessionStaff)
+        .filter(
+            ProgrammeSessionStaff.id == staff_id,
+            ProgrammeSessionStaff.camp_id == camp_id,
+            ProgrammeSessionStaff.programme_session_id == session_id,
+        )
+        .first()
+    )
+
+    if staff_item is not None:
+        clean_role = role.strip()
+        staff_item.role = clean_role or staff_item.role
+        staff_item.notes = notes.strip() or None
+        db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp_id}/programme/{session_id}",
+        status_code=303,
+    )
+
 @router.post("/camps/{camp_id}/programme/{session_id}/staff/{staff_id}/delete")
 async def delete_programme_session_staff(
     camp_id: int,

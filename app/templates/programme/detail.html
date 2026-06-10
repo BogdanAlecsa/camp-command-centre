@@ -191,8 +191,9 @@
             <td>{{ backup.notes or "" }}</td>
             <td>
               <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/{{ backup.id }}/delete" onsubmit="return confirm('Remove this backup plan?');">
-                <button class="secondary" type="submit">Remove</button>
-              </form>
+                  <button class="secondary" type="submit">Remove</button>
+                </form>
+              </div>
             </td>
           </tr>
         {% endfor %}
@@ -271,7 +272,29 @@
             <td>{{ item.staff.role }}</td>
             <td>{{ item.staff.notes or "" }}</td>
             <td>
-              <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/{{ item.staff.id }}/delete" onsubmit="return confirm('Remove this person from this session?');">
+              <div class="table-actions-inline">
+                <a class="button secondary" href="/camps/{{ camp.id }}/people/{{ item.person.id }}">Open profile</a>
+                <details class="inline-edit-details">
+                  <summary class="button secondary">Edit</summary>
+                  <div class="inline-edit-panel">
+                    <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/{{ item.staff.id }}/edit">
+                      <label for="staff_role_{{ item.staff.id }}">Role</label>
+                      <select id="staff_role_{{ item.staff.id }}" name="role">
+                        {% for role in staff_roles %}
+                          <option value="{{ role }}" {% if role == item.staff.role %}selected{% endif %}>{{ role }}</option>
+                        {% endfor %}
+                      </select>
+
+                      <label for="staff_notes_{{ item.staff.id }}">Notes</label>
+                      <input id="staff_notes_{{ item.staff.id }}" name="notes" value="{{ item.staff.notes or '' }}">
+
+                      <div class="form-actions">
+                        <button type="submit">Save</button>
+                      </div>
+                    </form>
+                  </div>
+                </details>
+                <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/staff/{{ item.staff.id }}/delete" onsubmit="return confirm('Remove this person from this session?');">
                 <button class="secondary" type="submit">Remove</button>
               </form>
             </td>
