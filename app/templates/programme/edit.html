@@ -134,7 +134,7 @@
       <label for="person_id">Add Person</label>
       <select id="person_id" name="person_id" required>
         {% for person in safe_available_staff_people %}
-          <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}</option>
+          <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }} — {{ person.person_type }}{% if person.session_presence_warning is defined and person.session_presence_warning %} ⚠ {{ person.session_presence_warning }}{% endif %}</option>
         {% endfor %}
       </select>
 

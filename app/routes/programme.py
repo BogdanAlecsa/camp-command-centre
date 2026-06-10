@@ -210,7 +210,7 @@ def get_session_staff(db: Session, camp: Camp, session: ProgrammeSession):
     session_staff = []
 
     for staff, person in staff_rows:
-        is_expected_for_full_session = person_is_expected_for_session_interval(
+        presence_info = get_person_session_presence_info(
             db,
             camp,
             person,
@@ -222,10 +222,9 @@ def get_session_staff(db: Session, camp: Camp, session: ProgrammeSession):
                 "staff": staff,
                 "person": person,
                 "display_name": person_display_name(person),
-                "is_expected_for_full_session": is_expected_for_full_session,
-                "presence_warning": ""
-                if is_expected_for_full_session
-                else "Not expected for full session",
+                "is_present_at_session_start": presence_info["present_at_start"],
+                "is_expected_for_full_session": presence_info["expected_for_full_session"],
+                "presence_warning": presence_info["warning"],
             }
         )
 
@@ -309,7 +308,17 @@ def get_effective_presence_windows_for_person(
     return []
 
 
-def person_is_expected_for_session_interval(
+def format_presence_time_for_session(value: datetime | None, session: ProgrammeSession):
+    if value is None:
+        return ""
+
+    if value.date() == session.session_date:
+        return value.strftime("%H:%M")
+
+    return value.strftime("%d %b %H:%M")
+
+
+def get_person_session_presence_info(
     db: Session,
     camp: Camp,
     person: Person,
@@ -318,14 +327,54 @@ def person_is_expected_for_session_interval(
     session_starts_at, session_ends_at = get_programme_session_interval(session)
     windows = get_effective_presence_windows_for_person(db, camp, person)
 
-    for window in windows:
-        if (window.status or "").strip() != "Expected":
-            continue
+    expected_windows_at_start = [
+        window
+        for window in windows
+        if (window.status or "").strip() == "Expected"
+        and window.starts_at <= session_starts_at
+        and window.ends_at > session_starts_at
+    ]
 
-        if window.starts_at <= session_starts_at and window.ends_at >= session_ends_at:
-            return True
+    if not expected_windows_at_start:
+        return {
+            "present_at_start": False,
+            "expected_for_full_session": False,
+            "leave_time": None,
+            "warning": "Not expected at session start",
+        }
 
-    return False
+    best_window = max(expected_windows_at_start, key=lambda window: window.ends_at)
+
+    if best_window.ends_at >= session_ends_at:
+        return {
+            "present_at_start": True,
+            "expected_for_full_session": True,
+            "leave_time": None,
+            "warning": "",
+        }
+
+    leave_time = format_presence_time_for_session(best_window.ends_at, session)
+
+    return {
+        "present_at_start": True,
+        "expected_for_full_session": False,
+        "leave_time": best_window.ends_at,
+        "warning": f"Leaves at {leave_time} before session ends",
+    }
+
+
+def person_is_expected_for_session_interval(
+    db: Session,
+    camp: Camp,
+    person: Person,
+    session: ProgrammeSession,
+):
+    return get_person_session_presence_info(
+        db,
+        camp,
+        person,
+        session,
+    )["expected_for_full_session"]
 
 
 def get_available_session_staff_people(
@@ -346,11 +395,24 @@ def get_available_session_staff_people(
     if session is None:
         return people
 
-    return [
-        person
-        for person in people
-        if person_is_expected_for_session_interval(db, camp, person, session)
-    ]
+    available_people = []
+
+    for person in people:
+        presence_info = get_person_session_presence_info(
+            db,
+            camp,
+            person,
+            session,
+        )
+
+        if not presence_info["present_at_start"]:
+            continue
+
+        # Temporary display-only attributes used by the Jinja dropdown.
+        person.session_presence_warning = presence_info["warning"]
+        available_people.append(person)
+
+    return available_people
 
 def get_session_staff_lookup(db: Session, camp: Camp, sessions):
     session_ids = [session.id for session in sessions]
