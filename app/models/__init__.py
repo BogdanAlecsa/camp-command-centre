@@ -37,3 +37,5 @@ __all__ = [
     "CampRiskControl",
     "CampRiskAssessment",
 ]
+from app.models.programme_session_backup import ProgrammeSessionBackup
+

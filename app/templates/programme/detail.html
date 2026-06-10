@@ -147,6 +147,78 @@
 </section>
 
 <section class="card">
+  <h3>Backup Plans</h3>
+  <p class="muted">
+    Optional fallback activities for wet weather, heat, overruns or unavailable equipment. These do not change the main programme timetable.
+  </p>
+
+  {% if backup_plans %}
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th>Backup Activity</th>
+          <th>Reason</th>
+          <th>Location</th>
+          <th>Duration</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for backup in backup_plans %}
+          <tr>
+            <td><strong>{{ backup.title }}</strong></td>
+            <td>{{ backup.reason or "Not set" }}</td>
+            <td>{{ backup.location or "Not set" }}</td>
+            <td>
+              {% if backup.duration_minutes %}
+                {{ backup.duration_minutes }} min
+              {% else %}
+                Not set
+              {% endif %}
+            </td>
+            <td>{{ backup.notes or "" }}</td>
+            <td>
+              <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/{{ backup.id }}/delete" onsubmit="return confirm('Remove this backup plan?');">
+                <button class="secondary" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No backup plans have been added yet.</p>
+  {% endif %}
+
+  <form method="post" action="/camps/{{ camp.id }}/programme/{{ session.id }}/backup/add">
+    <label for="backup_title">Backup Activity</label>
+    <input id="backup_title" name="title" required placeholder="e.g. Indoor quiz, craft challenge, board games">
+
+    <label for="backup_reason">Reason</label>
+    <select id="backup_reason" name="reason">
+      <option value="">Not set</option>
+      {% for reason in backup_reasons %}
+        <option value="{{ reason }}">{{ reason }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="backup_location">Location</label>
+    <input id="backup_location" name="location" placeholder="e.g. Hall, marquee, dining shelter">
+
+    <label for="backup_duration_minutes">Approx Duration (minutes)</label>
+    <input id="backup_duration_minutes" name="duration_minutes" type="number" min="1" step="1" placeholder="Optional">
+
+    <label for="backup_notes">Notes</label>
+    <input id="backup_notes" name="notes" placeholder="Optional notes, equipment or setup">
+
+    <div class="form-actions">
+      <button type="submit">Add Backup Plan</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
   <h3>Session Staff</h3>
   <p class="muted">
     Add the adults or young leaders who are actually helping with this scheduled session.

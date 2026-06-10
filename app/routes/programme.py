@@ -15,6 +15,7 @@ from app.models import (
     Person,
     PresenceWindow,
     ProgrammeSession,
+    ProgrammeSessionBackup,
     ProgrammeSessionStaff,
     Section,
     Team,
@@ -48,6 +49,19 @@ PROGRAMME_STAFF_ROLES = [
     "Observer",
     "Other",
 ]
+
+PROGRAMME_BACKUP_REASONS = [
+    "Wet weather",
+    "Too hot",
+    "Low light / darkness",
+    "Activity overrun",
+    "Equipment unavailable",
+    "Instructor unavailable",
+    "Low energy / tired group",
+    "Behaviour reset",
+    "Other",
+]
+
 
 
 PROGRAMME_SESSION_TYPES = [
@@ -972,6 +986,22 @@ def build_session_roll_call(
     }
 
 
+def get_session_backup_plans(db: Session, camp: Camp, session: ProgrammeSession):
+    return (
+        db.query(ProgrammeSessionBackup)
+        .filter(
+            ProgrammeSessionBackup.camp_id == camp.id,
+            ProgrammeSessionBackup.programme_session_id == session.id,
+        )
+        .order_by(
+            ProgrammeSessionBackup.sort_order,
+            ProgrammeSessionBackup.title,
+            ProgrammeSessionBackup.id,
+        )
+        .all()
+    )
+
+
 @router.get("/programme", response_class=HTMLResponse)
 async def programme_page(request: Request, db: Session = Depends(get_db)):
     camp = get_latest_camp(db)
@@ -1258,6 +1288,8 @@ async def programme_session_detail(
             "risk_statuses": risk_statuses,
             "session_staff": session_staff,
             "session_cover_summary": session_cover_summary,
+            "backup_plans": get_session_backup_plans(db, camp, session),
+            "backup_reasons": PROGRAMME_BACKUP_REASONS,
             "available_staff_people": get_available_session_staff_people(db, camp, session),
             "staff_roles": PROGRAMME_STAFF_ROLES,
         },
@@ -1329,6 +1361,93 @@ async def print_session_roll_call(
             "session_cover_summary": session_cover_summary,
             "roll_call": roll_call,
         },
+    )
+
+
+@router.post("/camps/{camp_id}/programme/{session_id}/backup/add")
+async def add_programme_session_backup(
+    camp_id: int,
+    session_id: int,
+    title: str = Form(...),
+    reason: str = Form(""),
+    location: str = Form(""),
+    duration_minutes: str = Form(""),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    session = (
+        db.query(ProgrammeSession)
+        .filter(ProgrammeSession.id == session_id, ProgrammeSession.camp_id == camp_id)
+        .first()
+    )
+
+    if session is None:
+        return RedirectResponse(url=f"/camps/{camp_id}/programme", status_code=303)
+
+    clean_title = title.strip()
+
+    if clean_title:
+        parsed_duration = None
+
+        if duration_minutes.strip():
+            try:
+                parsed_duration = int(duration_minutes)
+            except ValueError:
+                parsed_duration = None
+
+        next_sort_order = (
+            db.query(ProgrammeSessionBackup)
+            .filter(
+                ProgrammeSessionBackup.camp_id == camp_id,
+                ProgrammeSessionBackup.programme_session_id == session_id,
+            )
+            .count()
+        )
+
+        backup_plan = ProgrammeSessionBackup(
+            camp_id=camp_id,
+            programme_session_id=session_id,
+            title=clean_title,
+            reason=reason.strip() or None,
+            location=location.strip() or None,
+            duration_minutes=parsed_duration,
+            notes=notes.strip() or None,
+            sort_order=next_sort_order,
+        )
+
+        db.add(backup_plan)
+        db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp_id}/programme/{session_id}",
+        status_code=303,
+    )
+
+
+@router.post("/camps/{camp_id}/programme/{session_id}/backup/{backup_id}/delete")
+async def delete_programme_session_backup(
+    camp_id: int,
+    session_id: int,
+    backup_id: int,
+    db: Session = Depends(get_db),
+):
+    backup_plan = (
+        db.query(ProgrammeSessionBackup)
+        .filter(
+            ProgrammeSessionBackup.id == backup_id,
+            ProgrammeSessionBackup.camp_id == camp_id,
+            ProgrammeSessionBackup.programme_session_id == session_id,
+        )
+        .first()
+    )
+
+    if backup_plan is not None:
+        db.delete(backup_plan)
+        db.commit()
+
+    return RedirectResponse(
+        url=f"/camps/{camp_id}/programme/{session_id}",
+        status_code=303,
     )
 
 
