@@ -1015,6 +1015,74 @@ def get_session_backup_plans(db: Session, camp: Camp, session: ProgrammeSession)
     )
 
 
+def get_session_backup_summary_lookup(
+    db: Session,
+    camp: Camp,
+    sessions,
+    activity_names,
+):
+    ensure_programme_session_backup_schema(db)
+
+    session_ids = [
+        session.id
+        for session in sessions
+        if session is not None and getattr(session, "id", None) is not None
+    ]
+
+    if not session_ids:
+        return {}
+
+    summaries_by_session_id = {session_id: "" for session_id in session_ids}
+
+    backup_plans = (
+        db.query(ProgrammeSessionBackup)
+        .filter(
+            ProgrammeSessionBackup.camp_id == camp.id,
+            ProgrammeSessionBackup.programme_session_id.in_(session_ids),
+        )
+        .order_by(
+            ProgrammeSessionBackup.programme_session_id,
+            ProgrammeSessionBackup.sort_order,
+            ProgrammeSessionBackup.title,
+            ProgrammeSessionBackup.id,
+        )
+        .all()
+    )
+
+    for backup_plan in backup_plans:
+        title = backup_plan.title or "Backup activity"
+
+        if backup_plan.activity_id:
+            title = activity_names.get(backup_plan.activity_id, title)
+
+        details = []
+
+        if backup_plan.reason:
+            details.append(backup_plan.reason)
+
+        if backup_plan.location:
+            details.append(backup_plan.location)
+
+        if backup_plan.duration_minutes:
+            details.append(f"{backup_plan.duration_minutes} min")
+
+        summary = title
+
+        if details:
+            summary += " — " + " · ".join(details)
+
+        current_summary = summaries_by_session_id.get(backup_plan.programme_session_id)
+
+        if current_summary:
+            summaries_by_session_id[backup_plan.programme_session_id] = (
+                current_summary + "; " + summary
+            )
+        else:
+            summaries_by_session_id[backup_plan.programme_session_id] = summary
+
+    return summaries_by_session_id
+
+
 def migrate_legacy_session_leads(
     db: Session,
     camp: Camp,
@@ -1147,6 +1215,12 @@ async def camp_programme_list(
     ) = get_programme_lookup_maps(db, camp)
 
     session_staff_by_session_id = get_session_staff_lookup(db, camp, sessions)
+    session_backup_summaries = get_session_backup_summary_lookup(
+        db,
+        camp,
+        sessions,
+        activity_names,
+    )
 
     return templates.TemplateResponse(
         "programme/list.html",
@@ -1161,6 +1235,7 @@ async def camp_programme_list(
             "person_names": person_names,
             "risk_statuses": risk_statuses,
             "session_staff_by_session_id": session_staff_by_session_id,
+            "session_backup_summaries": session_backup_summaries,
             "programme_warnings": build_programme_warnings(
                 db,
                 camp,

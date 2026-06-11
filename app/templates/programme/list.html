@@ -151,6 +151,17 @@
   </details>
 {% endif %}
 
+
+<style>
+  .programme-backup-line {
+    margin-top: 0.2rem;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-style: italic;
+    line-height: 1.25;
+  }
+</style>
+
 {% if sessions %}
   {% for session_date, day_sessions in sessions_by_date.items() %}
     <section class="card">
@@ -208,7 +219,13 @@
                                 Whole camp
                               {% endif %}
                             </td>
-                            <td>{{ rotation_session.title }}</td>
+                            <td>
+                              {{ rotation_session.title }}
+                              {% set backup_summary = session_backup_summaries.get(rotation_session.id) %}
+                              {% if backup_summary %}
+                                <div class="programme-backup-line">Backup: {{ backup_summary }}</div>
+                              {% endif %}
+                            </td>
                             <td>{{ rotation_session.location or "Not set" }}</td>
                             <td>
                               {% if rotation_session.lead_person_id %}
@@ -268,6 +285,10 @@
                 {% endif %}
                 {% if session.notes %}
                   <div class="muted">{{ session.notes }}</div>
+                {% endif %}
+                {% set backup_summary = session_backup_summaries.get(session.id) %}
+                {% if backup_summary %}
+                  <div class="programme-backup-line">Backup: {{ backup_summary }}</div>
                 {% endif %}
               </td>
 
