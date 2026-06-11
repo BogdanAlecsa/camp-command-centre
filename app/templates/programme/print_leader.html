@@ -277,10 +277,17 @@ h1 {
                 </td>
                 <td>{{ session.location or "Not set" }}</td>
                 <td>
-                  {% if session.lead_person_id %}
-                    {{ person_names.get(session.lead_person_id, "Unknown person") }}
+                  {% set lead_state = namespace(names=[]) %}
+                  {% for staff_item in session_staff_by_session_id.get(session.id, []) %}
+                    {% if (staff_item.role or "")|lower == "lead" %}
+                      {% set lead_state.names = lead_state.names + [staff_item.display_name] %}
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if lead_state.names %}
+                    {{ lead_state.names|join(", ") }}
                   {% else %}
-                    Not set
+                    Not assigned
                   {% endif %}
 
                   {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
