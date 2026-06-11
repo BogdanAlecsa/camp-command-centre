@@ -304,12 +304,16 @@ h1 {
                   {% endif %}
 
                   {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
-                  {% if staff_items %}
-                    <br><span class="muted"><strong>Staff:</strong></span>
-                    {% for item in staff_items %}
-                      <br><span class="muted">{{ item.display_name }} ({{ item.role }})</span>
-                    {% endfor %}
-                  {% endif %}
+                  {% set non_lead_staff = namespace(count=0) %}
+                  {% for staff_item in staff_items %}
+                    {% if (staff_item.role or "")|lower != "lead" %}
+                      {% if non_lead_staff.count == 0 %}
+                        <br><span class="muted"><strong>Staff:</strong></span>
+                      {% endif %}
+                      <br>{{ staff_item.display_name }}{% if staff_item.role %} ({{ staff_item.role }}){% endif %}
+                      {% set non_lead_staff.count = non_lead_staff.count + 1 %}
+                    {% endif %}
+                  {% endfor %}
                 </td>
                 <td>
                   {% if session.activity_id %}
@@ -376,12 +380,16 @@ h1 {
                           <span class="muted">{{ slot_session.start_time.strftime("%H:%M") }}–{{ slot_session.end_time.strftime("%H:%M") }}</span>
 
                           {% set staff_items = session_staff_by_session_id.get(slot_session.id, []) %}
-                          {% if staff_items %}
-                            <br><span class="muted"><strong>Staff:</strong></span>
-                            {% for item in staff_items %}
-                              <br><span class="muted">{{ item.display_name }} ({{ item.role }})</span>
-                            {% endfor %}
-                          {% endif %}
+                          {% set non_lead_staff = namespace(count=0) %}
+                          {% for staff_item in staff_items %}
+                            {% if (staff_item.role or "")|lower != "lead" %}
+                              {% if non_lead_staff.count == 0 %}
+                                <br><span class="muted"><strong>Staff:</strong></span>
+                              {% endif %}
+                              <br>{{ staff_item.display_name }}{% if staff_item.role %} ({{ staff_item.role }}){% endif %}
+                              {% set non_lead_staff.count = non_lead_staff.count + 1 %}
+                            {% endif %}
+                          {% endfor %}
                         {% else %}
                           <span class="muted">—</span>
                         {% endif %}

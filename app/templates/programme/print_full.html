@@ -256,6 +256,17 @@ h1 {
   line-height: 1.25;
 }
 
+
+.rotation-summary-print-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.rotation-summary-print-table th,
+.rotation-summary-print-table td {
+  vertical-align: top;
+}
+
 </style>
 </head>
 
@@ -299,13 +310,21 @@ h1 {
                     {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
                   </strong>
 
-                  <table class="small">
+                  <table class="rotation-summary-print-table small">
+              <colgroup>
+                <col style="width: 14%;">
+                <col style="width: 42%;">
+                <col style="width: 18%;">
+                <col style="width: 13%;">
+                <col style="width: 13%;">
+              </colgroup>
                     <thead>
                       <tr>
                         <th>Group</th>
                         <th>Activity / Session</th>
                         <th>Location</th>
                         <th>Lead</th>
+                        <th>Staff</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -321,19 +340,33 @@ h1 {
                           <td>{{ rotation_session.title }}</td>
                           <td>{{ rotation_session.location or "Not set" }}</td>
                           <td>
-                            {% if rotation_session.lead_person_id %}
-                              {{ person_names.get(rotation_session.lead_person_id, "Unknown person") }}
-                            {% else %}
-                              Not set
-                            {% endif %}
                             {% set staff_items = session_staff_by_session_id.get(rotation_session.id, []) %}
-                            {% if staff_items %}
-                              <div class="muted"><strong>Staff:</strong></div>
-                              {% for item in staff_items %}
-                                <div class="muted">{{ item.display_name }} ({{ item.role }})</div>
-                              {% endfor %}
+                            {% set lead_staff = namespace(count=0) %}
+                            {% for item in staff_items %}
+                              {% if (item.role or "")|lower == "lead" %}
+                                {% if lead_staff.count > 0 %}<br>{% endif %}
+                                {{ item.display_name }}
+                                {% set lead_staff.count = lead_staff.count + 1 %}
+                              {% endif %}
+                            {% endfor %}
+                            {% if lead_staff.count == 0 %}
+                              <span class="muted">None</span>
                             {% endif %}
                           </td>
+                            <td>
+                              {% set staff_items = session_staff_by_session_id.get(rotation_session.id, []) %}
+                              {% set non_lead_staff = namespace(count=0) %}
+                              {% for item in staff_items %}
+                                {% if (item.role or "")|lower != "lead" %}
+                                  {% if non_lead_staff.count > 0 %}<br>{% endif %}
+                                  {{ item.display_name }} <span class="muted">({{ item.role }})</span>
+                                  {% set non_lead_staff.count = non_lead_staff.count + 1 %}
+                                {% endif %}
+                              {% endfor %}
+                              {% if non_lead_staff.count == 0 %}
+                                <span class="muted">None</span>
+                              {% endif %}
+                            </td>
                         </tr>
                       {% endfor %}
                     </tbody>
@@ -347,13 +380,14 @@ h1 {
         <table>
           <thead>
             <tr>
-              <th style="width: 12%;">Time</th>
-              <th style="width: 26%;">Session</th>
-              <th style="width: 12%;">Type</th>
-              <th style="width: 13%;">Group</th>
-              <th style="width: 14%;">Location</th>
-              <th style="width: 13%;">Lead</th>
-              <th style="width: 10%;">RA</th>
+              <th style="width: 10%;">Time</th>
+              <th style="width: 24%;">Session</th>
+              <th style="width: 11%;">Type</th>
+              <th style="width: 12%;">Group</th>
+              <th style="width: 13%;">Location</th>
+              <th style="width: 11%;">Lead</th>
+              <th style="width: 10%;">Staff</th>
+              <th style="width: 9%;">RA</th>
             </tr>
           </thead>
           <tbody>
@@ -386,17 +420,31 @@ h1 {
                 </td>
                 <td>{{ session.location or "Not set" }}</td>
                 <td>
-                  {% if session.lead_person_id %}
-                    {{ person_names.get(session.lead_person_id, "Unknown person") }}
-                  {% else %}
-                    Not set
-                  {% endif %}
                   {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
-                  {% if staff_items %}
-                    <div class="muted"><strong>Staff:</strong></div>
-                    {% for item in staff_items %}
-                      <div class="muted">{{ item.display_name }} ({{ item.role }})</div>
-                    {% endfor %}
+                  {% set lead_staff = namespace(count=0) %}
+                  {% for item in staff_items %}
+                    {% if (item.role or "")|lower == "lead" %}
+                      {% if lead_staff.count > 0 %}<br>{% endif %}
+                      {{ item.display_name }}
+                      {% set lead_staff.count = lead_staff.count + 1 %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if lead_staff.count == 0 %}
+                    <span class="muted">None</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                  {% set non_lead_staff = namespace(count=0) %}
+                  {% for item in staff_items %}
+                    {% if (item.role or "")|lower != "lead" %}
+                      {% if non_lead_staff.count > 0 %}<br>{% endif %}
+                      {{ item.display_name }} <span class="muted">({{ item.role }})</span>
+                      {% set non_lead_staff.count = non_lead_staff.count + 1 %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if non_lead_staff.count == 0 %}
+                    <span class="muted">None</span>
                   {% endif %}
                 </td>
                 <td>

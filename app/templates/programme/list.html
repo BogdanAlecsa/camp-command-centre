@@ -32,6 +32,17 @@
   .programme-rolling-body {
     margin-top: 0.75rem;
   }
+
+  .programme-rotation-summary-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .programme-rotation-summary-table th,
+  .programme-rotation-summary-table td {
+    vertical-align: top;
+  }
+
 </style>
 
 
@@ -199,7 +210,14 @@
                       {{ slot.start_time.strftime("%H:%M") }}–{{ slot.end_time.strftime("%H:%M") }}
                     </strong>
 
-                    <table class="compact-table">
+                    <table class="programme-rotation-summary-table compact-table">
+              <colgroup>
+                <col style="width: 14%;">
+                <col style="width: 42%;">
+                <col style="width: 18%;">
+                <col style="width: 13%;">
+                <col style="width: 13%;">
+              </colgroup>
                       <thead>
                         <tr>
                           <th>Group</th>

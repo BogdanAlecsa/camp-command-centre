@@ -2048,6 +2048,8 @@ async def print_group_programmes(
         activity_names,
     )
 
+    session_staff_by_session_id = get_session_staff_lookup(db, camp, all_sessions)
+
     schedules = []
 
     for team in teams:
@@ -2082,6 +2084,7 @@ async def print_group_programmes(
             "person_names": person_names,
             "risk_statuses": risk_statuses,
             "session_backup_summaries": session_backup_summaries,
+            "session_staff_by_session_id": session_staff_by_session_id,
         },
     )
 

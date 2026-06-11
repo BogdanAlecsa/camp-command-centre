@@ -304,11 +304,29 @@
                     <td>{{ session.location or "Not set" }}</td>
 
                     <td>
-                      {% if session.lead_person_id %}
-                        {{ person_names.get(session.lead_person_id, "Unknown person") }}
-                      {% else %}
-                        <span class="muted">Not set</span>
+                      {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
+                      {% set lead_staff = namespace(count=0) %}
+                      {% for item in staff_items %}
+                        {% if (item.role or "")|lower == "lead" %}
+                          {% if lead_staff.count > 0 %}<br>{% endif %}
+                          {{ item.display_name }}
+                          {% set lead_staff.count = lead_staff.count + 1 %}
+                        {% endif %}
+                      {% endfor %}
+                      {% if lead_staff.count == 0 %}
+                        <span class="muted">None</span>
                       {% endif %}
+
+                      {% set non_lead_staff = namespace(count=0) %}
+                      {% for item in staff_items %}
+                        {% if (item.role or "")|lower != "lead" %}
+                          {% if non_lead_staff.count == 0 %}
+                            <br><span class="muted small"><strong>Staff:</strong></span>
+                          {% endif %}
+                          <br><span class="muted small">{{ item.display_name }} ({{ item.role }})</span>
+                          {% set non_lead_staff.count = non_lead_staff.count + 1 %}
+                        {% endif %}
+                      {% endfor %}
 
                       {% if session.notes %}
                         <br><span class="muted small">{{ session.notes }}</span>
