@@ -32,10 +32,16 @@
 
     <p>
       <strong>Lead:</strong>
-      {% if session.lead_person_id %}
-        {{ person_names.get(session.lead_person_id, "Unknown person") }}
-      {% else %}
-        Not set
+      {% set lead_staff = namespace(count=0) %}
+      {% for staff_item in session_staff %}
+        {% if (staff_item.role or "")|lower == "lead" %}
+          {% if lead_staff.count > 0 %}<br>{% endif %}
+          {{ staff_item.display_name }}
+          {% set lead_staff.count = lead_staff.count + 1 %}
+        {% endif %}
+      {% endfor %}
+      {% if lead_staff.count == 0 %}
+        None
       {% endif %}
     </p>
   </section>

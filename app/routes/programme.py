@@ -1341,7 +1341,7 @@ async def create_programme_session(
 
     selected_activity_id = parse_optional_int(activity_id)
     selected_team_id = parse_optional_int(participant_team_id)
-    selected_lead_id = parse_optional_int(lead_person_id)
+    selected_lead_id = None
 
     selected_activity = None
 
@@ -1381,7 +1381,7 @@ async def create_programme_session(
         session_type=session_type,
         activity_id=selected_activity_id,
         participant_team_id=selected_team_id,
-        lead_person_id=selected_lead_id,
+        lead_person_id=None,
         location=location.strip() or None,
         notes=notes.strip() or None,
         rotation_group=rotation_group.strip() or None,
@@ -1865,7 +1865,7 @@ async def update_programme_session(
 
     selected_activity_id = parse_optional_int(activity_id)
     selected_team_id = parse_optional_int(participant_team_id)
-    selected_lead_id = parse_optional_int(lead_person_id)
+    selected_lead_id = None
 
     selected_activity = None
 
@@ -1904,7 +1904,7 @@ async def update_programme_session(
     session.session_type = session_type
     session.activity_id = selected_activity_id
     session.participant_team_id = selected_team_id
-    session.lead_person_id = selected_lead_id
+    session.lead_person_id = None
     session.location = location.strip() or None
     session.notes = notes.strip() or None
     session.rotation_group = rotation_group.strip() or None
@@ -2296,6 +2296,27 @@ async def print_leader_programme(
         activity_names,
     )
 
+    session_staff_by_session_id = get_session_staff_lookup(db, camp, sessions)
+
+    def get_session_lead_names(session_id):
+        lead_names = []
+
+        for staff_item in session_staff_by_session_id.get(session_id, []):
+            if isinstance(staff_item, dict):
+                role = staff_item.get("role")
+                display_name = staff_item.get("display_name")
+            else:
+                role = getattr(staff_item, "role", None)
+                display_name = getattr(staff_item, "display_name", None)
+
+            if (role or "").strip().lower() == "lead":
+                display_name = (display_name or "").strip()
+
+                if display_name and display_name not in lead_names:
+                    lead_names.append(display_name)
+
+        return lead_names
+
     sessions_by_date = {}
     for session in sessions:
         sessions_by_date.setdefault(session.session_date, []).append(session)
@@ -2323,10 +2344,13 @@ async def print_leader_programme(
                 if session.end_time > rotation["end_time"]:
                     rotation["end_time"] = session.end_time
 
+                lead_names = get_session_lead_names(session.id)
+                lead_key = "|".join(lead_names) if lead_names else "Unassigned lead"
+
                 base_key = (
                     session.activity_id or 0,
                     session.location or "",
-                    session.lead_person_id or 0,
+                    lead_key,
                 )
 
                 base = rotation["bases"].setdefault(
@@ -2335,9 +2359,7 @@ async def print_leader_programme(
                         "activity_id": session.activity_id,
                         "activity_name": activity_names.get(session.activity_id, session.title),
                         "location": session.location,
-                        "lead_name": person_names.get(session.lead_person_id, "Unassigned lead")
-                        if session.lead_person_id
-                        else "Unassigned lead",
+                        "lead_name": ", ".join(lead_names) if lead_names else "Unassigned lead",
                         "slots": [],
                     },
                 )
@@ -2475,21 +2497,7 @@ async def print_leader_location_board(
 
     session_ids = [session.id for session in sessions]
 
-    lead_person_ids = {
-        session.lead_person_id
-        for session in sessions
-        if session.lead_person_id is not None
-    }
-
     people_by_id = {}
-
-    if lead_person_ids:
-        for person in (
-            db.query(Person)
-            .filter(Person.camp_id == camp.id, Person.id.in_(lead_person_ids))
-            .all()
-        ):
-            people_by_id[person.id] = person
 
     session_staff_lookup = defaultdict(list)
 
@@ -2534,9 +2542,6 @@ async def print_leader_location_board(
 
     def session_assignments(session: ProgrammeSession):
         assigned = {}
-
-        if session.lead_person_id is not None and session.lead_person_id in people_by_id:
-            assigned.setdefault(session.lead_person_id, set()).add("Lead Person")
 
         for item in session_staff_lookup.get(session.id, []):
             assigned.setdefault(item["person_id"], set()).add(item["role"])
