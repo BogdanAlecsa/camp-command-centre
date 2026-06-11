@@ -1959,6 +1959,13 @@ async def print_full_programme(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    session_backup_summaries = get_session_backup_summary_lookup(
+        db,
+        camp,
+        sessions,
+        activity_names,
+    )
+
     return templates.TemplateResponse(
         "programme/print_full.html",
         {
@@ -1971,6 +1978,7 @@ async def print_full_programme(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_backup_summaries": session_backup_summaries,
             "session_staff_by_session_id": get_session_staff_lookup(db, camp, sessions),
         },
     )
@@ -2033,6 +2041,13 @@ async def print_group_programmes(
         risk_statuses,
     ) = get_programme_lookup_maps(db, camp)
 
+    session_backup_summaries = get_session_backup_summary_lookup(
+        db,
+        camp,
+        all_sessions,
+        activity_names,
+    )
+
     schedules = []
 
     for team in teams:
@@ -2066,6 +2081,7 @@ async def print_group_programmes(
             "team_names": team_names,
             "person_names": person_names,
             "risk_statuses": risk_statuses,
+            "session_backup_summaries": session_backup_summaries,
         },
     )
 
