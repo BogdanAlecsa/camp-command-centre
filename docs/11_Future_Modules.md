@@ -4,21 +4,13 @@ The MVP should not build everything, but it must not block future modules.
 
 Future modules should be added only after the Phase 1 core workflow is stable.
 
-Current active work should remain focused on:
-
-1. Safer section-level OSM member imports
-2. Safer section-level OSM attendance imports
-3. Attendance summaries and filters
-4. Import review improvements
-5. Bulk move people between sections
-
 ---
 
 ## Current Rule
 
 Do not start large deferred modules too early.
 
-The app now has useful early-MVP foundations, but the People, Sections and OSM workflow must be made safer before expanding too far.
+The app now has useful early-MVP foundations, but the People, Attendance, Programme, Risk Assessment and Print workflows must be made safe before expanding too far.
 
 If the people and attendance data is unreliable, later modules such as food, transport, finance and readiness will also be unreliable.
 
@@ -31,33 +23,139 @@ The Phase 1 MVP focuses on:
 - Camp setup
 - People
 - Sections
+- Participating groups
 - Teams
 - Tasks and assignments
 - Activities
 - Programme
+- Presence windows
+- Session staffing
+- Backup plans
 - Risk assessments
 - Basic printable outputs
 - OSM people and attendance import workflows
 
-This is the current build area.
+---
+
+## Deferred Module: Food and Catering
+
+Food and Catering is deferred, but it will eventually depend heavily on attendance and presence data.
+
+Potential features:
+
+- meal planning
+- dietary summaries
+- quantity calculations
+- shopping list
+- cooking plans
+- meal service rota
+- kitchen duty teams
+
+Current session headcount work will later help Food planning.
 
 ---
 
-## Phase 1 Remaining Work
+## Deferred Module: Transport
 
-Before moving to larger future modules, the following should be improved:
+Transport is deferred.
 
-- section-level OSM member import buttons
-- section-level OSM attendance import buttons
-- clearer import review before apply
-- import result summaries
-- attendance summaries by section
-- attendance filters on the People page
-- duplicate-name handling during imports
-- bulk move people between sections
-- better camp dashboard
-- better joined-up camp file outputs
-- basic end-to-end test with a real sample camp
+Potential features:
+
+- vehicles
+- drivers
+- passengers
+- collection/drop-off arrangements
+- trailer loads
+- equipment loads
+
+Transport will depend on accurate people, attendance, presence windows and teams.
+
+---
+
+## Deferred Module: Finance
+
+Finance is deferred.
+
+Potential features:
+
+- budget
+- spend tracking
+- payment tracking
+- receipt storage
+- payment summaries
+
+Finance should not be started until the core camp planning workflow is stable.
+
+---
+
+## Deferred Module: Forms
+
+Forms are deferred.
+
+Possible forms:
+
+- consent
+- medical
+- emergency contact
+- transport permission
+- dietary information
+- kit declaration
+
+Future form responses should become structured records, not only uploaded PDFs.
+
+---
+
+## Deferred Module: Communications
+
+Communications is deferred.
+
+Potential features:
+
+- parent emails
+- leader messages
+- joining instructions
+- reminders
+- printable packs
+- message templates
+
+Communications should use the same people/attendance data as the rest of the app.
+
+---
+
+## Deferred Module: Compliance
+
+Compliance is deferred as a full module, but some foundations are emerging.
+
+Future compliance areas:
+
+- Nights Away permit
+- NAN preparation
+- adult attendee checks
+- training/DBS/first aid visibility
+- risk assessment readiness
+- ratio checks
+- required documents
+
+The app should assist compliance.
+
+It should not replace official Scouts approval processes.
+
+---
+
+## Deferred Module: Incidents and Welfare
+
+Incidents and Welfare is deferred.
+
+Possible future features:
+
+- incident log
+- near misses
+- behaviour notes
+- medical events
+- lost property
+- medication administration
+
+This area has privacy implications and should be designed carefully.
 
 ---
 
@@ -74,27 +172,7 @@ Possible future features:
 - indoor room allocation
 - sleeping plan outputs
 
-Accommodation should build on the existing People, Sections and Teams model.
-
-It should not be started until people and attendance workflows are reliable.
-
----
-
-## Deferred Module: Site Planning
-
-Site Planning is deferred.
-
-Possible future features:
-
-- site plan upload
-- simple map or layout
-- camp zones
-- emergency routes
-- toilets/water/fire point markers
-- activity location markers
-- notes on site hazards
-
-Future enhancements may include OpenStreetMap or interactive map editing.
+Accommodation should build on People, Sections and Teams.
 
 ---
 
@@ -105,186 +183,29 @@ Equipment is deferred.
 Possible future features:
 
 - camp equipment checklist
-- personal kit checklist
 - activity equipment list
 - group kit list
 - trailer loading plan
-- vehicle loading plan
 - equipment assignment tracking
-- maintenance status later
 
 The first version should probably be checklist-based, not a full inventory system.
 
 ---
 
-## Deferred Module: Food and Catering
+## Deferred Module: Site Planning
 
-Food and Catering is deferred.
-
-Possible future features:
-
-- meal planning
-- recipe templates
-- quantity calculations
-- dietary summaries
-- shopping list generation
-- cooking rota
-- kitchen jobs
-- allergy-aware catering notes
-
-This should not be started until attendance status and dietary information are reliable.
-
----
-
-## Deferred Module: Transport and Logistics
-
-Transport and Logistics is deferred.
+Site Planning is deferred.
 
 Possible future features:
 
-- vehicles
-- drivers
-- passengers
-- passenger lists
-- collection arrangements
-- equipment loads
-- trailer loads
-- travel timings
-- transport readiness checks
+- site map upload
+- zones
+- emergency routes
+- activity locations
+- toilets/water/fire points
+- notes on site hazards
 
-This should build on attending people only, not the whole candidate roster.
-
----
-
-## Deferred Module: Finance
-
-Finance is deferred.
-
-Possible future features:
-
-- camp budget
-- payment tracking
-- spend tracking
-- receipt storage
-- reconciliation
-- treasurer report
-- cost per person summary
-
-Finance should stay simple at first.
-
-It should not become a full accounting system.
-
----
-
-## Deferred Module: Forms
-
-Forms are deferred.
-
-Possible future features:
-
-- medical forms
-- consent forms
-- emergency contact confirmation
-- dietary updates
-- activity permissions
-- travel permissions
-- parent/carer information forms
-
-Important principle:
-
-Forms should become structured database records.
-
-They should not just be stored as PDFs.
-
-Form responses should update camp-specific records after review.
-
----
-
-## Deferred Module: Communications
-
-Communications are deferred.
-
-Possible future features:
-
-- parent/carer messages
-- leader messages
-- helper messages
-- joining instructions
-- reminders
-- task pack emails
-- final information emails
-- message templates
-
-Communications should use groups generated by the app, such as:
-
-- all parents/carers of attending young people
-- leaders
-- helpers
-- a specific section
-- a specific team
-- people with missing information
-
----
-
-## Deferred Module: Documents
-
-Documents are deferred.
-
-Possible future features:
-
-- camp document checklist
-- risk assessment documents
-- venue documents
-- maps
-- booking confirmations
-- parent pack
-- leader pack
-- programme pack
-- task pack
-- generated camp file
-
-The app should distinguish between structured data and attached reference documents.
-
----
-
-## Deferred Module: Compliance
-
-Compliance is deferred.
-
-Possible future features:
-
-- Nights Away Permit information
-- NAN status
-- DBS status
-- training status
-- first aid qualification status
-- required document checklist
-- risk assessment status
-- approval reminders
-
-Important principle:
-
-The app may assist compliance tracking.
-
-It must not replace official Scouts approval processes.
-
----
-
-## Deferred Module: Incident and Welfare Logging
-
-Incident and Welfare Logging is deferred.
-
-Possible future features:
-
-- incident log
-- near miss log
-- behaviour notes
-- medical events
-- medication administration
-- lost property
-- welfare follow-up actions
-
-This module will need careful handling because it may contain sensitive information.
+This could later connect to risk assessments and programme locations.
 
 ---
 
@@ -292,198 +213,10 @@ This module will need careful handling because it may contain sensitive informat
 
 Lessons Learned is deferred.
 
-Possible future features:
+Possible features:
 
 - post-camp review
 - what worked well
 - what should change
 - actions for next camp
 - template improvements
-- reusable learning notes
-
-This should help make future camps easier to plan.
-
----
-
-## Deferred Module: Online Deployment
-
-Online deployment is deferred.
-
-Possible future options:
-
-- local PC
-- Raspberry Pi
-- hosted cloud service
-- PostgreSQL-backed deployment
-- multi-user access
-
-The MVP should stay local-first.
-
-The architecture should avoid blocking future online deployment, but online deployment should not distract from the local MVP.
-
----
-
-## Deferred Module: Collaboration
-
-Collaboration enhancements are deferred.
-
-Possible future features:
-
-- multiple users
-- camp-specific access
-- role-based permissions
-- read-only users
-- helper task updates
-- parent/carer form links
-
-Basic role concepts may exist in the data model, but full collaboration is not current MVP work.
-
----
-
-## Phase 5D — Export / Import / Archive System
-
-This is a future module and should not be built yet.
-
-The future system may support:
-
-- reusable camp templates
-- camp archives
-- full app backups
-
-Proposed future file types:
-
-- .ccctemplate
-- .cccarchive
-- .cccbackup
-
-Design principles:
-
-- no user-facing JSON exports
-- proprietary Camp Command Centre file formats
-- app-managed encryption
-- no user-managed passwords for normal exports
-- protection against casual viewing
-- protection against accidental editing
-- portability between computers
-
----
-
-## Camp Templates
-
-A camp template should contain reusable planning structure.
-
-A template may include:
-
-- activities
-- programme structure
-- tasks
-- task categories
-- task phases
-- risk assessment templates
-- teams or group structures
-- settings
-
-A template must exclude personal data.
-
-A template must not contain:
-
-- people
-- contact details
-- emergency contacts
-- medical information
-- dietary information
-- attendance records
-
-Templates are for reusing planning work, not copying personal data.
-
----
-
-## Camp Archives
-
-A camp archive should store a completed camp for future reference.
-
-Default archive contents may include:
-
-- names
-- sections
-- teams
-- attendance
-- activities
-- programme
-- tasks
-- risk assessments
-
-The archive wizard should allow sensitive fields to be included or excluded.
-
-Sensitive archive fields should be off by default.
-
-Sensitive fields include:
-
-- contact details
-- emergency contacts
-- medical information
-- allergy information
-- medication information
-- sensitive dietary information
-- future welfare or incident notes
-
----
-
-## Full Backups
-
-A full backup is different from a template or archive.
-
-A full backup should contain everything needed for disaster recovery.
-
-It may include:
-
-- full database
-- all camps
-- all people
-- all tasks
-- all programme data
-- all risk assessment data
-- settings
-
-Full backup/restore should be treated carefully because it may include all sensitive information in the app.
-
----
-
-## Future Camp Lifecycle
-
-Future camp lifecycle states should include:
-
-- Planning
-- Active
-- Completed
-- Archived
-
-Completed camps should remain visible while close-down actions are finished.
-
-Archived camps should be removed from normal working views but restorable if needed.
-
----
-
-## Roadmap Order
-
-Recommended order from the current point:
-
-1. Safer section-level OSM member imports
-2. Safer section-level OSM attendance imports
-3. Attendance summaries and filters
-4. Import review improvements
-5. Bulk move people between sections
-6. Camp dashboard improvements
-7. Better joined-up camp file outputs
-8. Template/export/archive planning
-9. Food, transport, finance and other large modules later
-
----
-
-## Summary
-
-The app should grow carefully.
-
-The current MVP is about building a trustworthy planning core.
-
-Large future modules should wait until the core People, Sections, Tasks, Programme and Risk Assessment workflows are stable.

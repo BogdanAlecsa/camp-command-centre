@@ -1,105 +1,86 @@
 # Tasks and Work Packs
 
-Tasks convert camp preparation into assignable work.
+The Tasks module helps leaders organise work before and during camp.
 
-Work Packs convert tasks into useful outputs for people and teams.
-
-The aim is to move camp planning away from scattered notes, emails and memory, and into clear work that can be assigned, tracked and printed.
+It is inspired by practical work-pack workflows, where each person or team can see what they are responsible for.
 
 ---
 
-## Current Status
+## Current Task Features
 
-The app now has a working early-MVP Tasks module.
-
-Current task features include:
+Implemented:
 
 - create tasks
 - edit tasks
-- view task details
-- assign tasks to people
-- assign tasks to teams
-- task statuses
-- task priorities
-- task phases
-- task categories
-- task command centre
-- person task summaries
-- team task summaries
-- printable task sheets
-- printable work packs
-
-This is one of the strongest current modules in the MVP.
-
----
-
-## What a Task Is
-
-A task is a piece of work needed to prepare, run or close a camp.
-
-Examples:
-
-- book venue
-- confirm permit holder
-- prepare kit list
-- collect missing medical information
-- buy food
-- print programme
-- check risk assessments
-- pack trailer
-- check tents
-- send final information to parents
-- return borrowed equipment
-- update lessons learned
-
-Tasks should be practical and assignable.
-
----
-
-## Task Fields
-
-A task may include:
-
-- title
-- description
-- category
-- phase
+- delete tasks
+- task status
 - priority
-- status
+- phase
+- category
 - due date
 - notes
-
-Future task fields may include:
-
-- dependencies
-- checklist items
-- estimated effort
-- required documents
-- readiness impact
-- template source
+- assignments to people
+- assignments to teams
+- command centre / task overview
+- printable task sheets
+- team work packs
+- task summaries
 
 ---
 
-## Current Task Statuses
+## Assignment Rules
 
-The current simplified task statuses are:
+Tasks can be assigned to:
 
-- To Do
-- In Progress
-- Blocked
-- Done
+- an individual person
+- a team
 
-This is deliberately simple for the MVP.
+Task assignment should affect task status in practical ways.
 
-Earlier planning included a more detailed workflow, but the current app uses a simpler status model to keep the interface usable.
+If a task has an assignment, it can become Assigned.
+
+If all assignments are removed, it should not remain misleadingly assigned.
+
+This rule has been introduced in the app and should be preserved.
 
 ---
 
-## Future Task Statuses
+## People and Team Views
 
-A future version may reintroduce a fuller workflow if needed.
+A good task system must allow users to ask:
 
-Possible future statuses:
+- what is assigned to this person?
+- what is assigned to this team?
+- what is still unassigned?
+- what is blocked?
+- what is complete?
+- what needs checking?
+
+Person and team detail pages should show related task assignments.
+
+---
+
+## Work Packs
+
+Work packs are printable operational outputs.
+
+Useful work packs include:
+
+- personal task sheet
+- team task sheet
+- camp task summary
+- preparation checklist
+- event-day checklist
+
+Work packs should be simple, readable and field-friendly.
+
+They should not depend on internet access.
+
+---
+
+## Task Statuses
+
+Current / desired task statuses include:
 
 - Draft
 - Planned
@@ -111,361 +92,57 @@ Possible future statuses:
 - Checked
 - Blocked
 - Cancelled
-- Not Needed
 
-This should only be expanded if the simpler model becomes limiting.
-
-The app should not become overcomplicated too early.
+The status list is intentionally more operational than a simple todo/done list.
 
 ---
 
-## Task Priorities
+## Task Categories and Phases
 
-Suggested priorities:
+Task categories and phases allow better filtering.
 
-- Low
-- Normal
-- High
-- Urgent
+Examples:
 
-Priority should help organisers focus attention.
-
-Priority should not replace due dates or task status.
-
----
-
-## Task Phases
-
-Task phases organise work by when it needs to happen.
-
-Current default phases include:
-
-- Early Planning
-- Preparation
-- Final Week
-- Camp Setup
-- During Camp
-- Pack Down
-- After Camp
-
-This helps answer:
-
-What needs doing now?
-
-What can wait?
-
-What is needed during camp?
-
-What needs closing afterwards?
-
----
-
-## Task Categories
-
-Task categories organise work by area.
-
-Current default categories include:
-
+- Admin
+- Equipment
+- Food
+- Programme
+- Risk Assessment
+- Transport
 - Venue
-- People & Forms
-- Programme
-- Equipment
-- Food
-- Transport
-- Documents
-- Safety / Risk
-- Communications
 - Finance
-- General
+- Communications
 
-Some categories refer to future modules.
+Phases may include:
 
-This is intentional.
+- Before camp
+- During camp
+- After camp
 
-Even before Food, Transport or Finance modules exist, tasks in those areas still need to be tracked.
-
----
-
-## Task Assignment
-
-Tasks may be assigned to:
-
-- one person
-- one team
-- multiple people
-- multiple teams
-
-Assignments should make responsibility clear.
-
-The app should help answer:
-
-- who owns this task?
-- what is assigned to me?
-- what is assigned to this team?
-- what is unassigned?
-- what is blocked?
-- what is overdue?
+The app should allow sensible defaults but not force a rigid structure.
 
 ---
 
-## People and Team Links
+## Future Improvements
 
-Tasks are linked to People and Teams.
+Short-term:
 
-This means a person detail page can show their tasks.
+- clearer task assignment summaries
+- easier filtering by person/team/status
+- better printable layout
+- task dependencies display
+- task templates
 
-A team detail page can show tasks assigned to the team.
+Medium-term:
 
-This is important because camp planning is not just a list of jobs.
+- reusable task templates
+- task packs by camp type
+- readiness contribution from task status
+- overdue warnings
+- task dashboard cards
 
-It is a list of jobs owned by real people or groups.
+Long-term:
 
----
-
-## Task Command Centre
-
-The Task Command Centre is intended to be the organiser's main task overview.
-
-It should help organise tasks by:
-
-- status
-- phase
-- category
-- priority
-- assignee
-- due date
-
-Current implementation is functional.
-
-Future improvements should include better summaries and visual progress indicators.
-
----
-
-## Work Packs
-
-Work Packs turn task data into practical outputs.
-
-A work pack should be printable and usable away from the screen.
-
-Work Packs can be generated by:
-
-- person
-- team
-- phase
-- category
-- unassigned tasks
-
-Useful outputs include:
-
-- personal task sheet
-- team work pack
-- phase work pack
-- category work pack
-- unassigned task list
-- camp task summary
-
----
-
-## Personal Task Sheets
-
-A personal task sheet shows the tasks assigned to one person.
-
-It should answer:
-
-- what do I need to do?
-- when is it due?
-- what priority is it?
-- what notes do I need?
-- what is already done?
-
-This is useful for leaders, helpers and organisers.
-
----
-
-## Team Work Packs
-
-A team work pack shows the tasks assigned to a team.
-
-Example teams:
-
-- leader team
-- catering team
-- transport team
-- equipment team
-- setup team
-- activity team
-
-A team work pack helps a group of people work from the same task list.
-
----
-
-## Phase Work Packs
-
-A phase work pack groups tasks by when they need to happen.
-
-Examples:
-
-- Final Week work pack
-- Camp Setup work pack
-- During Camp work pack
-- Pack Down work pack
-
-This is useful because the same organiser may need different task views at different points in the camp lifecycle.
-
----
-
-## Category Work Packs
-
-A category work pack groups tasks by topic.
-
-Examples:
-
-- Safety / Risk
-- Equipment
-- Food
-- Transport
-- Programme
-- Documents
-
-This is useful when one leader is responsible for a whole area.
-
----
-
-## Unassigned Tasks
-
-The app should make unassigned tasks visible.
-
-Unassigned tasks are a risk because nobody owns them.
-
-The task system should make it easy to find tasks that need assigning.
-
----
-
-## Blocked Tasks
-
-Blocked tasks should be visible.
-
-A blocked task should include notes explaining why it is blocked and what needs to happen next.
-
-Future readiness logic should treat blocked tasks as important warnings.
-
----
-
-## Readiness Link
-
-Tasks are one of the foundations of the future readiness system.
-
-Readiness should eventually consider:
-
-- incomplete urgent tasks
-- overdue tasks
-- blocked tasks
-- unassigned tasks
-- missing task owners
-- incomplete Safety / Risk tasks
-- incomplete People & Forms tasks
-- incomplete Programme tasks
-
-Readiness should not be built as a separate checklist until task data is reliable.
-
----
-
-## Templates
-
-Task templates are a future improvement.
-
-Reusable task templates should allow common camp task sets to be copied into a new camp.
-
-Examples:
-
-- indoor sleepover task template
-- campsite camp task template
-- family camp task template
-- group camp task template
-- expedition task template
-
-Task templates should be copied into the camp.
-
-They should not stay live-linked to the template.
-
----
-
-## Relationship to Future Modules
-
-Some task categories overlap with future modules.
-
-Examples:
-
-- Food tasks now, Food module later
-- Transport tasks now, Transport module later
-- Finance tasks now, Finance module later
-- Communications tasks now, Communications module later
-
-This is fine.
-
-The task system lets the app handle work in those areas before full modules exist.
-
-Later modules can replace or enhance some task workflows.
-
----
-
-## Current Strengths
-
-The current Tasks module is useful because it already supports:
-
-- practical planning
-- assignment to people
-- assignment to teams
-- printable outputs
-- work packs
-- phase/category organisation
-
-This makes it one of the most mature parts of the MVP.
-
----
-
-## Current Limitations
-
-Current limitations include:
-
-- no full task dependency system yet
-- no task checklist items yet or not fully surfaced
-- no reusable task templates yet
-- limited visual progress summaries
-- limited readiness roll-up
-- no notification/reminder system
-- no multi-user task acceptance workflow
-
-These are acceptable for the early MVP.
-
----
-
-## Near-Term Improvements
-
-Tasks are not the immediate next priority.
-
-The next priority remains the People, Sections and OSM import workflow.
-
-After that, useful task improvements include:
-
-1. Better task summary dashboard
-2. Reusable task templates
-3. Better unassigned/blocked task visibility
-4. Checklist items inside tasks
-5. Dependency tracking
-6. Readiness roll-up from tasks
-7. Better printable work pack formatting
-
----
-
-## Design Rule
-
-Keep tasks practical.
-
-A task should be clear enough that a person or team can act on it.
-
-Avoid turning the task module into a complicated project management system too early.
-
-The goal is not to build enterprise project management.
-
-The goal is to help Scout leaders get camp jobs done.
+- recurring template libraries
+- role-based work packs
+- lightweight notifications if the app goes online

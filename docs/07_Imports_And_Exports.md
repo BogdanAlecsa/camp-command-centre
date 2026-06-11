@@ -1,41 +1,29 @@
 # Imports and Exports
 
-The app should make it easy to get data in and useful information out, without exposing users to fragile internal data formats.
+The app currently supports early import workflows and several printable outputs.
 
-Imports and exports should support the way Scout camps are actually planned:
-
-- information may arrive gradually
-- some people may be provisional at first
-- OSM data is section-based
-- attendance may change after people have already been imported
-- sensitive information must be handled carefully
-
----
-
-## Current Status
-
-The app now has early working support for:
-
-- person-level OSM member import
-- bulk OSM member import preview
-- bulk OSM member import apply
-- OSM event attendance import groundwork
-- printable outputs for tasks, teams, programme and risk assessments
-
-The import system is still early and must be made safer before relying on it heavily with real camp data.
+Imports and exports are critical because leaders already use OSM, spreadsheets and printable paperwork.
 
 ---
 
 ## OSM Member Import
 
-OSM member exports are used to import or update people in a camp.
+The app supports OSM member import workflows.
 
-The current importer can read useful camp fields from an OSM member export, including:
+Current capabilities include:
 
-- first name
-- last name
-- email
-- phone
+- bulk member import preview
+- bulk member import apply
+- matching by name inside a selected section
+- updating existing people
+- replacing provisional people
+- creating new people
+- importing useful camp information
+
+Imported fields include:
+
+- names
+- contact information
 - primary contact
 - emergency contact
 - allergies
@@ -44,309 +32,122 @@ The current importer can read useful camp fields from an OSM member export, incl
 - dietary requirements
 - section unit / six / patrol / leader unit
 
-The app stores the OSM unit internally as a neutral section unit field.
+---
 
-Examples:
+## OSM Attendance Import
 
-- Cubs may use Six names
-- Scouts may use Patrol names
-- Leaders may appear under a Leaders unit
-- Young Leaders may appear under Young Leaders / YLs
+The app includes groundwork for OSM event attendance import.
 
-The importer can suggest person type from the OSM unit:
+Attendance mapping:
 
-- Leader units suggest Leader
-- Young Leaders / YLs suggest Young Leader
-- otherwise the selected default type is used, usually Young Person
+- Yes → Attending
+- No → Not attending
+- Invited → Invited
+- blank → No response
+
+This should become a central part of the candidate roster workflow.
 
 ---
 
-## Bulk OSM Member Import Workflow
+## Import UX Rules
 
-The current workflow is:
+Imports must be safe.
 
-1. Choose target section
-2. Upload OSM member export
-3. Preview imported rows
-4. Match existing people by name within the selected section
-5. Apply selected rows
+The app should make it hard to accidentally import data into the wrong section.
 
-Apply can:
+Good future import behaviour:
 
-- update matched people
-- replace provisional people
-- create new people for unmatched rows
-
-Existing non-blank fields should be protected by default.
-
-Manual corrections should not be overwritten unless the organiser explicitly chooses to replace existing data.
+1. Import button is inside the section block.
+2. Target section is pre-selected and visually obvious.
+3. Preview clearly shows what will happen.
+4. User can review update/create/replace/skip decisions.
+5. Apply step gives a clear result summary.
 
 ---
 
-## OSM Event Attendance Import
+## Provisional People and Imports
 
-OSM event exports are used to update attendance for a camp.
+Provisional people are important for early planning.
 
-The expected event export structure is simple:
-
-- First Name
-- Last Name
-- Attending
-
-Attendance values are mapped as follows:
-
-- Yes becomes Attending
-- No becomes Not attending
-- Invited becomes Invited
-- blank becomes No response
-
-This allows a useful camp setup workflow:
-
-1. Import all section members into the camp candidate roster
-2. Import the OSM event attendance export later
-3. Use attendance status to decide who appears in operational outputs
-
----
-
-## Candidate Roster
-
-People in a camp are not necessarily final attendees.
-
-The People module should support a candidate roster, where each person may be:
-
-- Provisional
-- Invited
-- Attending
-- Not attending
-- No response
-- Unknown
-
-Operational outputs should later be able to filter to the correct people, usually Attending only.
-
----
-
-## Safer Section-Level Imports
-
-The current global import buttons are useful, but they are too easy to misuse.
-
-Future import workflow should move import actions into each section block.
+An import should be able to replace placeholders with real data.
 
 Example:
 
-Cubs:
+- Cubs YP01 becomes Sophie Smith
+- linked tasks, teams and programme group data are preserved
 
-- Import/update Cubs from OSM member export
-- Update Cubs attendance from OSM event export
-
-Scouts:
-
-- Import/update Scouts from OSM member export
-- Update Scouts attendance from OSM event export
-
-This avoids accidentally importing a Cubs file into Squirrels or another section.
-
-Preferred future routes:
-
-- /camps/{camp_id}/sections/{section_id}/osm-member-import
-- /camps/{camp_id}/sections/{section_id}/osm-attendance-update
-
-The import page should clearly show the target section.
-
-Example:
-
-You are importing into: Cubs
+This is more useful than deleting and recreating planning data.
 
 ---
 
-## Import Review Requirements
+## Printable Outputs
 
-Before Apply is pressed, the importer should show what will happen to each row.
+Current printable outputs include:
 
-Each row should show one of:
-
-- Update existing person
-- Replace provisional person
-- Create new person
-- Skip
-- Needs manual review
-
-Duplicate-name matches should not be guessed.
-
-If more than one person has the same normalised name in the target section, the row should require manual review.
-
----
-
-## Recovery Tools
-
-The app should provide a simple way to recover from import mistakes.
-
-Needed tool:
-
-- select multiple people
-- choose a new section
-- move selected people
-
-This is useful if people are imported into the wrong section or if section assignments need correcting.
-
----
-
-## Current Export Types
-
-Current or near-term printable/exportable outputs include:
-
-- camp overview
-- people list
-- emergency contacts
-- team lists
 - task sheets
 - team work packs
-- programme
-- group schedules
-- leader schedules
-- parent pack
-- leader pack
-- risk assessment pack
-- readiness report later
+- full programme
+- group programme
+- leader programme
+- activity leader schedule
+- leader location board
+- session roll call
+
+Printables are operational documents.
+
+They must be simple, robust and readable.
 
 ---
 
-## Deferred Export / Import / Archive System
+## Programme Print Output Rules
 
-A future export/import/archive system is planned, but it is not current work.
+Programme print packs should distinguish audiences.
 
-This belongs later in the roadmap, after the People, Sections and OSM workflows are stable.
+Parent / young person programme:
 
-Planned future file types:
+- show the main plan
+- avoid internal backup details
+- avoid operational clutter
 
-- .ccctemplate
-- .cccarchive
-- .cccbackup
+Leader / internal programme:
 
----
+- show operational notes
+- show session staff / leads
+- show backup plans quietly
+- show risk and cover warnings where useful
 
-## Camp Template File
+Session roll call:
 
-A .ccctemplate file is a reusable camp template.
-
-It may contain:
-
-- activities
-- programme structure
-- tasks
-- task categories
-- task phases
-- risk assessment templates
-- teams / group structures
-- settings
-
-It must not contain:
-
-- people
-- contact details
-- emergency contacts
-- medical information
-- dietary information
-- attendance records
-
-Templates are for reusing planning structure, not personal data.
+- show expected people
+- show roles and presence warnings
+- include tick boxes
+- avoid unnecessary programme clutter
 
 ---
 
-## Camp Archive File
+## Backup Plans in Outputs
 
-A .cccarchive file is an archived camp record.
+Backup plans should not appear as full timetable items.
 
-An archive may contain by default:
+They should appear, where appropriate, as quiet support text:
 
-- names
-- sections
-- teams
-- attendance
-- activities
-- programme
-- tasks
-- risk assessments
+```text
+Backup: Indoor quiz — Wet weather · Hall · 45 min
+```
 
-The archive wizard should allow sensitive fields to be included or excluded.
-
-Suggested defaults:
-
-- Names: on
-- Attendance: on
-- Teams: on
-- Programme: on
-- Tasks: on
-- Activities: on
-- Risk assessments: on
-- Contact details: off
-- Emergency contacts: off
-- Medical information: off
-
-Sensitive fields should be off by default.
+This should be added to leader/internal programme printables after the print routes have tests or careful manual checks.
 
 ---
 
-## Full Backup File
+## Future Exports
 
-A .cccbackup file is a full application backup.
+Future export ideas:
 
-It should contain:
+- camp file export
+- PDF pack
+- CSV export
+- JSON backup/export
+- archive pack after camp
+- import/export templates
 
-- the full database
-- all camps
-- all people
-- all tasks
-- all programme data
-- all risk assessment data
-- all settings
-- everything needed for disaster recovery
-
-This is different from a camp template or archive.
-
-A backup is for restoring the whole application after data loss or moving the application to another computer.
-
----
-
-## File Format Principles
-
-Normal users should not be given raw JSON exports.
-
-Future Camp Command Centre files should use app-specific formats.
-
-Design principles:
-
-- no user-facing JSON exports
-- app-managed encryption
-- no user-managed passwords for normal exports
-- protection against casual viewing
-- protection against accidental editing
-- portability between computers
-
----
-
-## Camp Lifecycle
-
-Future camp states should include:
-
-- Planning
-- Active
-- Completed
-- Archived
-
-Completed camps can later be archived and removed from normal working views.
-
-Archived camps should be restorable if needed.
-
----
-
-## Current Priority
-
-Do not build the export/import/archive system yet.
-
-Current priorities remain:
-
-1. Safer section-level OSM member imports
-2. Safer section-level OSM attendance imports
-3. Attendance summaries and filters
-4. Import review improvements
-5. Bulk move people between sections
+A full export/import/archive system is deferred.

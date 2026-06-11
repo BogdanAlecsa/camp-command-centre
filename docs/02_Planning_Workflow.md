@@ -20,14 +20,14 @@ The app currently supports a practical early-MVP camp planning workflow:
 6. Assign Tasks
 7. Create Activities
 8. Build Programme
-9. Add Risk Assessments
-10. Generate Printable Outputs
+9. Assign Session Staff
+10. Add Backup Plans
+11. Add Risk Assessments
+12. Generate Printable Outputs
 
 The workflow is not yet a full readiness system, but the main building blocks now exist.
 
 ---
-
-## Core Planning Flow
 
 ## 1. Create Camp
 
@@ -76,7 +76,7 @@ A person may be:
 
 This allows the organiser to import a whole section from OSM, then later update attendance using an OSM event export.
 
-Operational outputs should later be able to filter to the correct people, usually Attending only.
+Operational outputs should increasingly filter to the correct people, usually Attending only.
 
 ---
 
@@ -106,255 +106,164 @@ Later, a provisional person can be replaced with a real person while preserving 
 
 ## 5. OSM-Based Planning
 
-The app also supports a more data-driven workflow using OSM exports.
+The app supports a data-driven workflow using OSM exports.
 
 This workflow is:
 
-1. Import all members for a section from OSM
-2. Store them as the camp candidate roster
-3. Import the OSM event attendance export
-4. Update each person's attendance status
-5. Use attendance status to decide who appears in operational outputs
+1. Import all members for a section from OSM.
+2. Store them as the camp candidate roster.
+3. Import the OSM event attendance export.
+4. Update each person's attendance status.
+5. Use attendance status to decide who appears in operational outputs.
 
 This is useful when OSM already contains the section membership and event attendance data.
 
 ---
 
-## 6. Sections
+## 6. Create Teams
 
-People are grouped by home section.
+Teams are used for practical planning.
 
-Default sections include:
+Examples:
 
-- Squirrels
-- Beavers
-- Cubs
-- Scouts
-- Explorers
-- Young Leaders
-- Leaders / Adults
+- patrols/sixes
+- tent groups
+- duty teams
+- leader teams
+- activity groups
+- transport groups
+
+A person may belong to multiple teams.
+
+Team membership can be edited without removing and re-adding the person.
+
+---
+
+## 7. Create and Assign Tasks
+
+Tasks represent work needed before or during camp.
+
+Tasks can be assigned to:
+
+- people
+- teams
+
+Task status is updated automatically in key cases:
+
+- assigning a task can move it to Assigned
+- removing all assignments can return it to Unassigned/Planned where appropriate
+
+Task outputs support:
+
+- personal task sheets
+- team work packs
+- camp task summaries
+
+---
+
+## 8. Build Programme
+
+Programme sessions are scheduled blocks.
+
+A session may have:
+
+- a linked activity
+- a participant group/team
+- a location
+- staff
+- backup plans
+- notes
+- rotation metadata
+
+Programme planning should support both simple timetables and activity rotations.
+
+---
+
+## 9. Assign Session Staff
+
+Session Staff is the operational staffing model for sessions.
+
+A session can have multiple staff members.
+
+Staff have roles such as:
+
+- Lead
+- Supporting Adult
+- Parent Helper
+- Young Leader
+- First Aider
+- Observer
 - Other
 
-The People page groups people by section.
+This replaces the old single Lead Person concept.
 
-Future import actions should sit inside each section block, so the target section is clear and accidental imports into the wrong section are less likely.
-
----
-
-## 7. Teams and Groups
-
-Teams are used for camp organisation.
-
-A person can belong to multiple teams.
-
-Examples:
-
-- leader team
-- helper team
-- tent group
-- patrol or six
-- activity group
-- duty team
-- transport group
-
-Section units from OSM, such as Cub Sixes or Scout Patrols, are currently stored as reference data.
-
-They should not automatically create teams yet.
-
-A future improvement may allow the organiser to convert OSM units into teams.
+The app should treat Session Staff role = Lead as the source of truth for session leads.
 
 ---
 
-## 8. Tasks and Assignments
+## 10. Check Session Cover
 
-Tasks help organise preparation and delivery.
+Session cover currently checks:
 
-Tasks may be assigned to:
+- total people at session start
+- total people for full session
+- participants at start
+- participants for full session
+- assigned staff at start
+- assigned staff for full session
+- staff roles at start
+- staff roles for full session
+- adult Lead at start
+- adult Lead for full session
 
-- individuals
-- teams
-- multiple people
-
-Tasks can be grouped by:
-
-- status
-- phase
-- category
-- assignee
-
-The app currently supports printable task sheets and work packs.
-
-Future improvements should include reusable task templates and stronger readiness summaries.
+Young Leaders can be session staff operationally, but they are not adult Lead cover.
 
 ---
 
-## 9. Activities
+## 11. Add Backup Plans
 
-Activities describe what may happen during the camp.
+Backup plans are optional fallbacks attached to a programme session.
 
-Activities may include:
+They are useful for:
 
-- description
-- duration
-- location
-- activity lead
-- supporting adults
-- equipment notes
-- risk notes
-- wet weather alternative
-- badge notes
+- wet weather
+- heat
+- low light
+- equipment problems
+- instructor unavailable
+- overruns
+- low energy
+- behaviour reset
 
-Activities can be linked into the programme.
+A backup plan can be linked to an existing Activity or entered as lightweight text.
 
-Future improvements should include reusable activity templates.
+Backup plans do not alter the main timetable.
 
 ---
 
-## 10. Programme
+## 12. Print Operational Outputs
 
-Programme sessions schedule activities and other camp events.
+Printables are used in the field.
 
-Programme sessions may include:
-
-- date
-- time
-- activity
-- participant group
-- location
-- lead person
-- supporting staff
-- session type
-- notes
-
-Current programme outputs include:
+The app should support:
 
 - full programme
-- group schedules
-- leader schedules
-- activity leader schedules
+- leader programme
+- group programme
+- activity leader schedule
 - leader board
+- session roll call
+- task sheets
+- work packs
 
-Future improvements should include better rotation planning, clash detection and easier editing.
-
----
-
-## 11. Risk Assessments
-
-Risk assessments are included as a safety backbone inside the MVP.
-
-The app supports:
-
-- camp-level risk assessment
-- activity-level risk assessment
-- risk controls
-- risk assessment status
-- risk assessment print views
-- risk assessment pack
-
-Important note:
-
-The app assists with organising risk assessment information.
-
-It does not replace official Scouts approval processes.
+Print routes need particular care because small template mistakes can break important outputs.
 
 ---
 
-## 12. Printable Outputs
+## Workflow Principle
 
-The app already supports several printable outputs.
+The app should allow early messy planning, then gradually tighten the data.
 
-Examples:
+Planning often starts with unknowns.
 
-- person task sheets
-- team task sheets
-- task work packs
-- programme printouts
-- risk assessment print pack
-
-Future outputs should include a more joined-up camp file.
-
-Possible future packs:
-
-- parent pack
-- leader pack
-- emergency/contact list
-- attending young people list
-- programme pack
-- risk assessment pack
-- task pack
-
----
-
-## 13. Readiness
-
-Readiness is the long-term direction.
-
-The app should eventually answer:
-
-Are we ready?
-
-Readiness should be based on real information from the app, not manually maintained checklists.
-
-Potential readiness areas:
-
-- people and attendance
-- missing contact details
-- missing emergency contacts
-- missing medical/dietary information
-- incomplete tasks
-- programme gaps
-- missing risk assessments
-- staffing gaps
-- missing documents
-- unresolved warnings
-
-Readiness scoring should not be built until the underlying data is reliable.
-
----
-
-## Current Immediate Priorities
-
-The next practical workflow improvements are:
-
-1. Safer section-level OSM member imports
-2. Safer section-level OSM attendance imports
-3. Attendance summaries and filters
-4. Import review improvements
-5. Bulk move people between sections
-
-These should be completed before starting larger deferred modules.
-
----
-
-## Deferred Workflow Areas
-
-Do not build these yet:
-
-- Food
-- Transport
-- Finance
-- Forms
-- Communications
-- Full compliance module
-- Incident and welfare logging
-- Online multi-user mode
-- Export/import/archive implementation
-
-These are future modules and should wait until the Phase 1 core workflow is stable.
-
----
-
-## Close Camp and Archive
-
-Future workflow stages should include:
-
-1. Planning
-2. Active
-3. Completed
-4. Archived
-
-Completed camps should remain visible while close-down actions are finished.
-
-Archived camps should be removed from normal working views but restorable if needed.
-
-This belongs to a later phase.
+The app should make unknowns visible rather than block planning completely.

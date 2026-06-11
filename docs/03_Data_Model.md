@@ -17,6 +17,8 @@ The app now includes working models for:
 - Camp
 - Person
 - Section
+- Participating Group
+- Presence Window
 - Team
 - Team Membership
 - Task
@@ -26,6 +28,7 @@ The app now includes working models for:
 - Activity
 - Programme Session
 - Programme Session Staff
+- Programme Session Backup
 - Camp Risk Assessment
 - Camp Risk Control
 - Activity Risk Assessment
@@ -49,6 +52,8 @@ Examples:
 - tasks
 - activities
 - programme sessions
+- session staff
+- backup plans
 - risk assessments
 
 This keeps each camp self-contained.
@@ -105,58 +110,11 @@ Current person fields include:
 
 ---
 
-## Candidate Roster
-
-People in the app are not necessarily confirmed attendees.
-
-A person may be:
-
-- Provisional
-- Invited
-- Attending
-- Not attending
-- No response
-- Unknown
-
-This supports two planning approaches:
-
-1. Plan early using provisional placeholders.
-2. Import people from OSM and then update attendance later.
-
-Operational outputs should eventually filter people by attendance status.
-
-For example, an emergency contact list should normally include attending people only.
-
----
-
-## Provisional People
-
-A provisional person is a placeholder.
-
-Example:
-
-- Cubs YP01
-- Cubs YP02
-- Scouts YP01
-
-Provisional people allow planning before names are known.
-
-A provisional person can later be replaced with a real person while keeping existing links.
-
-This is important because provisional people may already be used in:
-
-- teams
-- task assignments
-- programme planning
-- tent groups later
-
----
-
 ## Section
 
-A Section represents a Scout section or similar grouping within a camp.
+A Section represents a Scout section or adult grouping.
 
-Default sections include:
+Examples:
 
 - Squirrels
 - Beavers
@@ -165,373 +123,211 @@ Default sections include:
 - Explorers
 - Young Leaders
 - Leaders / Adults
-- Other
 
-A person may have one home section.
+Sections may be connected to participating groups.
 
-Sections are used to group people on the People page and should become the normal entry point for section-specific OSM imports.
-
----
-
-## Section Unit
-
-The Person model includes a section unit field.
-
-This is a neutral field used to store OSM group/unit information.
-
-Examples:
-
-- Cub Six
-- Scout Patrol
-- Leader unit
-- Young Leader unit
-
-Different sections use different names for their sub-groups, so the app should not assume everything is called a Six or a Patrol.
-
-The section unit is stored as useful reference data.
-
-It should not automatically create Teams yet.
-
-A future workflow may allow the organiser to convert OSM section units into teams.
+People can inherit presence expectations through their home section.
 
 ---
 
-## Information Source
+## Participating Group
 
-People can store where their information came from.
+Participating Groups are useful when a camp includes multiple sections, scout groups or OSM sources.
 
-Useful source values include:
+They help organise imports and attendance expectations.
 
-- Manual Entry
-- Provisional
-- OSM Member File
-- OSM Event Export
-- Camp Form later
-- Leader Update later
-
-This matters because imported information should not blindly overwrite manual corrections.
+Presence can be set at participating group level.
 
 ---
 
-## Attendance Status
+## Presence Window
 
-Attendance status is now separate from person type.
+PresenceWindow records when a person, section, participating group or whole camp is expected.
 
-Suggested attendance statuses:
+Scope types include:
 
-- Provisional
-- Invited
-- Attending
-- Not attending
-- No response
-- Withdrawn
-- Unknown
+- camp
+- participating_group
+- section
+- person
 
-OSM event attendance imports should update attendance status without overwriting unrelated person data.
+Presence is used by the Programme Planner to decide whether someone is available for a session.
 
----
+The current logic uses the most specific available presence source.
 
-## Contact and Health Fields
+Order of precedence:
 
-The Person model currently includes camp-relevant contact and health fields.
-
-These include:
-
-- primary contact name
-- primary contact relationship
-- primary contact phone
-- primary contact email
-- emergency contact name
-- emergency contact relationship
-- emergency contact phone
-- emergency contact email
-- allergies
-- allergy action
-- medication
-- medical notes
-- dietary requirements
-
-These fields are useful for camp planning and emergency preparation.
-
-They are sensitive and should be handled carefully in future exports, archives and reports.
+1. Person
+2. Section
+3. Participating Group
+4. Camp
 
 ---
 
-## Team
+## Team and Team Membership
 
-A Team is a camp organisation group.
+A Team represents an organisational grouping.
 
-Examples:
+A person can belong to multiple teams.
 
-- Leader Team
-- Helper Team
-- Tent Group
-- Patrol/Six
-- Activity Group
-- Duty Team
-- Transport Group
-- Custom
+Team Membership links people to teams and stores:
 
-People can belong to multiple teams.
-
-Teams are separate from Sections.
-
-Sections describe where a person belongs organisationally.
-
-Teams describe how people are grouped for a specific camp purpose.
-
----
-
-## Team Membership
-
-Team Membership links people to teams.
-
-A person can be in more than one team.
-
-For example, one person could be in:
-
-- Cubs section
-- Red tent group
-- Saturday breakfast duty team
-- Archery activity group
-
----
-
-## Task
-
-A Task represents something that needs doing for the camp.
-
-Tasks include:
-
-- title
-- description
-- category
-- phase
-- priority
-- status
-- due date
+- role in team
 - notes
 
-Tasks may be assigned to people or teams.
+This is used for patrols, tent groups, duty teams, activity groups and leader/helper teams.
 
 ---
 
-## Task Assignment
+## Task and Task Assignment
 
-Task Assignment links tasks to people and/or teams.
+A Task represents something that needs doing.
 
-This allows one task to be owned by:
+Task Assignment links tasks to:
 
-- one person
-- one team
-- multiple people
-- multiple teams
+- people
+- teams
 
-The task module currently supports printable task sheets and work packs.
-
----
-
-## Task Phase
-
-Task phases organise tasks by when they are needed.
-
-Example phases:
-
-- Early Planning
-- Preparation
-- Final Week
-- Camp Setup
-- During Camp
-- Pack Down
-- After Camp
-
-Task phases are reusable within a camp.
-
----
-
-## Task Category
-
-Task categories organise tasks by area.
-
-Example categories:
-
-- Venue
-- People & Forms
-- Programme
-- Equipment
-- Food
-- Transport
-- Documents
-- Safety / Risk
-- Communications
-- Finance
-- General
-
-Some categories refer to future modules, but they are useful now for organising tasks.
+The assignment model supports task ownership and future reporting.
 
 ---
 
 ## Activity
 
-An Activity represents something that can be scheduled in the programme.
+An Activity is a reusable activity definition.
 
-Activities may include:
+Activity data includes:
 
 - name
 - description
-- default duration
+- duration
 - default location
 - activity lead
-- supporting adults notes
 - equipment notes
 - risk notes
 - wet weather alternative
-- badge notes
 
-Activities can be linked to programme sessions.
+Activities can be scheduled as programme sessions.
+
+Activities can also be linked from session backup plans.
 
 ---
 
 ## Programme Session
 
-A Programme Session represents a scheduled block in the camp programme.
+A Programme Session is a scheduled timetable item.
 
-A session may include:
+It includes:
 
-- date
-- start time
-- end time
+- camp_id
+- session_date
+- start_time
+- end_time
 - title
-- session type
-- linked activity
-- participant team/group
-- lead person
+- session_type
+- activity_id
+- participant_team_id
+- lead_person_id
 - location
 - notes
-- rotation information
+- rotation_group
+- rotation_slot_number
 
-Programme sessions are used to generate printable programme outputs.
+Important note:
+
+`lead_person_id` is a legacy field and should not be used as the source of truth in new UI logic.
+
+The source of truth for session leads is:
+
+```text
+ProgrammeSessionStaff.role == "Lead"
+```
+
+The legacy field is kept temporarily for database compatibility and migration safety.
 
 ---
 
 ## Programme Session Staff
 
-Programme Session Staff links extra people to a programme session.
+Programme Session Staff links people to a programme session as operational staff.
 
-This allows a session to have:
+Fields include:
 
-- lead person
-- supporting adults
-- parent helpers
-- young leaders
-- first aider
-- observer
-- other roles
+- camp_id
+- programme_session_id
+- person_id
+- role
+- notes
 
-This is separate from the main session lead.
+Roles include:
+
+- Lead
+- Supporting Adult
+- Parent Helper
+- Young Leader
+- First Aider
+- Observer
+- Other
+
+This supports multiple leads and multiple support staff per session.
+
+Young Leaders can be staff operationally, but they must not count as adults for mandatory ratios.
+
+---
+
+## Programme Session Backup
+
+Programme Session Backup stores fallback plans attached to a session.
+
+Fields include:
+
+- camp_id
+- programme_session_id
+- optional activity_id
+- title
+- reason
+- location
+- duration_minutes
+- notes
+- sort_order
+
+A backup can be:
+
+- linked to an existing Activity
+- entered as lightweight custom text
+
+Backups do not change the main programme timetable.
 
 ---
 
 ## Risk Assessment Models
 
-Risk assessment data is included as a safety backbone inside the MVP.
-
-Current models include:
+The app currently has:
 
 - Camp Risk Assessment
 - Camp Risk Control
 - Activity Risk Assessment
 - Activity Risk Control
 
-Risk assessments have status and source information.
+Risk assessment work should evolve to support coverage modes.
 
-Risk controls describe what could go wrong, who is at risk, what controls are in place and what review action may be needed.
+Suggested future RA coverage model:
 
-Important note:
+- specific RA attached
+- covered by event RA
+- covered by site RA
+- covered by generic RA
+- not required / low-risk
+- details / justification
 
-The app helps organise risk assessment information.
-
-It does not replace official Scouts approval processes.
-
----
-
-## OSM Import Data
-
-The app currently supports OSM import workflows.
-
-OSM member import can update person profile fields.
-
-OSM event attendance import can update attendance status.
-
-OSM imports should be treated as a source of data, not as absolute truth.
-
-Manual corrections should be protected unless the organiser explicitly chooses to overwrite existing non-blank fields.
+This avoids forcing a fake standalone RA for every minor item.
 
 ---
 
-## Future Forms Data
+## Schema Evolution Note
 
-Forms are deferred.
+The app currently uses SQLite and `Base.metadata.create_all()`.
 
-Future form responses should become structured database records, not just uploaded PDFs.
+Some schema evolution has been handled pragmatically.
 
-Possible future form data:
-
-- consent
-- medical updates
-- dietary updates
-- travel permissions
-- activity permissions
-- emergency contact confirmation
-
-Forms should update camp-specific records.
-
-They should not automatically overwrite historical data without review.
-
----
-
-## Future Export Records
-
-Export records are deferred.
-
-A future export record may track:
-
-- export type
-- camp
-- date/time
-- created by
-- file type
-- included data categories
-- whether sensitive fields were included
-
-This may become important for archive, backup and privacy reasons.
-
----
-
-## Future Camp Lifecycle
-
-Camp should eventually support lifecycle states:
-
-- Planning
-- Active
-- Completed
-- Archived
-
-Archived camps should be removed from normal working views but restorable if needed.
-
-This is not current MVP work.
-
----
-
-## Key Decisions
-
-- Camp is the root entity.
-- People are currently camp-specific records.
-- Contacts are currently stored on Person records for MVP simplicity.
-- Sections are separate from Teams.
-- Section unit is stored as reference data, not automatically converted into Teams.
-- OSM imports should fill or update camp data only after preview.
-- Manual corrections should not be overwritten by default.
-- Sensitive data should be excluded from templates and off by default in future archives.
-- Templates are copied, never live-linked.
-- Forms are future structured data, not just documents.
+Before wider use, the project should introduce a more deliberate migration strategy, probably Alembic or a lightweight internal migration layer.

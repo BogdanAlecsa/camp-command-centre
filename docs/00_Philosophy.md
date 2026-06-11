@@ -14,7 +14,7 @@ Camp Command Centre is intended to bring camp planning into one organised place.
 
 Camp Command Centre is a camp planning and operations tool.
 
-It is designed to help Scout leaders plan, prepare, run and close camps, sleepovers and other Nights Away events.
+It is designed to help Scout leaders plan, prepare, run and close camps, sleepovers, residential events and other Nights Away activities.
 
 It is not trying to be everything.
 
@@ -38,7 +38,7 @@ The app should help leaders answer practical questions.
 
 The most important one is:
 
-Are we ready?
+**Are we ready?**
 
 Everything in the app should eventually support that question.
 
@@ -68,10 +68,13 @@ Examples:
 
 - people
 - sections
+- participating groups
 - teams
 - tasks
 - activities
-- programme
+- programme sessions
+- session staff
+- backup plans
 - risk assessments
 - documents
 - outputs
@@ -118,253 +121,48 @@ The current priority is to make the core workflow trustworthy.
 
 Good early workflow:
 
-- Create Camp
-- Add/import People
-- Organise Sections
-- Create Teams
-- Add Tasks
-- Build Programme
-- Add Risk Assessments
-- Print Outputs
-
-Large modules should wait until this core is stable.
-
----
-
-## People Are Camp-Specific
-
-People in the app are attached to a specific camp.
-
-The app should not try to become a permanent young-person database.
-
-For each camp, the app needs the people relevant to that camp.
-
-This is especially important for:
-
-- attendance
-- contact information
-- emergency contacts
-- allergies
-- medication
-- medical notes
-- dietary requirements
-- task assignments
-- teams/groups
-
-Future templates must not copy personal data between camps.
+1. Create a camp.
+2. Add or import people.
+3. Organise people into sections and teams.
+4. Create tasks.
+5. Create activities.
+6. Build the programme.
+7. Assign staff to sessions.
+8. Check headcounts, cover and risks.
+9. Print practical outputs.
 
 ---
 
-## Candidate Roster Thinking
+## Operational Reality Matters
 
-The People list should not only represent final attendees.
-
-It should support a candidate roster.
-
-People may be:
-
-- Provisional
-- Invited
-- Attending
-- Not attending
-- No response
-- Unknown
-
-This supports real planning.
-
-Sometimes you know you will have about 20 Cubs before you know which 20 Cubs.
-
-Sometimes you import a full OSM roster before attendance responses are final.
-
-The app should support both ways of working.
-
----
-
-## OSM Is a Source, Not the App
-
-OSM is a useful source of information.
-
-The app should be able to import from OSM where useful.
-
-But Camp Command Centre should not try to become OSM.
-
-Good use of OSM:
-
-- import section members
-- update camp attendance from an event export
-- reduce manual typing
-- improve accuracy
-
-Bad use of OSM:
-
-- trying to replace OSM
-- becoming a full membership system
-- blindly overwriting carefully entered camp data
-
-The app should import carefully, preview changes, and protect existing manual data unless the organiser chooses otherwise.
-
----
-
-## Safety and Trust
-
-The app may contain sensitive information.
+The app should support how camp actually works.
 
 Examples:
 
-- emergency contacts
-- allergies
-- medication
-- medical notes
-- dietary requirements
-- future welfare or incident records
+- people arrive and leave at different times
+- some activities need backup plans
+- Young Leaders help but are still young people for ratios
+- a session may have more than one adult lead
+- a task may be owned by a person or a team
+- print packs are used in the field, not just as admin paperwork
 
-The app should be designed with care.
-
-Important principles:
-
-- do not expose sensitive data unnecessarily
-- do not include personal data in templates
-- do not blindly export sensitive data
-- make archive/export choices explicit later
-- keep sensitive archive fields off by default
-- make destructive or bulk actions clear before applying them
-
-Trust matters more than speed.
-
----
-
-## Preview Before Bulk Change
-
-Bulk actions can save a lot of time.
-
-They can also create big mistakes quickly.
-
-Any bulk import or bulk update should follow this rule:
-
-Preview before apply.
-
-This especially applies to:
-
-- OSM member imports
-- OSM attendance updates
-- replacing provisional people
-- bulk moving people between sections
-- future archive/export tools
-
-The user should always understand what will happen before applying a large change.
-
----
-
-## Readiness Should Come From Real Data
-
-The long-term readiness system should not become a separate manual checklist if the app already has the information.
-
-For example:
-
-If an attending young person has no emergency contact, the app should know that.
-
-If an activity has no risk assessment, the app should know that.
-
-If a task is blocked, the app should know that.
-
-Readiness should be built from real camp data.
-
-This is why the core data needs to be reliable first.
-
----
-
-## Print and Output Matter
-
-The app is not only for storing data.
-
-It should produce useful outputs.
-
-Examples:
-
-- task sheets
-- team work packs
-- programme printouts
-- risk assessment packs
-- leader packs later
-- parent packs later
-- camp file later
-
-Outputs should be practical and usable by real leaders.
-
-A beautiful database that cannot produce useful camp documents is not enough.
-
----
-
-## Do Not Replace Judgement
-
-The app should support leaders.
-
-It should not pretend to make decisions for them.
-
-It can highlight missing information, warnings and possible problems.
-
-It can help organise risk assessments.
-
-It can help track readiness.
-
-But leaders still need to use judgement, follow Scouts processes, and make final decisions.
+The system should avoid false precision and should clearly show when something is assumed, missing or covered elsewhere.
 
 ---
 
 ## MVP Discipline
 
-The MVP must stay disciplined.
+The MVP should focus on the core planning spine.
 
-Current priority:
+The app should not jump too early into full Food, Transport, Finance, Communications, Incidents, Compliance or online collaboration.
 
-- safer People workflow
-- safer Section workflow
-- safer OSM imports
-- attendance summaries
-- import review clarity
-- bulk move recovery tools
+Those areas are important, but they depend on reliable core data.
 
-Do not rush into:
+Core data means:
 
-- Food
-- Transport
-- Finance
-- Full forms
-- Communications
-- Full compliance
-- Online collaboration
-- Archive/export system
-
-Those modules matter, but not before the core is safe.
-
----
-
-## Human-Centred Design
-
-The app should be calm and practical.
-
-The user is likely a busy volunteer preparing a real camp.
-
-They may be tired, interrupted, short of time, or trying to fix something late at night.
-
-The app should therefore be:
-
-- clear
-- forgiving
-- hard to misuse
-- plain-English
-- predictable
-- printable
-- easy to recover from
-
-Do not make users fight the software.
-
----
-
-## Final Principle
-
-The software should help organisers run better camps.
-
-It should not simply store camp information.
-
-It should reduce forgotten work, make responsibilities clearer, make outputs easier to produce, and help leaders feel more confident that the camp is ready.
+- who is attending
+- who is present when
+- who is grouped with whom
+- what is planned
+- who is responsible
+- what risks and controls apply

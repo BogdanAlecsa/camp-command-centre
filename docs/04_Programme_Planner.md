@@ -2,85 +2,58 @@
 
 The Programme Planner helps organise the timetable for a camp, sleepover or Nights Away event.
 
-It should support both simple programmes and more complex camp structures with groups, rotations, activity leads and supporting adults.
+It is one of the core MVP modules.
 
 ---
 
-## Current Status
+## Current Programme Features
 
-The app now has a working early-MVP Programme module.
+The Programme module currently supports:
 
-Current programme features include:
-
-- programme sessions
-- session dates
-- start and end times
-- session titles
-- session types
-- linked activities
-- participant groups/teams
+- creating sessions
+- editing sessions
+- deleting sessions
+- linking sessions to activities
+- assigning participant teams/groups
+- setting date, start time and end time
 - locations
-- lead person
-- supporting staff
 - notes
-- rotation information
-- programme warnings
-- rotation summaries
-- printable programme outputs
-
-This is a strong baseline, but the workflow still needs polish.
+- session types
+- rotation groups
+- rotation slot numbers
+- programme printables
+- session detail pages
+- session staff
+- session backup plans
+- session headcount and roll-call output
 
 ---
 
-## Programme Sessions
+## Programme Session
 
-A Programme Session is a scheduled block of time.
+A programme session is a scheduled block of time.
 
 Examples:
 
-- breakfast
-- flag break
-- activity session
 - wide game
-- lunch
-- campfire
-- leader meeting
-- free time
+- breakfast
+- hike
 - setup
 - pack down
-- travel
+- free time
+- leader/admin time
+- activity rotation base
+- travel slot
 
-Programme sessions can link to Activities, but they do not have to.
+A session may link to an Activity, but it does not have to.
 
-Some sessions are practical/admin sessions rather than activities.
-
----
-
-## Session Information
-
-A programme session may include:
-
-- date
-- start time
-- end time
-- title
-- session type
-- linked activity
-- participant group
-- location
-- lead person
-- supporting staff
-- notes
-- rotation group
-- rotation slot number
-
-The app should allow simple sessions to be added quickly, without requiring every field.
+This allows both reusable activities and simple timetable notes.
 
 ---
 
 ## Session Types
 
-Useful programme session types include:
+Current session types include:
 
 - Activity
 - Meal
@@ -92,335 +65,215 @@ Useful programme session types include:
 - Group Rotation
 - Other
 
-Session type is useful for:
-
-- visual colour-coding
-- filtering
-- print layout
-- warnings
-- later readiness checks
+Session type affects display/styling and helps print packs become more useful.
 
 ---
 
-## Activities and Programme
+## Rotation Planning
 
-Activities are reusable planning items.
+The Programme module includes support for rotation groups and slot numbers.
 
-Programme sessions are scheduled instances.
+This allows leaders to create a set of sessions that form a rotation.
 
-Example:
-
-Activity:
-
-Archery
-
-Programme sessions:
-
-- Saturday 10:00, Group A, Archery
-- Saturday 11:00, Group B, Archery
-- Saturday 12:00, Group C, Archery
-
-This distinction matters because one activity may appear multiple times in the programme.
+Future improvements should make rotation creation more guided and less manual.
 
 ---
 
-## Activity Leads
+## Session Staff
 
-A programme session can have a lead person.
+Session Staff is the current operational staffing model.
 
-The linked activity may also have a default activity lead.
+A session can have multiple staff members.
 
-The app should make it easy to see who is responsible for each session.
+Each staff member has:
 
-Future improvements should warn when important sessions have no lead.
-
----
-
-## Supporting Staff
-
-A programme session can have supporting staff.
-
-Supporting staff may include:
-
-- supporting adult
-- parent helper
-- young leader
-- first aider
-- observer
-- other role
-
-This is separate from the main session lead.
-
-The programme should eventually help identify staffing gaps.
-
----
-
-## Participant Groups
-
-Programme sessions may apply to:
-
-- whole camp
-- one section
-- one team
-- one activity group
-- one patrol/six
-- one duty group
-- free choice participants
-
-The current app links sessions to teams/groups.
-
-Future improvements should make it easier to filter the programme by section or group.
-
----
-
-## Rotations
-
-Many camps use rotations.
-
-Example:
-
-- Group A does Fire Lighting
-- Group B does Shelter Building
-- Group C does Navigation
-
-Then the groups rotate.
-
-The app currently supports rotation information and rotation summaries.
-
-Future rotation planner improvements should include:
-
-- easier creation of rotation blocks
-- automatic rotation schedule generation
-- better clash checking
-- clearer group schedules
-- easier editing after generation
-
----
-
-## Programme Warnings
-
-The Programme module should warn about possible problems.
-
-Current/future warning examples:
-
-- session has no lead person
-- activity has no risk assessment
-- session has no location
-- session has no participant group
-- activity needs equipment notes
-- overlapping sessions for the same group
-- same leader assigned to overlapping sessions
-- missing supporting adults
-
-Warnings should help the organiser review the programme without blocking normal editing.
-
----
-
-## Printable Programme Outputs
-
-Current or near-term outputs include:
-
-- full programme
-- young person programme
-- group schedule
-- leader schedule
-- activity leader schedule
-- leader board
-
-Different audiences need different programme views.
-
----
-
-## Full Programme
-
-The full programme should show the complete timetable.
-
-It is useful for organisers and senior leaders.
-
-It may include:
-
-- time
-- session title
-- type
-- location
-- activity
-- participant group
-- lead
-- supporting staff
-- risk assessment status
+- person
+- role
 - notes
 
+Roles include:
+
+- Lead
+- Supporting Adult
+- Parent Helper
+- Young Leader
+- First Aider
+- Observer
+- Other
+
+The old single Lead Person field is no longer the correct user-facing model.
+
+The source of truth for leads should be:
+
+```text
+ProgrammeSessionStaff.role == "Lead"
+```
+
 ---
 
-## Young Person Programme
+## Adult Lead Rule
 
-The young person programme should be simpler.
+A session can have one or more Leads.
 
-It should avoid operational clutter.
+For adult cover, a Lead only counts as adult cover if the person type is:
 
-It may include:
+- Leader
+- Helper
 
-- time
-- activity/session name
+Young Leaders may be assigned as staff or even help run the activity, but they are not adult Lead cover.
+
+The app should warn if:
+
+- no adult Lead is assigned
+- the adult Lead is not expected at session start
+- no adult Lead is present for the full session
+
+---
+
+## Presence-Aware Staffing
+
+Session staffing uses presence windows.
+
+When adding staff to a session:
+
+- people not present at session start are hidden from the staff dropdown
+- people present at start but leaving before the end remain selectable with a warning
+- assigned staff remain visible in the session staff table with warnings
+
+This prevents obvious staffing mistakes without making planning impossible.
+
+---
+
+## Session Cover Card
+
+The session detail page includes a cover summary.
+
+It shows:
+
+- total people at start
+- total people for full session
+- people leaving before session ends
+- participants at start
+- participants for full session
+- assigned staff by person type at start
+- assigned staff by person type for full session
+- assigned staff by session role at start
+- assigned staff by session role for full session
+- staff leaving early
+- adult Lead at start
+- adult Lead for full session
+
+Counts are unique person counts.
+
+This prevents double-counting someone who might otherwise appear in more than one category.
+
+---
+
+## Session Roll Call
+
+A session can generate a roll-call printable.
+
+The roll call includes:
+
+- session staff
+- participants
+- person type
+- session role
 - group
+- presence status
+- notes
+- tick boxes
+
+This is intended for practical roll calls during camp.
+
+---
+
+## Backup Plans
+
+Backup plans are attached to a session.
+
+They are for fallback planning, not for changing the main timetable.
+
+Backup reasons include:
+
+- Wet weather
+- Too hot
+- Low light / darkness
+- Activity overrun
+- Equipment unavailable
+- Instructor unavailable
+- Low energy / tired group
+- Behaviour reset
+- Other
+
+A backup can link to an existing Activity or be a custom lightweight entry.
+
+Backup fields include:
+
+- linked Activity
+- title
+- reason
 - location
-- simple notes
+- approximate duration
+- notes
 
-It should not include unnecessary internal planning information.
-
----
-
-## Leader Programme
-
-The leader programme should include more operational detail.
-
-It may include:
-
-- session lead
-- supporting staff
-- locations
-- risk assessment status
-- setup notes
-- activity notes
-- equipment notes
-- warnings
+Backup plans can currently be added, edited and removed.
 
 ---
 
-## Activity Leader Schedule
+## Backup Plans in Printables
 
-An activity leader schedule should show what each activity lead is responsible for.
+Desired behaviour:
 
-It should help answer:
+- parent/young person programme: hide backups
+- leader/internal programme: show backups quietly
+- session roll call: usually hide backups
+- session detail page: show full backup details
 
-- What am I leading?
-- When?
-- Where?
-- Which group?
-- Who is supporting me?
+Suggested print style:
 
----
+```text
+Wide Game
+Backup: Indoor quiz — Wet weather · Hall · 45 min
+```
 
-## Leader Board
-
-The leader board should show where adults and helpers are expected to be.
-
-This is useful during the camp for operational awareness.
-
-Future improvements may include:
-
-- staff allocation by time
-- gaps in adult cover
-- leader clashes
-- first aider location
-- floating support roles
+This needs to be added carefully to print templates one at a time.
 
 ---
 
-## Risk Assessment Link
+## Print Packs
 
-Programme sessions should show risk assessment status where relevant.
+Programme print outputs include:
 
-If a programme session links to an activity, the app should be able to show whether the activity risk assessment is:
+- full programme
+- group programmes
+- activity leader schedules
+- leader programme
+- leader location board
+- session roll call
 
-- Not Started
-- Draft
-- Ready for Review
-- Submitted
-- Approved
-- Needs Update
+Print routes and templates must be handled cautiously.
 
-This does not replace official Scouts approval processes.
+Recent work showed that broad automated patching can break print routes.
 
-It helps the organiser see what still needs review.
-
----
-
-## Equipment Link
-
-Programme sessions should eventually connect to equipment needs.
-
-For now, activity equipment notes can be used.
-
-Future equipment links may include:
-
-- activity equipment list
-- group equipment
-- setup equipment
-- consumables
-- who is bringing what
-- where equipment should be during the programme
-
-This is deferred until the equipment module exists.
+Future print changes should be made one route/template at a time with smoke testing after each change.
 
 ---
 
-## Food and Transport Sessions
+## Next Programme Improvements
 
-Meals, travel, setup and pack down can appear in the programme even before full Food or Transport modules exist.
+Short-term:
 
-This allows the programme to show the real shape of the camp.
+1. Add backup plan display to leader/internal printables only.
+2. Convert remaining print lead displays to Session Staff Leads.
+3. Add tests/smoke checks for all programme print routes.
+4. Improve RA coverage display for sessions and activities.
+5. Consider a clearer session staff summary in list views.
 
-Future Food and Transport modules can build on these session types later.
+Medium-term:
 
----
-
-## Current Limitations
-
-Current Programme module limitations:
-
-- editing is form-based rather than drag/drop
-- rotation creation still needs more workflow polish
-- clash detection is limited
-- group filtering needs improvement
-- section filtering needs improvement
-- staff allocation warnings need improvement
-- visual timeline layout could be better
-
-These are acceptable for the early MVP but should improve before heavy real-world use.
-
----
-
-## Near-Term Priorities
-
-Programme is not the immediate next priority.
-
-The next build focus remains People, Sections and OSM import safety.
-
-After that, useful Programme improvements would be:
-
-1. Improve programme warning logic
-2. Improve rotation planner workflow
-3. Add better group/section filtering
-4. Improve print layouts
-5. Add clash detection
-6. Improve staff allocation view
-
----
-
-## Deferred Ideas
-
-Future Programme ideas:
-
-- drag/drop timetable editing
-- duplicate day/session tools
-- reusable programme templates
-- automatic rotation generation
-- visual timeline
-- export to calendar
-- programme version history
-- parent-friendly programme output
-- leader operational programme output
-- live camp running mode
-
-These should wait until the core MVP is stable.
-
----
-
-## Summary
-
-The Programme Planner is already one of the useful working parts of the MVP.
-
-It can create structured programme sessions and printable outputs.
-
-The next improvements should focus on making it easier to build, review and safely run the programme, but only after the People, Sections and OSM workflows are safer.
+1. Better rotation builder.
+2. Session supervision mode for ratio checks.
+3. Nights Away ratio warnings.
+4. Programme readiness review.
+5. Programme export packs.
