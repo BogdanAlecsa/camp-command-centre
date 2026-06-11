@@ -2131,17 +2131,39 @@ async def print_activity_leader_schedules(
 
     session_staff_by_session_id = get_session_staff_lookup(db, camp, sessions)
 
+    def get_session_lead_names(session_id):
+        lead_names = []
+
+        for staff_item in session_staff_by_session_id.get(session_id, []):
+            if isinstance(staff_item, dict):
+                role = staff_item.get("role")
+                display_name = staff_item.get("display_name")
+            else:
+                role = getattr(staff_item, "role", None)
+                display_name = getattr(staff_item, "display_name", None)
+
+            if (role or "").lower() == "lead":
+                display_name = (display_name or "").strip()
+
+                if display_name and display_name not in lead_names:
+                    lead_names.append(display_name)
+
+        return lead_names
+
     schedules_by_key = {}
 
     for session in sessions:
         schedule_kind = "rotation" if session.rotation_group else "single"
+
+        lead_names = get_session_lead_names(session.id)
+        lead_key = "|".join(lead_names) if lead_names else "Unassigned lead"
 
         key = (
             schedule_kind,
             session.activity_id,
             session.rotation_group or "",
             session.location or "",
-            session.lead_person_id or 0,
+            lead_key,
         )
 
         schedule = schedules_by_key.get(key)
@@ -2153,10 +2175,8 @@ async def print_activity_leader_schedules(
                 "activity_name": activity_names.get(session.activity_id, session.title),
                 "rotation_group": session.rotation_group,
                 "location": session.location,
-                "lead_person_id": session.lead_person_id,
-                "lead_name": person_names.get(session.lead_person_id, "Unassigned lead")
-                if session.lead_person_id
-                else "Unassigned lead",
+                "lead_person_id": None,
+                "lead_name": ", ".join(lead_names) if lead_names else "Unassigned lead",
                 "sessions": [],
             }
             schedules_by_key[key] = schedule
@@ -2187,7 +2207,12 @@ async def print_activity_leader_schedules(
 
         for item in schedule["sessions"]:
             for staff_item in session_staff_by_session_id.get(item.id, []):
-                key = (staff_item["person_id"], staff_item["role"])
+                role = (staff_item.get("role") or "").strip()
+
+                if role.lower() == "lead":
+                    continue
+
+                key = (staff_item.get("person_id"), role)
                 if key in seen_staff:
                     continue
 

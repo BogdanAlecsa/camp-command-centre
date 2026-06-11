@@ -308,11 +308,17 @@
                     </td>
                     <td>
                       {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
-                      {% if staff_items %}
-                        <div><strong>Staff:</strong></div>
-                        {% for item in staff_items %}
+                      {% set non_lead_staff = namespace(count=0) %}
+                      {% for item in staff_items %}
+                        {% if (item.role or "")|lower != "lead" %}
+                          {% if non_lead_staff.count == 0 %}
+                            <div><strong>Staff:</strong></div>
+                          {% endif %}
+                          {% set non_lead_staff.count = non_lead_staff.count + 1 %}
                           <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
-                        {% endfor %}
+                        {% endif %}
+                      {% endfor %}
+                      {% if non_lead_staff.count > 0 %}
                         <br>
                       {% endif %}
 
@@ -352,11 +358,17 @@
                     <td>{{ session.location or "Not set" }}</td>
                     <td>
                       {% set staff_items = session_staff_by_session_id.get(session.id, []) %}
-                      {% if staff_items %}
-                        <div><strong>Staff:</strong></div>
-                        {% for item in staff_items %}
+                      {% set non_lead_staff = namespace(count=0) %}
+                      {% for item in staff_items %}
+                        {% if (item.role or "")|lower != "lead" %}
+                          {% if non_lead_staff.count == 0 %}
+                            <div><strong>Staff:</strong></div>
+                          {% endif %}
+                          {% set non_lead_staff.count = non_lead_staff.count + 1 %}
                           <div>{{ item.display_name }} <span class="muted">({{ item.role }})</span></div>
-                        {% endfor %}
+                        {% endif %}
+                      {% endfor %}
+                      {% if non_lead_staff.count > 0 %}
                         <br>
                       {% endif %}
 
