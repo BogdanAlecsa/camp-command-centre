@@ -215,6 +215,15 @@ h1 {
     }
 
   
+
+    .print-backup-line {
+      margin-top: 2px;
+      color: #64748b;
+      font-size: 8.5pt;
+      font-style: italic;
+      line-height: 1.25;
+    }
+
 </style>
 </head>
 
@@ -261,7 +270,11 @@ h1 {
                 <td>
                   <strong>{{ session.title }}</strong>
                   {% if session.activity_id %}
-                    <br><span class="muted">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}
+                    <br><span class="muted">Activity: {{ activity_names.get(session.activity_id, "Unknown activity") }}</span>
+                  {% endif %}
+                  {% set backup_summary = session_backup_summaries.get(session.id) %}
+                  {% if backup_summary %}
+                    <div class="print-backup-line">Backup: {{ backup_summary }}</div>
                   {% endif %}
                   {% if session.notes %}
                     <br><span class="muted">{{ session.notes }}</span>
